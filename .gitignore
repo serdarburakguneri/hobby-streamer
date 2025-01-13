@@ -1,0 +1,77 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+*.ipr
+*.iws
+
+# Logs
+*.log
+*.log.*
+
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.jmod
+*.hprof
+
+# Gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+
+# Maven
+.mvn/
+target/
+
+# Go
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+go.sum
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+override.tf
+override.tf.json
+*.tfplan
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+*.~*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.nfs*
+
+# IDE-specific
+*.idea/
+*.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Others
+node_modules/
+*.env
+

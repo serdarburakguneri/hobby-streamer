@@ -1,65 +1,37 @@
-# Hobby streamer
+# Hobby Streamer
 
-Build a scalable, cost-effective video upload, processing, and streaming platform leveraging AWS Free Tier services. Users will upload videos, which will be processed using AWS Elemental MediaConvert, stored securely, and made available for streaming through AWS CloudFront. Additionally, custom video transcoding using tools like FFmpeg will be implemented as an enhancement.
+Scalable video upload, processing, and streaming platform using AWS Free Tier. Users upload videos processed with AWS Elemental MediaConvert, stored in S3, and streamed via CloudFront. Includes optional FFmpeg for custom transcoding.
 
 ## Key Components
 
-### 1. Infrastructure Overview
+S3: Store raw/processed videos.
 
-AWS S3: For storing raw and processed video files.
+MediaConvert: Transcode videos.
 
-AWS Elemental MediaConvert: For video processing and format conversion.
+DynamoDB: Manage video metadata.
 
-AWS DynamoDB: To manage metadata for videos (e.g., file name, format, status).
+CloudFront: Stream videos globally.
 
-AWS CloudFront: For distributing processed videos globally.
+Lambda: Automate workflows.
 
-AWS Lambda: For triggering workflows (e.g., on video upload).
+IAM: Secure access.
 
-AWS IAM: For secure role-based access control.
+## Workflow Overview
 
-### 2. System Workflow
+Video Upload: Videos are uploaded to S3, triggering Lambda.
 
-Video Upload:
+Processing: Lambda calls MediaConvert, outputs saved to S3.
 
-Users upload videos to an S3 bucket.
+Metadata: Stored in DynamoDB.
 
-S3 triggers a Lambda function to initiate processing.
-
-Video Processing:
-
-Lambda invokes MediaConvert to transcode the uploaded video.
-
-Transcoded videos are saved back to S3.
-
-Metadata Storage:
-
-Video details (e.g., file path, resolution, format) are saved to DynamoDB.
-
-Video Streaming:
-
-CloudFront serves the processed video files from S3 to end-users.
-
-Adaptive bitrate streaming is configured for optimal performance.
+Streaming: CloudFront delivers videos with adaptive bitrate.
 
 Cost Optimization
 
-AWS Free Tier Services:
+Use AWS Free Tier (S3, CloudFront, DynamoDB).
 
-Utilize the free tier limits for S3, CloudFront, and DynamoDB.
+Automate storage cleanup with lifecycle rules.
 
-Use small-size EC2 instances if needed for additional processing (e.g., FFmpeg testing).
+Leverage MediaConvert "Basic" tier for low-cost transcoding.
 
-Storage Management:
-
-Automatically delete raw video files after processing.
-
-Apply lifecycle rules to S3 buckets to archive older files to Glacier.
-
-MediaConvert:
-
-Use the MediaConvert "Basic" tier for cost-effective transcoding.
-
-CloudFront:
-
-Optimize caching and minimize requests to S3 to reduce costs.
+Optimize caching to minimize S3 requests.
