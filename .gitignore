@@ -46,6 +46,7 @@ go.sum
 override.tf
 override.tf.json
 *.tfplan
+*.lock.hcl
 
 # Temporary files
 *.swp
