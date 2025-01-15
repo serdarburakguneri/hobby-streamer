@@ -9,54 +9,64 @@ variable "private_subnets" {
   type        = list(string)
 }
 
-# APIGW Module Variables
-variable "api_name" {
+# APIGW Module Variables for Storage API
+variable "storage_api_name" {
   description = "Name of the API Gateway"
   type        = string
 }
 
-variable "api_key_name" {
+variable "storage_api_key_name" {
   description = "Name of the API Key"
   type        = string
 }
 
-variable "api_key_description" {
+variable "storage_api_key_description" {
   description = "Description of the API Key"
   type        = string
 }
 
-variable "usage_plan_name" {
+variable "storage_api_description" {
+  description = "Description of the API"
+  type        = string
+}
+
+variable "storage_api_usage_plan_name" {
   description = "Name of the usage plan"
   type        = string
 }
 
-variable "usage_plan_description" {
+variable "storage_api_usage_plan_description" {
   description = "Description of the usage plan"
   type        = string
 }
 
-variable "throttling_burst_limit" {
+variable "storage_api_throttling_burst_limit" {
   description = "Burst limit for throttling"
   type        = number
 }
 
-variable "throttling_rate_limit" {
+variable "storage_api_throttling_rate_limit" {
   description = "Rate limit for throttling (requests per second)"
   type        = number
 }
 
-variable "quota_limit" {
+variable "storage_api_quota_limit" {
   description = "Maximum number of requests allowed"
   type        = number
 }
 
-variable "quota_offset" {
+variable "storage_api_quota_offset" {
   description = "Offset for the quota limit"
   type        = number
 }
 
-variable "quota_period" {
+variable "storage_api_quota_period" {
   description = "Time period for quota reset (e.g., DAY, WEEK, MONTH)"
+  type        = string
+}
+
+variable "storage_api_stage_name" {
+  description = "Stage name for the deployment of storage api"
   type        = string
 }
 

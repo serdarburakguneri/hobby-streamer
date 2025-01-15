@@ -2,8 +2,10 @@ before terraforming:
 
 $go mod init lambda-function
 $go mod tidy
-$GOOS=linux GOARCH=amd64 go build -o main main.go
-$zip main.zip main
+$GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
+
+$zip bootstrap.zip bootstrap
+
 
 after terraforming:
 

@@ -52,3 +52,18 @@ variable "tags" {
   description = "Tags for resources"
   type        = map(string)
 }
+
+variable "api_description" {
+  description = "Description of the API Gateway"
+  type        = string
+}
+
+variable "stage_name" {
+  description = "deployment stage name"
+  type        = string
+}
+
+
+
+
+
