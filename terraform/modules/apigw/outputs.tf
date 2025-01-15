@@ -3,6 +3,11 @@ output "api_id" {
   value       = aws_api_gateway_rest_api.api.id
 }
 
+output "root_resource_id" {
+  description = "ID of the root resource of the  REST API"
+  value       = aws_api_gateway_rest_api.api.root_resource_id
+}
+
 output "api_key_id" {
   description = "ID of the API Key"
   value       = aws_api_gateway_api_key.api_key.id

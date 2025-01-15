@@ -8,7 +8,13 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnet_ids
 }
 
-output "api_id" {
-  description = "ID of the REST API"
-  value       = module.apigw.api_id
+output "storage_api_id" {
+  description = "ID of the storage REST API"
+  value       = module.storage-api.api_id
+}
+
+output "api_key_value" {
+  description = "The value of the API Key"
+  value       = module.storage-api.api_key_value
+  sensitive   = true
 }
