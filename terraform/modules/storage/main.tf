@@ -1,10 +1,10 @@
-resource "aws_s3_bucket" "video_bucket" {
-  bucket = var.s3_bucket_name
+resource "aws_s3_bucket" "raw_storage_bucket" {
+  bucket = var.raw_storage_s3_bucket_name
   tags = var.tags
 }
 
 resource "aws_s3_bucket_versioning" "video_bucket_versioning" {
-  bucket = aws_s3_bucket.video_bucket.id
+  bucket = aws_s3_bucket.raw_storage_bucket.id
 
   versioning_configuration {
     status = "Enabled"
@@ -12,7 +12,7 @@ resource "aws_s3_bucket_versioning" "video_bucket_versioning" {
 }
 
 resource "aws_s3_bucket_policy" "bucket_policy" {
-  bucket = aws_s3_bucket.video_bucket.id
+  bucket = aws_s3_bucket.raw_storage_bucket.id
 
   policy = jsonencode({
     Version   = "2012-10-17",
@@ -23,8 +23,8 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
         Principal = { AWS = aws_iam_role.lambda_role.arn },
         Action   = ["s3:PutObject", "s3:GetObject"],
         Resource = [
-          "${aws_s3_bucket.video_bucket.arn}",
-          "${aws_s3_bucket.video_bucket.arn}/*"
+          "${aws_s3_bucket.raw_storage_bucket.arn}",
+          "${aws_s3_bucket.raw_storage_bucket.arn}/*"
         ]
       }
     ]
@@ -56,8 +56,8 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Effect   = "Allow",
         Action   = ["s3:PutObject", "s3:GetObject"],
         Resource = [
-          "${aws_s3_bucket.video_bucket.arn}",
-          "${aws_s3_bucket.video_bucket.arn}/*"
+          "${aws_s3_bucket.raw_storage_bucket.arn}",
+          "${aws_s3_bucket.raw_storage_bucket.arn}/*"
         ]
       },
       {
@@ -80,7 +80,7 @@ resource "aws_lambda_function" "generate_url" {
 
   environment {
     variables = {
-      BUCKET_NAME   = aws_s3_bucket.video_bucket.id,
+      BUCKET_NAME   = aws_s3_bucket.raw_storage_bucket.id,
       BUCKET_REGION = var.aws_region
     }
   }
