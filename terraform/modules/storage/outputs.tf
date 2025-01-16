@@ -1,6 +1,6 @@
 output "s3_bucket_id" {
   description = "ID of the S3 bucket"
-  value       = aws_s3_bucket.video_bucket.id
+  value       = aws_s3_bucket.raw_storage_bucket.id
 }
 
 output "lambda_arn" {

@@ -1,5 +1,10 @@
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket for video storage"
+variable "raw_storage_s3_bucket_name" {
+  description = "Name of the S3 bucket for raw video storage"
+  type        = string
+}
+
+variable "transcoder_storage_s3_bucket_name" {
+  description = "Name of the S3 bucket for transcoder video storage"
   type        = string
 }
 

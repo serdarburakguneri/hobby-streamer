@@ -9,73 +9,79 @@ variable "private_subnets" {
   type        = list(string)
 }
 
-# APIGW Module Variables for Storage API
-variable "storage_api_name" {
+#API Module Variables
+variable "api_name" {
   description = "Name of the API Gateway"
   type        = string
 }
 
-variable "storage_api_key_name" {
+variable "api_key_name" {
   description = "Name of the API Key"
   type        = string
 }
 
-variable "storage_api_key_description" {
+variable "api_key_description" {
   description = "Description of the API Key"
   type        = string
 }
 
-variable "storage_api_description" {
+variable "api_description" {
   description = "Description of the API"
   type        = string
 }
 
-variable "storage_api_usage_plan_name" {
+variable "api_usage_plan_name" {
   description = "Name of the usage plan"
   type        = string
 }
 
-variable "storage_api_usage_plan_description" {
+variable "api_usage_plan_description" {
   description = "Description of the usage plan"
   type        = string
 }
 
-variable "storage_api_throttling_burst_limit" {
+variable "api_throttling_burst_limit" {
   description = "Burst limit for throttling"
   type        = number
 }
 
-variable "storage_api_throttling_rate_limit" {
+variable "api_throttling_rate_limit" {
   description = "Rate limit for throttling (requests per second)"
   type        = number
 }
 
-variable "storage_api_quota_limit" {
+variable "api_quota_limit" {
   description = "Maximum number of requests allowed"
   type        = number
 }
 
-variable "storage_api_quota_offset" {
+variable "api_quota_offset" {
   description = "Offset for the quota limit"
   type        = number
 }
 
-variable "storage_api_quota_period" {
+variable "api_quota_period" {
   description = "Time period for quota reset (e.g., DAY, WEEK, MONTH)"
   type        = string
 }
 
-variable "storage_api_stage_name" {
-  description = "Stage name for the deployment of storage api"
+variable "api_stage_name" {
+  description = "Stage name for the deployment"
   type        = string
 }
 
 #Storage Module Variables
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket for video storage"
+variable "raw_storage_s3_bucket_name" {
+  description = "Name of the S3 bucket for raw video storage"
   type        = string
 }
 
+variable "transcoder_storage_s3_bucket_name" {
+  description = "Name of the S3 bucket for transcoder video storage"
+  type        = string
+}
+
+#Common Variables
 variable "tags" {
   description = "Tags for resources"
   type        = map(string)

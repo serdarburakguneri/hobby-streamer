@@ -10,11 +10,11 @@ output "private_subnet_ids" {
 
 output "storage_api_id" {
   description = "ID of the storage REST API"
-  value       = module.storage-api.api_id
+  value       = module.hobby-streamer-api.api_id
 }
 
 output "api_key_value" {
   description = "The value of the API Key"
-  value       = module.storage-api.api_key_value
+  value       = module.hobby-streamer-api.api_key_value
   sensitive   = true
 }
