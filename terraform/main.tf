@@ -6,7 +6,8 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 module "vpc" {
-  source          = "./modules/vpc"
+  source = "./modules/vpc"
+
   vpc_cidr        = var.vpc_cidr
   private_subnets = var.private_subnets
 }
@@ -32,7 +33,8 @@ module "hobby-streamer-api" {
 }
 
 module "storage" {
-  source                            = "./modules/storage"
+  source = "./modules/storage"
+
   account_id                        = data.aws_caller_identity.current.account_id
   api_id                            = module.hobby-streamer-api.api_id
   api_root_resource_id              = module.hobby-streamer-api.root_resource_id
@@ -42,7 +44,22 @@ module "storage" {
   transcoder_storage_s3_bucket_name = var.transcoder_storage_s3_bucket_name
   stage_name                        = var.api_stage_name
 
-  depends_on = [module.vpc, module.hobby-streamer-api]
+  depends_on = [module.hobby-streamer-api]
+}
+
+module "transcoder" {
+  source = "./modules/transcoder"
+
+  account_id                   = data.aws_caller_identity.current.account_id
+  aws_region                   = var.aws_region
+  api_id                       = module.hobby-streamer-api.api_id
+  api_root_resource_id         = module.hobby-streamer-api.root_resource_id
+  stage_name                   = var.api_stage_name
+  sqs_queue_name               = var.sqs_queue_name
+  sqs_queue_visibility_timeout = var.sqs_queue_visibility_timeout
+  tags                         = var.tags
+
+  depends_on = [module.hobby-streamer-api]
 }
 
 

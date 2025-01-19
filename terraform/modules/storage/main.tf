@@ -103,12 +103,14 @@ resource "aws_api_gateway_method" "generate_url_method" {
 }
 
 resource "aws_api_gateway_integration" "lambda_integration" {
-  rest_api_id = var.api_id
-  resource_id = aws_api_gateway_resource.generate_url.id
+  rest_api_id             = var.api_id
+  resource_id             = aws_api_gateway_resource.generate_url.id
   integration_http_method = "POST"
-  http_method = "POST"
-  type        = "AWS_PROXY"
-  uri         = aws_lambda_function.generate_url.invoke_arn
+  http_method             = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.generate_url.invoke_arn
+
+  depends_on = [aws_api_gateway_method.generate_url_method]
 }
 
 resource "aws_lambda_permission" "apigw_permission" {
@@ -119,10 +121,8 @@ resource "aws_lambda_permission" "apigw_permission" {
   source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-url"
 }
 
-resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on  = [aws_api_gateway_integration.lambda_integration]
-  rest_api_id = var.api_id
-}
+
+
 
 
 
