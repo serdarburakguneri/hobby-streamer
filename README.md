@@ -1,37 +1,12 @@
 # Hobby Streamer
 
-Scalable video upload, processing, and streaming platform using AWS Free Tier. Users upload videos processed with AWS Elemental MediaConvert, stored in S3, and streamed via CloudFront. Includes optional FFmpeg for custom transcoding.
+This hobby project leverages the AWS Free Tier to build a lightweight CMS for a streaming platform. It allows users to upload videos, manage content, and prepare files for streaming. The goal is to create an end-to-end workflow that covers video ingestion, processing, and delivery with minimal infrastructure cost.
 
-## Key Components
-
-S3: Store raw/processed videos.
-
-MediaConvert: Transcode videos.
-
-DynamoDB: Manage video metadata.
-
-CloudFront: Stream videos globally.
-
-Lambda: Automate workflows.
-
-IAM: Secure access.
-
-## Workflow Overview
-
-Video Upload: Videos are uploaded to S3, triggering Lambda.
-
-Processing: Lambda calls MediaConvert, outputs saved to S3.
-
-Metadata: Stored in DynamoDB.
-
-Streaming: CloudFront delivers videos with adaptive bitrate.
-
-Cost Optimization
-
-Use AWS Free Tier (S3, CloudFront, DynamoDB).
-
-Automate storage cleanup with lifecycle rules.
-
-Leverage MediaConvert "Basic" tier for low-cost transcoding.
-
-Optimize caching to minimize S3 requests.
+## Tech Stack
+	AWS S3 – Video storage
+	AWS Lambda (Go) – Serverless backend logic
+	Amazon API Gateway – API endpoint management
+	AWS Elastic Transcoder / MediaConvert – Video processing and transcoding
+	DynamoDB – Metadata and CMS data storage
+	CloudFront – Content delivery (CDN)
+	Terraform – Infrastructure as code

@@ -81,6 +81,19 @@ variable "transcoder_storage_s3_bucket_name" {
   type        = string
 }
 
+#Transcoder Module Variables
+variable "sqs_queue_name" {
+  description = "The name of the SQS queue for transcoding jobs"
+  type        = string
+  default     = "TranscodingQueue"
+}
+
+variable "sqs_queue_visibility_timeout" {
+  description = "The visibility timeout for the SQS queue (in seconds)"
+  type        = number
+  default     = 300
+}
+
 #Common Variables
 variable "tags" {
   description = "Tags for resources"
