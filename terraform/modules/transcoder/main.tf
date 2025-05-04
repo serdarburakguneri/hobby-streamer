@@ -88,3 +88,26 @@ resource "aws_api_gateway_integration" "post_sqs_integration" {
     aws_iam_role_policy.sqs_policy
   ]
 }
+
+//permission for the raw s3 storage to trigger transcoder sqs
+resource "aws_sqs_queue_policy" "allow_s3_to_send" {
+  queue_url = aws_sqs_queue.transcoding_queue.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid       = "AllowS3EventNotifications",
+        Effect    = "Allow",
+        Principal = "*",
+        Action    = "sqs:SendMessage",
+        Resource  = aws_sqs_queue.transcoding_queue.arn,
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = var.raw_storage_bucket_arn
+          }
+        }
+      }
+    ]
+  })
+}
