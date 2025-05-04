@@ -35,6 +35,11 @@ variable "sqs_queue_visibility_timeout" {
   default     = 300  # Adjust based on average transcoding time
 }
 
+variable "raw_storage_bucket_arn" {
+  description = "The ARN of the S3 bucket that will trigger transcoding events"
+  type        = string
+}
+
 variable "tags" {
   description = "Tags for resources"
   type        = map(string)

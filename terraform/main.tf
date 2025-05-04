@@ -32,21 +32,6 @@ module "hobby-streamer-api" {
   depends_on = [module.vpc]
 }
 
-module "storage" {
-  source = "./modules/storage"
-
-  account_id                        = data.aws_caller_identity.current.account_id
-  api_id                            = module.hobby-streamer-api.api_id
-  api_root_resource_id              = module.hobby-streamer-api.root_resource_id
-  tags                              = var.tags
-  aws_region                        = var.aws_region
-  raw_storage_s3_bucket_name        = var.raw_storage_s3_bucket_name
-  transcoder_storage_s3_bucket_name = var.transcoder_storage_s3_bucket_name
-  stage_name                        = var.api_stage_name
-
-  depends_on = [module.hobby-streamer-api]
-}
-
 module "transcoder" {
   source = "./modules/transcoder"
 
@@ -57,9 +42,34 @@ module "transcoder" {
   stage_name                   = var.api_stage_name
   sqs_queue_name               = var.sqs_queue_name
   sqs_queue_visibility_timeout = var.sqs_queue_visibility_timeout
+  raw_storage_bucket_arn       = module.storage.raw_storage_bucket_arn
   tags                         = var.tags
 
   depends_on = [module.hobby-streamer-api]
+}
+
+module "storage" {
+  source = "./modules/storage"
+
+  account_id                        = data.aws_caller_identity.current.account_id
+  api_id                            = module.hobby-streamer-api.api_id
+  api_root_resource_id              = module.hobby-streamer-api.root_resource_id
+  transcoding_queue_arn             = module.transcoder.transcoding_queue_arn
+  tags                              = var.tags
+  aws_region                        = var.aws_region
+  raw_storage_s3_bucket_name        = var.raw_storage_s3_bucket_name
+  stage_name                        = var.api_stage_name
+
+  depends_on = [module.hobby-streamer-api]
+}
+
+module "triggers" {
+  source = "./modules/triggers"
+
+  raw_storage_bucket_id = module.storage.raw_storage_bucket_id
+  transcoding_queue_arn = module.transcoder.transcoding_queue_arn
+
+  depends_on = [module.storage, module.transcoder]
 }
 
 

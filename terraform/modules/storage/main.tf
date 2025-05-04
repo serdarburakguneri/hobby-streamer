@@ -99,7 +99,7 @@ resource "aws_api_gateway_method" "generate_url_method" {
   resource_id      = aws_api_gateway_resource.generate_url.id
   http_method      = "POST"
   authorization    = "NONE"
-  api_key_required = true  # Require API key
+  api_key_required = true
 }
 
 resource "aws_api_gateway_integration" "lambda_integration" {
@@ -120,7 +120,6 @@ resource "aws_lambda_permission" "apigw_permission" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-url"
 }
-
 
 
 

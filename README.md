@@ -10,3 +10,7 @@ This hobby project leverages the AWS Free Tier to build a lightweight CMS for a 
 	DynamoDB – Metadata and CMS data storage
 	CloudFront – Content delivery (CDN)
 	Terraform – Infrastructure as code
+
+## 🗂️ Architecture
+
+![Architecture Diagram](docs/hobby-streamer.drawio.svg)
