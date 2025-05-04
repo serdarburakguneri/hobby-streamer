@@ -3,8 +3,8 @@ variable "raw_storage_s3_bucket_name" {
   type        = string
 }
 
-variable "transcoder_storage_s3_bucket_name" {
-  description = "Name of the S3 bucket for transcoder video storage"
+variable "transcoding_queue_arn" {
+  description = "The ARN of the transcoding SQS queue"
   type        = string
 }
 
