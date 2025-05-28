@@ -5,8 +5,9 @@ This hobby project leverages the AWS Free Tier to build a lightweight CMS for a 
 ## Tech Stack
 	AWS S3 – Video storage
 	AWS Lambda (Go) – Serverless backend logic
+    AWS SQS - For Async communication between internal services
 	Amazon API Gateway – API endpoint management
-	AWS Elastic Transcoder / MediaConvert – Video processing and transcoding
+	AWS Fargate - A transcoder service powered by FFMPEG – Video processing and transcoding
 	DynamoDB – Metadata and CMS data storage
 	CloudFront – Content delivery (CDN)
 	Terraform – Infrastructure as code
