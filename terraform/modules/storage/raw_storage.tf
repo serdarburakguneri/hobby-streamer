@@ -5,7 +5,6 @@ resource "aws_s3_bucket" "raw_storage_bucket" {
 
 resource "aws_s3_bucket_versioning" "video_bucket_versioning" {
   bucket = aws_s3_bucket.raw_storage_bucket.id
-
   versioning_configuration {
     status = "Enabled"
   }
@@ -26,21 +25,6 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
           "${aws_s3_bucket.raw_storage_bucket.arn}",
           "${aws_s3_bucket.raw_storage_bucket.arn}/*"
         ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role" "lambda_role" {
-  name = "lambda-storage-role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = { Service = "lambda.amazonaws.com" },
-        Action = "sts:AssumeRole"
       }
     ]
   })
@@ -74,7 +58,8 @@ resource "aws_lambda_function" "generate_url" {
   role          = aws_iam_role.lambda_role.arn
   runtime = "provided.al2"  # Amazon Linux 2 runtime
   handler = "bootstrap"    # Name of the binary (required for Go)
-  filename      = "${path.module}/lambda/bootstrap.zip"
+  filename      = "${path.module}/../build/generate_upload_url.zip"
+  source_code_hash = filebase64sha256("${path.module}/../build/generate_upload_url.zip")
   timeout       = 10
   memory_size   = 128
 
@@ -120,3 +105,19 @@ resource "aws_lambda_permission" "apigw_permission" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-url"
 }
+
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda-storage-role"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = { Service = "lambda.amazonaws.com" },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
