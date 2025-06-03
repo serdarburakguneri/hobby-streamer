@@ -58,6 +58,8 @@ module "storage" {
   tags                              = var.tags
   aws_region                        = var.aws_region
   raw_storage_s3_bucket_name        = var.raw_storage_s3_bucket_name
+  transcoded_storage_s3_bucket_name = var.transcoded_storage_s3_bucket_name
+  thumbnail_storage_s3_bucket_name  = var.thumbnail_storage_s3_bucket_name
   stage_name                        = var.api_stage_name
 
   depends_on = [module.hobby-streamer-api]

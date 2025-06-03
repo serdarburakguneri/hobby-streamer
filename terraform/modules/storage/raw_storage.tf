@@ -120,8 +120,3 @@ resource "aws_lambda_permission" "apigw_permission" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-url"
 }
-
-
-
-
-
