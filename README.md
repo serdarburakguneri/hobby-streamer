@@ -15,3 +15,11 @@ This hobby project leverages the AWS Free Tier to build a lightweight CMS for a 
 ## 🗂️ Architecture
 
 ![Architecture Diagram](docs/hobby-streamer.drawio.svg)
+
+## Status
+
+Currently, I've been designing the architecture and meanwhile terraforming the backend parts.
+
+## TODO
+
+- A search mechanism for the asset manager service
