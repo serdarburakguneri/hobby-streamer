@@ -1,6 +1,6 @@
 # Hobby Streamer
 
-This hobby project leverages the AWS Free Tier to build a lightweight CMS for a streaming platform. It allows users to upload videos, manage content, and prepare files for streaming. The goal is to create an end-to-end workflow that covers video ingestion, processing, and delivery with minimal infrastructure cost.
+This hobby project leverages the AWS Free Tier to build a lightweight CMS and a streaming platform. It allows users to upload videos, manage content, and prepare files for streaming. The goal is to create an end-to-end workflow that covers video ingestion, processing, and delivery with minimal infrastructure cost.
 
 ## Tech Stack
 	AWS S3 – Video storage
@@ -22,4 +22,8 @@ Currently, I've been designing the architecture and meanwhile terraforming the b
 
 ## TODO
 
+- Logging
 - A search mechanism for the asset manager service
+- A user management for admin access & video access for regular users
+- Authentication and authorization
+- DRM 
