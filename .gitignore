@@ -1,54 +1,11 @@
-# IntelliJ IDEA
-.idea/
-*.iml
-out/
-*.ipr
-*.iws
-
-# Logs
-*.log
-*.log.*
-
-# Java
-target/
-*.class
-*.jar
-*.war
-*.ear
-*.jmod
-*.hprof
-
-# Gradle
-.gradle/
-build/
-!gradle-wrapper.jar
-
-# Maven
-.mvn/
-target/
-
-# Go
-bin/
-*.exe
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-vendor/
-go.sum
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.backup
-*.tfvars
-override.tf
-override.tf.json
-*.tfplan
-*.lock.hcl
-
-# Temporary files
+# -----------------------
+# OS / Editor Junk
+# -----------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.nfs*
 *.swp
 *.swo
 *.tmp
@@ -59,20 +16,74 @@ override.tf.json
 *.rej
 *.~*
 
-# OS-generated files
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-.nfs*
-
-# IDE-specific
-*.idea/
-*.vscode/
+# -----------------------
+# IDEs
+# -----------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
 *.sublime-workspace
 *.sublime-project
 
-# Others
-node_modules/
-*.env
+# -----------------------
+# Go
+# -----------------------
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+vendor/
+go.sum
 
+# Lambda build artifacts
+build/
+**/bootstrap
+**/*.zip
+
+# -----------------------
+# Terraform
+# -----------------------
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
+override.tf
+override.tf.json
+*.lock.hcl
+
+# -----------------------
+# Java
+# -----------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.jmod
+*.hprof
+
+
+# -----------------------
+# Logs & Reports
+# -----------------------
+*.log
+*.log.*
+*.coverage
+*.profile
+*.cov
+
+# -----------------------
+# Env / Secrets
+*.env
+.env.*
+.envrc
+.secret
+secrets.*
+credentials
+aws-credentials

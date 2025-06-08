@@ -66,7 +66,7 @@ module "storage" {
 }
 
 module "triggers" {
-  source = "./modules/triggers"
+  source = "modules/events"
 
   raw_storage_bucket_id = module.storage.raw_storage_bucket_id
   transcoding_queue_arn = module.transcoder.transcoding_queue_arn

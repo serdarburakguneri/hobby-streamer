@@ -1,12 +1,28 @@
 resource "aws_s3_bucket" "raw_storage_bucket" {
   bucket = var.raw_storage_s3_bucket_name
-  tags = var.tags
+  tags   = var.tags
 }
 
 resource "aws_s3_bucket_versioning" "video_bucket_versioning" {
   bucket = aws_s3_bucket.raw_storage_bucket.id
+
   versioning_configuration {
     status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "raw_lifecycle" {
+  bucket = aws_s3_bucket.raw_storage_bucket.id
+
+  rule {
+    id     = "expire-temp-uploads"
+    status = "Enabled"
+
+    expiration {
+      days = 7
+    }
+
+    filter {} # Applies to all objects in the bucket
   }
 }
 
@@ -17,14 +33,34 @@ resource "aws_s3_bucket_policy" "bucket_policy" {
     Version   = "2012-10-17",
     Statement = [
       {
-        Sid      = "AllowLambdaAccess",
-        Effect   = "Allow",
-        Principal = { AWS = aws_iam_role.lambda_role.arn },
-        Action   = ["s3:PutObject", "s3:GetObject"],
+        Sid       = "AllowLambdaAccess",
+        Effect    = "Allow",
+        Principal = {
+          AWS = aws_iam_role.lambda_role.arn
+        },
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ],
         Resource = [
           "${aws_s3_bucket.raw_storage_bucket.arn}",
           "${aws_s3_bucket.raw_storage_bucket.arn}/*"
         ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda-storage-role"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = { Service = "lambda.amazonaws.com" },
+        Action    = "sts:AssumeRole"
       }
     ]
   })
@@ -38,7 +74,10 @@ resource "aws_iam_role_policy" "lambda_policy" {
     Statement = [
       {
         Effect   = "Allow",
-        Action   = ["s3:PutObject", "s3:GetObject"],
+        Action   = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ],
         Resource = [
           "${aws_s3_bucket.raw_storage_bucket.arn}",
           "${aws_s3_bucket.raw_storage_bucket.arn}/*"
@@ -46,7 +85,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
       },
       {
         Effect   = "Allow",
-        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        Action   = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
         Resource = "arn:aws:logs:*:*:*"
       }
     ]
@@ -54,18 +97,18 @@ resource "aws_iam_role_policy" "lambda_policy" {
 }
 
 resource "aws_lambda_function" "generate_url" {
-  function_name = "generate-presigned-url"
-  role          = aws_iam_role.lambda_role.arn
-  runtime = "provided.al2"  # Amazon Linux 2 runtime
-  handler = "bootstrap"    # Name of the binary (required for Go)
-  filename      = "${path.module}/../build/generate_upload_url.zip"
-  source_code_hash = filebase64sha256("${path.module}/../build/generate_upload_url.zip")
-  timeout       = 10
-  memory_size   = 128
+  function_name    = "generate-presigned-url"
+  role             = aws_iam_role.lambda_role.arn
+  runtime          = "provided.al2"
+  handler          = "bootstrap"
+  filename         = "${path.module}/../build/generate_presigned_upload_url.zip"
+  source_code_hash = filebase64sha256("${path.module}/../build/generate_presigned_upload_url.zip")
+  timeout          = 10
+  memory_size      = 128
 
   environment {
     variables = {
-      BUCKET_NAME   = aws_s3_bucket.raw_storage_bucket.id,
+      BUCKET_NAME   = aws_s3_bucket.raw_storage_bucket.bucket
       BUCKET_REGION = var.aws_region
     }
   }
@@ -76,7 +119,7 @@ resource "aws_lambda_function" "generate_url" {
 resource "aws_api_gateway_resource" "generate_url" {
   rest_api_id = var.api_id
   parent_id   = var.api_root_resource_id
-  path_part   = "generate-url"
+  path_part   = "generate-presigned-upload-url"
 }
 
 resource "aws_api_gateway_method" "generate_url_method" {
@@ -103,21 +146,5 @@ resource "aws_lambda_permission" "apigw_permission" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.generate_url.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-url"
+  source_arn    = "arn:aws:execute-api:${var.aws_region}:${var.account_id}:${var.api_id}/${var.stage_name}/POST/generate-presigned-upload-url"
 }
-
-resource "aws_iam_role" "lambda_role" {
-  name = "lambda-storage-role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = { Service = "lambda.amazonaws.com" },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-

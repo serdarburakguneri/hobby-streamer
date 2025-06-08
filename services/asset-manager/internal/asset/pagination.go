@@ -9,7 +9,7 @@ import (
 )
 
 type AssetPage struct {
-	Items            []asset.Asset
+	Items            []Asset
 	LastEvaluatedKey map[string]types.AttributeValue
 }
 
