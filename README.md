@@ -22,8 +22,24 @@ Currently, I've been designing the architecture and meanwhile terraforming the b
 
 ## TODO
 
-- Logging
+- Centralized logging
 - A search mechanism for the asset manager service
-- A user management for admin access & video access for regular users
-- Authentication and authorization
+- A user management for admin access & video access for regular users and Authentication and authorization
 - DRM 
+- 
+## How to run
+### Prerequisites
+
+- [Terraform](https://www.terraform.io/downloads.html) installed
+- [AWS CLI](https://aws.amazon.com/cli/) installed and configured with your AWS credentials
+- [Go](https://go.dev/doc/install) installed
+
+### Steps
+
+- Clone the repository:
+- in the root/services directory, run build.sh to compile the Go services.
+- in terraform directory, have your variables set up in `terraform.tfvars` file
+- Run `terraform init` to initialize the Terraform configuration.
+- Run `terraform apply` to create the infrastructure.
+
+
