@@ -65,8 +65,17 @@ module "storage" {
   depends_on = [module.hobby-streamer-api]
 }
 
-module "triggers" {
-  source = "modules/events"
+module "asset-manager" {
+  source = "./modules/asset-manager"
+
+  account_id                        = data.aws_caller_identity.current.account_id
+  api_id                            = module.hobby-streamer-api.api_id
+  api_root_resource_id              = module.hobby-streamer-api.root_resource_id
+  stage_name                        = var.api_stage_name
+}
+
+module "events" {
+  source = "./modules/events"
 
   raw_storage_bucket_id = module.storage.raw_storage_bucket_id
   transcoding_queue_arn = module.transcoder.transcoding_queue_arn
