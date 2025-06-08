@@ -26,7 +26,7 @@ Currently, I've been designing the architecture and meanwhile terraforming the b
 - A search mechanism for the asset manager service
 - A user management for admin access & video access for regular users and Authentication and authorization
 - DRM 
-- 
+
 ## How to run
 ### Prerequisites
 
@@ -37,9 +37,10 @@ Currently, I've been designing the architecture and meanwhile terraforming the b
 ### Steps
 
 - Clone the repository:
-- in the root/services directory, run build.sh to compile the Go services.
+- in the root directory, run build.sh to compile the Go services.
 - in terraform directory, have your variables set up in `terraform.tfvars` file
 - Run `terraform init` to initialize the Terraform configuration.
+- Run `terraform plan` to see the changes that will be applied.
 - Run `terraform apply` to create the infrastructure.
 
 
