@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-BUILD_DIR=./build
+BUILD_DIR=./terraform/modules/build
 mkdir -p "$BUILD_DIR"
 
 # Initialize go.mod if not present
 if [ ! -f "go.mod" ]; then
   echo "⚙️  No go.mod found, initializing Go module..."
-  go mod init github.com/burakos/hobby-streamer
+  go mod init github.com/serdarburakguneri/hobby-streamer
   go mod tidy
 fi
 

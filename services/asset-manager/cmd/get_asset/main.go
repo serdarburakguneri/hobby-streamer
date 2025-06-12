@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/burakos/hobby-streamer/services/asset-manager/internal/asset"
+	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/asset"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"

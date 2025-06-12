@@ -21,7 +21,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "transcoded_expiration" {
     status = "Enabled"
 
     noncurrent_version_expiration {
-      days = 30
+      noncurrent_days = 30
     }
   }
 }

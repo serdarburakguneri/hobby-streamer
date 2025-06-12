@@ -72,6 +72,7 @@ module "asset-manager" {
   api_id                            = module.hobby-streamer-api.api_id
   api_root_resource_id              = module.hobby-streamer-api.root_resource_id
   stage_name                        = var.api_stage_name
+  aws_region                        = var.aws_region
 }
 
 module "events" {
