@@ -1,4 +1,4 @@
-module github.com/burakos/hobby-streamer
+module github.com/serdarburakguneri/hobby-streamer
 
 go 1.23.4
 
