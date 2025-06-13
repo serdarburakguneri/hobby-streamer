@@ -37,7 +37,7 @@ func ToDynamoKey(encoded map[string]map[string]string) (map[string]types.Attribu
 		case "N":
 			key[k] = &types.AttributeValueMemberN{Value: v["value"]}
 		default:
-			return nil, errors.New("unsupported attribute type")
+			return nil, errors.New("unsupported attribute type: " + v["type"])
 		}
 	}
 	return key, nil
@@ -56,7 +56,10 @@ func EncodeLastEvaluatedKey(raw map[string]types.AttributeValue) string {
 			enc[k] = map[string]string{"type": "N", "value": t.Value}
 		}
 	}
-	b, _ := json.Marshal(enc)
+	b, err := json.Marshal(enc)
+	if err != nil {
+		return ""
+	}
 	return base64.StdEncoding.EncodeToString(b)
 }
 

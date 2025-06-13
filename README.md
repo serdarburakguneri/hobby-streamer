@@ -24,8 +24,6 @@ Currently, I've been designing the architecture and meanwhile terraforming the b
 
 - Centralized logging
 - A search mechanism for the asset manager service
-- A user management for admin access & video access for regular users and Authentication and authorization
-- DRM 
 
 ## How to run
 ### Prerequisites

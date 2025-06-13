@@ -17,11 +17,21 @@ func (a *Asset) SetTimestamps(now string) {
 func (a *Asset) ToDynamoAttributes() (map[string]types.AttributeValue, error) {
 	attrs := map[string]types.AttributeValue{
 		"id":         &types.AttributeValueMemberN{Value: strconv.Itoa(a.Id)},
-		"fileName":   &types.AttributeValueMemberS{Value: a.FileName},
 		"uploadDate": &types.AttributeValueMemberS{Value: a.UploadDate},
 		"status":     &types.AttributeValueMemberS{Value: a.Status},
 	}
 
+	// Optional simple fields
+	addString := func(key string, val *string) {
+		if val != nil {
+			attrs[key] = &types.AttributeValueMemberS{Value: *val}
+		}
+	}
+	addString("title", a.Title)
+	addString("description", a.Description)
+	addString("thumbnailUrl", a.ThumbnailURL)
+
+	// Optional complex fields
 	addJSON := func(key string, val interface{}) {
 		if val == nil {
 			return
@@ -31,29 +41,9 @@ func (a *Asset) ToDynamoAttributes() (map[string]types.AttributeValue, error) {
 		}
 	}
 
-	addString := func(key string, val *string) {
-		if val != nil {
-			attrs[key] = &types.AttributeValueMemberS{Value: *val}
-		}
-	}
-
-	addInt := func(key string, val *int) {
-		if val != nil {
-			attrs[key] = &types.AttributeValueMemberN{Value: strconv.Itoa(*val)}
-		}
-	}
-
-	addString("contentType", a.ContentType)
-	addInt("duration", a.Duration)
-	addString("resolution", a.Resolution)
-	addString("title", a.Title)
-	addString("description", a.Description)
-	addString("thumbnailUrl", a.ThumbnailURL)
-
-	addJSON("storage", a.Storage)
-	addJSON("stream", a.Stream)
 	addJSON("tags", a.Tags)
 	addJSON("attributes", a.Attributes)
+	addJSON("variants", a.Variants)
 
 	return attrs, nil
 }
@@ -61,15 +51,13 @@ func (a *Asset) ToDynamoAttributes() (map[string]types.AttributeValue, error) {
 func FromDynamoAttributes(attrs map[string]types.AttributeValue) (*Asset, error) {
 	var a Asset
 
+	// Required fields
 	if v, ok := attrs["id"].(*types.AttributeValueMemberN); ok {
 		id, err := strconv.Atoi(v.Value)
 		if err != nil {
 			return nil, err
 		}
 		a.Id = id
-	}
-	if v, ok := attrs["fileName"].(*types.AttributeValueMemberS); ok {
-		a.FileName = v.Value
 	}
 	if v, ok := attrs["uploadDate"].(*types.AttributeValueMemberS); ok {
 		a.UploadDate = v.Value
@@ -78,39 +66,26 @@ func FromDynamoAttributes(attrs map[string]types.AttributeValue) (*Asset, error)
 		a.Status = v.Value
 	}
 
-	unmarshalString := func(key string) *string {
+	// Optional simple fields
+	getString := func(key string) *string {
 		if v, ok := attrs[key].(*types.AttributeValueMemberS); ok {
 			return &v.Value
 		}
 		return nil
 	}
+	a.Title = getString("title")
+	a.Description = getString("description")
+	a.ThumbnailURL = getString("thumbnailUrl")
 
-	unmarshalInt := func(key string) *int {
-		if v, ok := attrs[key].(*types.AttributeValueMemberN); ok {
-			if val, err := strconv.Atoi(v.Value); err == nil {
-				return &val
-			}
-		}
-		return nil
-	}
-
-	unmarshalJSON := func(key string, target interface{}) {
+	// Optional complex fields
+	parseJSON := func(key string, out interface{}) {
 		if v, ok := attrs[key].(*types.AttributeValueMemberS); ok {
-			_ = json.Unmarshal([]byte(v.Value), target)
+			_ = json.Unmarshal([]byte(v.Value), out)
 		}
 	}
-
-	a.ContentType = unmarshalString("contentType")
-	a.Duration = unmarshalInt("duration")
-	a.Resolution = unmarshalString("resolution")
-	a.Title = unmarshalString("title")
-	a.Description = unmarshalString("description")
-	a.ThumbnailURL = unmarshalString("thumbnailUrl")
-
-	unmarshalJSON("storage", &a.Storage)
-	unmarshalJSON("stream", &a.Stream)
-	unmarshalJSON("tags", &a.Tags)
-	unmarshalJSON("attributes", &a.Attributes)
+	parseJSON("tags", &a.Tags)
+	parseJSON("attributes", &a.Attributes)
+	parseJSON("variants", &a.Variants)
 
 	return &a, nil
 }

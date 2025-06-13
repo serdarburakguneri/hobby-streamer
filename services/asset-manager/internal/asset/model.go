@@ -1,20 +1,24 @@
 package asset
 
 type Asset struct {
-	Id           int           `json:"id"`
-	FileName     string        `json:"fileName"`
-	UploadDate   string        `json:"uploadDate"`
-	Status       string        `json:"status"`
-	ContentType  *string       `json:"contentType,omitempty"`
-	Duration     *int          `json:"duration,omitempty"`
-	Resolution   *string       `json:"resolution,omitempty"`
-	Title        *string       `json:"title,omitempty"`
-	Description  *string       `json:"description,omitempty"`
-	Storage      *StorageLocations `json:"storage,omitempty"`
-	ThumbnailURL *string       `json:"thumbnailUrl,omitempty"`
-	Stream       *StreamInfo   `json:"stream,omitempty"`
-	Tags         []string      `json:"tags,omitempty"`
-	Attributes   AttributesMap `json:"attributes,omitempty"`
+	Id           int               `json:"id"`
+	UploadDate   string            `json:"uploadDate"`
+	Status       string            `json:"status"`
+	Title        *string           `json:"title,omitempty"`
+	Description  *string           `json:"description,omitempty"`
+	ThumbnailURL *string           `json:"thumbnailUrl,omitempty"`
+	Tags         []string          `json:"tags,omitempty"`
+	Attributes   AttributesMap     `json:"attributes,omitempty"`
+	Variants     map[string]Variant `json:"variants,omitempty"` // e.g., "hd", "trailer", "4k"
+}
+
+type Variant struct {
+	FileName    string           `json:"fileName"`
+	ContentType *string          `json:"contentType,omitempty"`
+	Duration    *int             `json:"duration,omitempty"`
+	Resolution  *string          `json:"resolution,omitempty"`
+	Storage     StorageLocations `json:"storage"`
+	Stream      *StreamInfo      `json:"stream,omitempty"`
 }
 
 type StorageLocations struct {
@@ -36,3 +40,9 @@ type StreamInfo struct {
 }
 
 type AttributesMap map[string]interface{}
+
+const (
+	VariantHD      = "hd"
+	Variant4K      = "4k"
+	VariantTrailer = "trailer"
+)

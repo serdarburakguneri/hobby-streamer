@@ -14,9 +14,6 @@ fi
 # Format: zip_name relative_cmd_path_from_root
 BUILD_TARGETS=(
   "generate_presigned_upload_url services/storage/cmd/generate_presigned_upload_url"
-  "save_asset services/asset-manager/cmd/save_asset"
-  "get_asset services/asset-manager/cmd/get_asset"
-  "list_assets services/asset-manager/cmd/list_assets"
 )
 
 for entry in "${BUILD_TARGETS[@]}"; do

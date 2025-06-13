@@ -12,6 +12,13 @@ module "vpc" {
   private_subnets = var.private_subnets
 }
 
+module "ecs_cluster" {
+  source = "./modules/ecs_cluster"
+
+  name = "hobby-streamer-cluster"
+  tags = var.tags
+}
+
 module "hobby-streamer-api" {
   source = "./modules/apigw"
 
@@ -32,29 +39,12 @@ module "hobby-streamer-api" {
   depends_on = [module.vpc]
 }
 
-module "transcoder" {
-  source = "./modules/transcoder"
-
-  account_id                   = data.aws_caller_identity.current.account_id
-  aws_region                   = var.aws_region
-  api_id                       = module.hobby-streamer-api.api_id
-  api_root_resource_id         = module.hobby-streamer-api.root_resource_id
-  stage_name                   = var.api_stage_name
-  sqs_queue_name               = var.sqs_queue_name
-  sqs_queue_visibility_timeout = var.sqs_queue_visibility_timeout
-  raw_storage_bucket_arn       = module.storage.raw_storage_bucket_arn
-  tags                         = var.tags
-
-  depends_on = [module.hobby-streamer-api]
-}
-
 module "storage" {
   source = "./modules/storage"
 
   account_id                        = data.aws_caller_identity.current.account_id
   api_id                            = module.hobby-streamer-api.api_id
   api_root_resource_id              = module.hobby-streamer-api.root_resource_id
-  transcoding_queue_arn             = module.transcoder.transcoding_queue_arn
   tags                              = var.tags
   aws_region                        = var.aws_region
   raw_storage_s3_bucket_name        = var.raw_storage_s3_bucket_name
@@ -65,24 +55,67 @@ module "storage" {
   depends_on = [module.hobby-streamer-api]
 }
 
-module "asset-manager" {
-  source = "./modules/asset-manager"
+module "asset_manager_service" {
+  source = "./modules/fargate_service"
 
-  account_id                        = data.aws_caller_identity.current.account_id
-  api_id                            = module.hobby-streamer-api.api_id
-  api_root_resource_id              = module.hobby-streamer-api.root_resource_id
-  stage_name                        = var.api_stage_name
-  aws_region                        = var.aws_region
+  name               = "asset-manager"
+  image              = var.asset_manager_image
+  region             = var.aws_region
+  cluster_arn        = module.ecs_cluster.cluster_arn
+  container_port     = 8080
+
+  subnet_ids         = module.vpc.private_subnets
+  security_group_id  = module.vpc.fargate_sg_id
+  assign_public_ip   = false
+
+  execution_role_arn = module.iam.execution_role_arn
+  task_role_arn      = module.iam.task_role_arn
+
+  listener_arn       = module.alb.listener_arn
+  listener_priority  = 20
+  target_group_arn   = module.alb.asset_manager_target_group_arn
+  path_patterns      = ["/assets*", "/health"]
+
+  environment = {
+    PORT = "8080"
+  }
+
+  depends_on = [module.ecs_cluster]
+}
+
+module "transcoder_service" {
+  source = "./modules/fargate_service"
+
+  name               = "transcoder"
+  image              = var.transcoder_image
+  region             = var.aws_region
+  cluster_arn        = module.ecs_cluster.cluster_arn
+  container_port     = 8080
+
+  subnet_ids         = module.vpc.private_subnets
+  security_group_id  = module.vpc.fargate_sg_id
+  assign_public_ip   = false
+
+  execution_role_arn = module.iam.execution_role_arn
+  task_role_arn      = module.iam.task_role_arn
+
+  listener_arn       = module.alb.listener_arn
+  listener_priority  = 30
+  target_group_arn   = module.alb.transcoder_target_group_arn
+  path_patterns      = ["/transcoder*", "/health"]
+
+  environment = {
+    PORT = "8080"
+  }
+
+  depends_on = [module.ecs_cluster]
 }
 
 module "events" {
   source = "./modules/events"
 
   raw_storage_bucket_id = module.storage.raw_storage_bucket_id
-  transcoding_queue_arn = module.transcoder.transcoding_queue_arn
+  transcoding_queue_arn = module.transcoder_service.environment["SQS_QUEUE_ARN"]
 
-  depends_on = [module.storage, module.transcoder]
+  depends_on = [module.storage]
 }
-
-
-
