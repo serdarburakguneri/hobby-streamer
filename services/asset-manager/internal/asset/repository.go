@@ -37,6 +37,7 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 	if err != nil {
 		return fmt.Errorf("failed to save asset: %w", err)
 	}
+
 	return nil
 }
 
@@ -45,18 +46,18 @@ func (r *Repository) GetAssetByID(ctx context.Context, id int) (*Asset, error) {
 		"id": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", id)},
 	}
 
-	out, err := r.Client.GetItem(ctx, &dynamodb.GetItemInput{
+	output, err := r.Client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(r.TableName),
 		Key:       key,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get asset failed: %w", err)
 	}
-	if out.Item == nil {
+	if output.Item == nil {
 		return nil, errors.New("asset not found")
 	}
 
-	return FromDynamoAttributes(out.Item)
+	return FromDynamoAttributes(output.Item)
 }
 
 func (r *Repository) ListAssets(ctx context.Context, limit int, lastKey map[string]types.AttributeValue) (*AssetPage, error) {
@@ -73,9 +74,11 @@ func (r *Repository) ListAssets(ctx context.Context, limit int, lastKey map[stri
 
 	assets := make([]Asset, 0, len(result.Items))
 	for _, item := range result.Items {
-		if a, err := FromDynamoAttributes(item); err == nil {
-			assets = append(assets, *a)
+		a, err := FromDynamoAttributes(item)
+		if err != nil {
+			continue
 		}
+		assets = append(assets, *a)
 	}
 
 	return &AssetPage{
