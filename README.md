@@ -1,65 +1,63 @@
-# Hobby streamer
+# Hobby Streamer
 
-Build a scalable, cost-effective video upload, processing, and streaming platform leveraging AWS Free Tier services. Users will upload videos, which will be processed using AWS Elemental MediaConvert, stored securely, and made available for streaming through AWS CloudFront. Additionally, custom video transcoding using tools like FFmpeg will be implemented as an enhancement.
+Hobby Streamer is a lightweight content management system (CMS) and streaming platform designed for experimenting end-to-end video workflows. The project enables you to:
 
-## Key Components
+- **Upload and manage video assets** through a simple API.
+- **Process and transcode videos** for adaptive streaming (HLS/DASH) using FFMPEG.
+- **Organize content** into buckets for easy management.
+- **Deliver video content** in a way that mimics modern streaming platforms.
 
-### 1. Infrastructure Overview
+The goal is to provide a hands-on, cost-free environment for learning, prototyping, or building personal streaming solutions—without relying on any paid cloud infrastructure. All services (asset manager, transcoder, storage) run on your local machine, and AWS services (DynamoDB, SQS) are emulated using [LocalStack](https://github.com/localstack/localstack).
 
-AWS S3: For storing raw and processed video files.
+## Tech Stack
+- LocalStack (DynamoDB, SQS, S3. Lambda) – Local AWS service emulation
+- Go – Backend code for all services
+- FFMPEG – For the transcoder service
 
-AWS Elemental MediaConvert: For video processing and format conversion.
+## 🗂️ Architecture
 
-AWS DynamoDB: To manage metadata for videos (e.g., file name, format, status).
+![Architecture Diagram](docs/hobby-streamer.drawio.svg)
 
-AWS CloudFront: For distributing processed videos globally.
+## TODO
 
-AWS Lambda: For triggering workflows (e.g., on video upload).
+- Centralized logging
+- A search mechanism for the asset manager service
 
-AWS IAM: For secure role-based access control.
+## 🧪 Local Testing
 
-### 2. System Workflow
+### Prerequisites
+- [Docker](https://www.docker.com/products/docker-desktop/) installed
+- [Go](https://go.dev/doc/install) installed
 
-Video Upload:
+### Local Environment Setup
 
-Users upload videos to an S3 bucket.
+To set up your entire local AWS-like environment (LocalStack, S3 buckets, DynamoDB tables, SQS queues) and start the core services, simply run:
 
-S3 triggers a Lambda function to initiate processing.
+```sh
+./build.sh
+```
 
-Video Processing:
+This script will:
+- Start LocalStack (via Docker Compose) if not already running
+- Wait for LocalStack to be ready
+- Create the required S3 buckets: `raw-storage`, `transcoded-storage`, `thumbnails-storage`
+- Create the required DynamoDB tables: `asset`, `bucket`
+- Create the required SQS queue: `transcoder-jobs`
+- Start the Asset Manager service (on port 8080)
+- Start the Transcoder service (connected to the local SQS queue)
 
-Lambda invokes MediaConvert to transcode the uploaded video.
+Logs for these services are written to `asset-manager.log` and `transcoder.log` in the project root.
 
-Transcoded videos are saved back to S3.
+No manual setup is needed—just run the script and you're ready to go!
 
-Metadata Storage:
+### Running the Services
 
-Video details (e.g., file path, resolution, format) are saved to DynamoDB.
+The Asset Manager and Transcoder services are started automatically by `build.sh`.
 
-Video Streaming:
+### Testing the API
+`tbd`
 
-CloudFront serves the processed video files from S3 to end-users.
+## Notes
+tbd
 
-Adaptive bitrate streaming is configured for optimal performance.
 
-Cost Optimization
-
-AWS Free Tier Services:
-
-Utilize the free tier limits for S3, CloudFront, and DynamoDB.
-
-Use small-size EC2 instances if needed for additional processing (e.g., FFmpeg testing).
-
-Storage Management:
-
-Automatically delete raw video files after processing.
-
-Apply lifecycle rules to S3 buckets to archive older files to Glacier.
-
-MediaConvert:
-
-Use the MediaConvert "Basic" tier for cost-effective transcoding.
-
-CloudFront:
-
-Optimize caching and minimize requests to S3 to reduce costs.

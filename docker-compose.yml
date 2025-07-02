@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"  # Main LocalStack edge port
+      - "8000:8000"  # DynamoDB (optional, for direct access)
+    environment:
+      - SERVICES=dynamodb,sqs,s3,lambda
+      - DEFAULT_REGION=us-west-2
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack-data:/tmp/localstack/data" 

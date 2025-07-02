@@ -1,0 +1,89 @@
+# -----------------------
+# OS / Editor Junk
+# -----------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.nfs*
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+*.~*
+
+# -----------------------
+# IDEs
+# -----------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------
+# Go
+# -----------------------
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+vendor/
+go.sum
+
+# Lambda build artifacts
+build/
+**/bootstrap
+**/*.zip
+
+# -----------------------
+# Terraform
+# -----------------------
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
+override.tf
+override.tf.json
+*.lock.hcl
+
+# -----------------------
+# Java
+# -----------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.jmod
+*.hprof
+
+
+# -----------------------
+# Logs & Reports
+# -----------------------
+*.log
+*.log.*
+*.coverage
+*.profile
+*.cov
+
+# -----------------------
+# Env / Secrets
+*.env
+.env.*
+.envrc
+.secret
+secrets.*
+credentials
+aws-credentials
