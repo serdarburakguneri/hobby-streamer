@@ -1,37 +1,63 @@
 # Hobby Streamer
 
-Scalable video upload, processing, and streaming platform using AWS Free Tier. Users upload videos processed with AWS Elemental MediaConvert, stored in S3, and streamed via CloudFront. Includes optional FFmpeg for custom transcoding.
+Hobby Streamer is a lightweight content management system (CMS) and streaming platform designed for experimenting end-to-end video workflows. The project enables you to:
 
-## Key Components
+- **Upload and manage video assets** through a simple API.
+- **Process and transcode videos** for adaptive streaming (HLS/DASH) using FFMPEG.
+- **Organize content** into buckets for easy management.
+- **Deliver video content** in a way that mimics modern streaming platforms.
 
-S3: Store raw/processed videos.
+The goal is to provide a hands-on, cost-free environment for learning and prototyping solutions—without relying on any paid cloud infrastructure. All services (asset manager, transcoder, storage) run on your local machine, and AWS services (DynamoDB, SQS) are emulated using [LocalStack](https://github.com/localstack/localstack).
 
-MediaConvert: Transcode videos.
+## Tech Stack
+- LocalStack (DynamoDB, SQS, S3. Lambda) – Local AWS service emulation
+- Go – Backend code for all services
+- FFMPEG – For the transcoder service
 
-DynamoDB: Manage video metadata.
+## 🗂️ Architecture
 
-CloudFront: Stream videos globally.
+![Architecture Diagram](docs/hobby-streamer.drawio.svg)
 
-Lambda: Automate workflows.
+## TODO
 
-IAM: Secure access.
+- Centralized logging
+- A search mechanism for the asset manager service
 
-## Workflow Overview
+## 🧪 Local Testing
 
-Video Upload: Videos are uploaded to S3, triggering Lambda.
+### Prerequisites
+- [Docker](https://www.docker.com/products/docker-desktop/) installed
+- [Go](https://go.dev/doc/install) installed
 
-Processing: Lambda calls MediaConvert, outputs saved to S3.
+### Local Environment Setup
 
-Metadata: Stored in DynamoDB.
+To set up your entire local AWS-like environment (LocalStack, S3 buckets, DynamoDB tables, SQS queues) and start the core services, simply run:
 
-Streaming: CloudFront delivers videos with adaptive bitrate.
+```sh
+./build.sh
+```
 
-Cost Optimization
+This script will:
+- Start LocalStack (via Docker Compose) if not already running
+- Wait for LocalStack to be ready
+- Create the required S3 buckets: `raw-storage`, `transcoded-storage`, `thumbnails-storage`
+- Create the required DynamoDB tables: `asset`, `bucket`
+- Create the required SQS queue: `transcoder-jobs`
+- Start the Asset Manager service (on port 8080)
+- Start the Transcoder service (connected to the local SQS queue)
 
-Use AWS Free Tier (S3, CloudFront, DynamoDB).
+Logs for these services are written to `asset-manager.log` and `transcoder.log` in the project root.
 
-Automate storage cleanup with lifecycle rules.
+No manual setup is needed—just run the script and you're ready to go!
 
-Leverage MediaConvert "Basic" tier for low-cost transcoding.
+### Running the Services
 
-Optimize caching to minimize S3 requests.
+The Asset Manager and Transcoder services are started automatically by `build.sh`.
+
+### Testing the API
+`tbd`
+
+## Notes
+tbd
+
+
