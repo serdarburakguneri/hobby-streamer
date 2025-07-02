@@ -12,7 +12,7 @@ The goal is to provide a hands-on, cost-free environment for learning and protot
 ## Tech Stack
 - LocalStack (DynamoDB, SQS, S3. Lambda) – Local AWS service emulation
 - Go – Backend code for all services
-- FFMPEG – For the transcoder service
+- FFMPEG – For the transcoder service 
 
 ## 🗂️ Architecture
 
