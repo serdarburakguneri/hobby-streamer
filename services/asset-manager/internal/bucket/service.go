@@ -11,12 +11,7 @@ import (
 )
 
 // Define a BucketRepository interface for service injection
-type BucketRepository interface {
-	SaveBucket(ctx context.Context, b *Bucket) error
-	GetBucketByID(ctx context.Context, id int) (*Bucket, error)
-	ListBuckets(ctx context.Context, limit int, lastKey map[string]types.AttributeValue) (*BucketPage, error)
-	PatchBucket(ctx context.Context, id int, patch map[string]interface{}) error
-}
+// (BucketRepository interface removed; now defined in repository.go)
 
 type Service struct {
 	Repo BucketRepository

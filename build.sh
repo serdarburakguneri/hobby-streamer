@@ -28,6 +28,33 @@ for bucket in raw-storage transcoded-storage thumbnails-storage; do
   fi
 done
 
+# Build and deploy the presigned upload URL Lambda
+pushd services/storage/cmd/generate_presigned_upload_url > /dev/null
+echo "[INFO] Building presigned upload URL Lambda..."
+GOOS=linux GOARCH=amd64 go build -o main main.go
+zip -j function.zip main
+
+# Create or update Lambda in LocalStack
+if awslocal lambda get-function --function-name generate-presigned-url > /dev/null 2>&1; then
+  echo "[INFO] Updating existing Lambda function: generate-presigned-url"
+  awslocal lambda update-function-code --function-name generate-presigned-url --zip-file fileb://function.zip
+else
+  echo "[INFO] Creating Lambda function: generate-presigned-url"
+  awslocal lambda create-function \
+    --function-name generate-presigned-url \
+    --runtime go1.x \
+    --handler main \
+    --zip-file fileb://function.zip \
+    --role arn:aws:iam::000000000000:role/lambda-role
+fi
+
+# Set environment variables for Lambda
+awslocal lambda update-function-configuration \
+  --function-name generate-presigned-url \
+  --environment "Variables={BUCKET_NAME=raw-storage,BUCKET_REGION=us-east-1,AWS_ENDPOINT=http://localhost:4566}"
+
+popd > /dev/null
+
 # Create DynamoDB tables
 for table in asset bucket; do
   if ! aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name "$table" --region us-west-2 > /dev/null 2>&1; then

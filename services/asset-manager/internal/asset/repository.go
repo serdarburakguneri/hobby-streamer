@@ -13,6 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+// Define an AssetRepository interface for service injection
+type AssetRepository interface {
+	SaveAsset(ctx context.Context, a *Asset) error
+	GetAssetByID(ctx context.Context, id int) (*Asset, error)
+	ListAssets(ctx context.Context, limit int, lastKey map[string]types.AttributeValue) (*AssetPage, error)
+	PatchAsset(ctx context.Context, id int, patch map[string]interface{}) error
+}
+
 type Repository struct {
 	TableName string
 	Client    *dynamodb.Client

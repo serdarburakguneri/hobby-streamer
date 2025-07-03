@@ -7,7 +7,7 @@ Hobby Streamer is a lightweight content management system (CMS) and streaming pl
 - **Organize content** into buckets for easy management.
 - **Deliver video content** in a way that mimics modern streaming platforms.
 
-The goal is to provide a hands-on, cost-free environment for learning, prototyping, or building personal streaming solutions—without relying on any paid cloud infrastructure. All services (asset manager, transcoder, storage) run on your local machine, and AWS services (DynamoDB, SQS) are emulated using [LocalStack](https://github.com/localstack/localstack).
+The goal is to provide a hands-on, cost-free environment for learning, prototyping, or building streaming solutions—without relying on any paid cloud infrastructure. All services (asset manager, transcoder, storage) run on your local machine, and AWS services (DynamoDB, SQS) are emulated using [LocalStack](https://github.com/localstack/localstack).
 
 ## Tech Stack
 - LocalStack (DynamoDB, SQS, S3. Lambda) – Local AWS service emulation

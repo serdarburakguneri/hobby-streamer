@@ -48,8 +48,15 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		region = "eu-north-1"
 	}
 
+	// Support custom endpoint for LocalStack
+	endpoint := os.Getenv("AWS_ENDPOINT")
+	awsConfig := &aws.Config{Region: aws.String(region)}
+	if endpoint != "" {
+		awsConfig.Endpoint = aws.String(endpoint)
+	}
+
 	// Create AWS session
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
+	sess, err := session.NewSession(awsConfig)
 	if err != nil {
 		log.Printf("Failed to create AWS session: %v", err)
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to initialize AWS session"})
@@ -57,6 +64,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	svc := s3.New(sess)
 
+	// TODO: Support multiple buckets (raw, processing, public) based on logic or request
 	// Create pre-signed URL for PUT
 	reqObj, _ := svc.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: aws.String(bucket),
@@ -67,6 +75,8 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		log.Printf("Failed to generate pre-signed URL: %v", err)
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate pre-signed URL"})
 	}
+
+	log.Printf("Generated presigned URL: %s", url)
 
 	return respondJSON(http.StatusOK, UploadResponse{URL: url})
 }

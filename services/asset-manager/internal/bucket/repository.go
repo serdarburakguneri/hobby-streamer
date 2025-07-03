@@ -18,6 +18,14 @@ type Repository struct {
 	Client    *dynamodb.Client
 }
 
+// BucketRepository describes the methods required for a bucket repository implementation.
+type BucketRepository interface {
+	SaveBucket(ctx context.Context, b *Bucket) error
+	GetBucketByID(ctx context.Context, id int) (*Bucket, error)
+	ListBuckets(ctx context.Context, limit int, lastKey map[string]types.AttributeValue) (*BucketPage, error)
+	PatchBucket(ctx context.Context, id int, patch map[string]interface{}) error
+}
+
 func NewRepository(tableName string, client *dynamodb.Client) *Repository {
 	return &Repository{
 		TableName: tableName,
