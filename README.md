@@ -18,6 +18,12 @@ The goal is to provide a hands-on, cost-free environment for learning, prototypi
 
 ![Architecture Diagram](docs/hobby-streamer.drawio.svg)
 
+## 📚 Service Documentation
+
+- [Asset Manager Service](services/asset-manager/README.md): REST API for managing assets, images, videos, and buckets.
+- [Transcoder Service](services/transcoder/README.md): Background worker for video analysis and transcoding jobs.
+- [Presigned Upload URL Lambda](services/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads.
+
 ## TODO
 
 - Centralized logging
