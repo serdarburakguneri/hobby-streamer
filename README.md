@@ -21,8 +21,13 @@ The goal is to provide a hands-on, cost-free environment for learning, prototypi
 ## 📚 Service Documentation
 
 - [Asset Manager Service](backend/asset-manager/README.md): REST API for managing assets, images, videos, and buckets.
+- [Auth Service](backend/auth-service/README.md): JWT-based authentication service with Keycloak integration.
 - [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs.
 - [Storage Service](backend/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads.
+
+## 📦 Shared Libraries
+
+- [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization.
 
 ## TODO
 
