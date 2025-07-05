@@ -90,10 +90,3 @@ curl -s http://localhost:9090/health
 # LocalStack Health Check
 curl -s http://localhost:4566/health
 ```
-
-Expected responses:
-- **Auth Service**: `{"status":"ok"}`
-- **Asset Manager**: `{"status":"ok","service":"asset-manager"}`
-- **Keycloak**: Should return a response (may be HTML)
-- **LocalStack**: Should return a response (may be XML)
-
