@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -24,10 +25,12 @@ type Service struct {
 	clientID     string
 	clientSecret string
 	httpClient   *http.Client
+	keyFunc      jwt.Keyfunc // for JWT signature verification
 }
 
 var _ AuthService = (*Service)(nil)
 
+// NewService creates a new Service with a default keyFunc (no verification)
 func NewService(keycloakURL, realm, clientID, clientSecret string) *Service {
 	return &Service{
 		keycloakURL:  keycloakURL,
@@ -35,6 +38,21 @@ func NewService(keycloakURL, realm, clientID, clientSecret string) *Service {
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		keyFunc: func(token *jwt.Token) (interface{}, error) {
+			return nil, errors.New("no keyfunc provided")
+		},
+	}
+}
+
+// NewServiceWithKeyFunc allows injecting a custom keyFunc (for tests or custom verification)
+func NewServiceWithKeyFunc(keycloakURL, realm, clientID, clientSecret string, keyFunc jwt.Keyfunc) *Service {
+	return &Service{
+		keycloakURL:  keycloakURL,
+		realm:        realm,
+		clientID:     clientID,
+		clientSecret: clientSecret,
+		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		keyFunc:      keyFunc,
 	}
 }
 
@@ -69,20 +87,23 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*Token, error) 
 func (s *Service) ValidateToken(ctx context.Context, tokenString string) (*TokenValidationResponse, error) {
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-	token, err := jwt.Parse(tokenString, nil)
+	token, err := jwt.Parse(tokenString, s.keyFunc)
 	if err != nil {
-		return &TokenValidationResponse{Valid: false, Message: "Invalid token format"}, nil
+		if errors.Is(err, jwt.ErrTokenMalformed) {
+			return &TokenValidationResponse{Valid: false, Message: "Invalid token format"}, nil
+		}
+		if errors.Is(err, jwt.ErrTokenSignatureInvalid) {
+			return &TokenValidationResponse{Valid: false, Message: "Invalid token signature"}, nil
+		}
+		if strings.Contains(err.Error(), "token is expired") {
+			return &TokenValidationResponse{Valid: false, Message: "Token expired"}, nil
+		}
+		return &TokenValidationResponse{Valid: false, Message: err.Error()}, nil
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return &TokenValidationResponse{Valid: false, Message: "Invalid token claims"}, nil
-	}
-
-	if exp, ok := claims["exp"].(float64); ok {
-		if time.Unix(int64(exp), 0).Before(time.Now()) {
-			return &TokenValidationResponse{Valid: false, Message: "Token expired"}, nil
-		}
 	}
 
 	user := &User{
