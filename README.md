@@ -39,6 +39,14 @@ The goal is to provide a hands-on, cost-free environment for learning, prototypi
 ### Prerequisites
 - [Docker](https://www.docker.com/products/docker-desktop/) installed
 - [Go](https://go.dev/doc/install) installed
+- [Python](https://www.python.org/downloads/) installed
+- [FFmpeg](https://ffmpeg.org/download.html) installed (required for video transcoding)
+- [pipx](https://pypa.github.io/pipx/installation/) installed (for installing Python applications)
+- [awscli-local (awslocal)](https://github.com/localstack/awscli-local) installed:
+  ```sh
+  pipx install awscli-local
+  pipx ensurepath
+  ```
 
 ### Local Environment Setup
 
@@ -54,15 +62,38 @@ This script will:
 - Create the required S3 buckets: `raw-storage`, `transcoded-storage`, `thumbnails-storage`
 - Create the required DynamoDB tables: `asset`, `bucket`
 - Create the required SQS queue: `transcoder-jobs`
-- Start the Asset Manager service (on port 8080)
+- Start the Auth Service (on port 8080)
+- Start the Asset Manager service (on port 8082)
 - Start the Transcoder service (connected to the local SQS queue)
 
-Logs for these services are written to `asset-manager.log` and `transcoder.log` in the project root.
+Logs for these services are written to `auth-service.log`, `asset-manager.log` and `transcoder.log` in the project root.
 
-No manual setup is needed—just run the script and you're ready to go!
+### Service Ports
+- **Auth Service**: http://localhost:8080
+- **Asset Manager**: http://localhost:8082
+- **Keycloak**: http://localhost:9090
+- **LocalStack**: http://localhost:4566
 
-### Running the Services
+### Health Checks
+Test if your services are running correctly:
 
-The Asset Manager and Transcoder services are started automatically by `build.sh`.
+```bash
+# Auth Service Health Check
+curl -s http://localhost:8080/health
 
+# Asset Manager Health Check
+curl -s http://localhost:8082/health
+
+# Keycloak Health Check
+curl -s http://localhost:9090/health
+
+# LocalStack Health Check
+curl -s http://localhost:4566/health
+```
+
+Expected responses:
+- **Auth Service**: `{"status":"ok"}`
+- **Asset Manager**: `{"status":"ok","service":"asset-manager"}`
+- **Keycloak**: Should return a response (may be HTML)
+- **LocalStack**: Should return a response (may be XML)
 

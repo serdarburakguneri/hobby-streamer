@@ -2,7 +2,7 @@ package http
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/serdarburakguneri/hobby-streamer/services/auth-service/internal/auth"
+	"github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/auth"
 )
 
 func NewRouter(authService auth.AuthService) *mux.Router {

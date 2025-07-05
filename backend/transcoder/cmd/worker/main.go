@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/serdarburakguneri/hobby-streamer/services/transcoder/internal/app"
-	"github.com/serdarburakguneri/hobby-streamer/services/transcoder/internal/job"
-	"github.com/serdarburakguneri/hobby-streamer/services/transcoder/internal/queue"
+	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/app"
+	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/job"
+	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/queue"
 )
 
 func main() {

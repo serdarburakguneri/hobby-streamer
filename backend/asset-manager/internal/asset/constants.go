@@ -1,6 +1,6 @@
 package asset
 
-import "github.com/serdarburakguneri/hobby-streamer/pkg/constants"
+import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 
 const (
 	// Asset-specific errors

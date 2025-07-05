@@ -9,10 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
-	"github.com/serdarburakguneri/hobby-streamer/pkg/auth"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/asset"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/bucket"
-	router "github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/http"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
+	router "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/http"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	bucketRepo := bucket.NewRepository("bucket", dynamoClient)
 	bucketService := bucket.NewService(bucketRepo)
 
-	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
+	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:9090")
 	realm := getEnv("KEYCLOAK_REALM", "hobby")
 	clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
 

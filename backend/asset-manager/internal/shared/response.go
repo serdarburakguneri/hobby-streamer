@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/serdarburakguneri/hobby-streamer/pkg/constants"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 type Response struct {

@@ -1,4 +1,4 @@
-module github.com/serdarburakguneri/hobby-streamer/services/asset-manager
+module github.com/serdarburakguneri/hobby-streamer/backend/asset-manager
 
 go 1.22
 
@@ -8,13 +8,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.4
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.44.0
 	github.com/gorilla/mux v1.8.1
-	github.com/serdarburakguneri/hobby-streamer/pkg/auth v0.0.0
-	github.com/serdarburakguneri/hobby-streamer/pkg/constants v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants v0.0.0
 )
 
 replace (
-	github.com/serdarburakguneri/hobby-streamer/pkg/auth => ../../pkg/auth
-	github.com/serdarburakguneri/hobby-streamer/pkg/constants => ../../pkg/constants
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth => ./pkg/auth
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ./pkg/constants
 )
 
 require (

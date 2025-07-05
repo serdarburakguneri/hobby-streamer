@@ -1,11 +1,14 @@
 package http
 
 import (
+	"encoding/json"
+	"net/http"
+
 	"github.com/gorilla/mux"
-	"github.com/serdarburakguneri/hobby-streamer/pkg/auth"
-	"github.com/serdarburakguneri/hobby-streamer/pkg/constants"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/asset"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 func NewRouter(assetService *asset.Service, bucketService *bucket.Service, authMiddleware *auth.AuthMiddleware) *mux.Router {
@@ -13,6 +16,12 @@ func NewRouter(assetService *asset.Service, bucketService *bucket.Service, authM
 
 	assetHandler := &asset.AssetHandler{Service: assetService}
 	bucketHandler := &bucket.BucketHandler{Service: bucketService}
+
+	// Health check endpoint (no auth required)
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "asset-manager"})
+	}).Methods("GET")
 
 	// Core asset routes
 	r.HandleFunc("/assets", authMiddleware.RequireAuth(

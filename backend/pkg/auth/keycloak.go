@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/serdarburakguneri/hobby-streamer/pkg/constants"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 type KeycloakValidator struct {

@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/serdarburakguneri/hobby-streamer/services/auth-service/internal/auth"
-	httphandler "github.com/serdarburakguneri/hobby-streamer/services/auth-service/internal/http"
+	"github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/auth"
+	httphandler "github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/http"
 )
 
 func main() {
-	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
+	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:9090")
 	realm := getEnv("KEYCLOAK_REALM", "hobby")
 	clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
 	clientSecret := getEnv("KEYCLOAK_CLIENT_SECRET", "")

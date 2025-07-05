@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/gorilla/mux"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/shared"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/shared"
 )
 
 type AssetService interface {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/serdarburakguneri/hobby-streamer/services/asset-manager/internal/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
 )
 
 type MockRepository struct {

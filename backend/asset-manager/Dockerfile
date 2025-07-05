@@ -1,15 +1,18 @@
 FROM golang:1.22 AS builder
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY asset-manager/go.mod asset-manager/go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o asset-manager ./cmd/main.go
+# Run tests (fail build if tests fail)
+RUN cd asset-manager && go test ./... -v
+
+RUN cd asset-manager && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o asset-manager ./cmd/main.go
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
-COPY --from=builder /app/asset-manager .
+COPY --from=builder /app/asset-manager/asset-manager .
 EXPOSE 8080
 ENTRYPOINT ["./asset-manager"]

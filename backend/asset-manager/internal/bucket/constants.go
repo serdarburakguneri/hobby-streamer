@@ -1,6 +1,6 @@
 package bucket
 
-import "github.com/serdarburakguneri/hobby-streamer/pkg/constants"
+import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 
 const (
 	// Bucket-specific errors

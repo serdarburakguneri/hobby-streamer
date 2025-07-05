@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/serdarburakguneri/hobby-streamer/pkg/constants"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 type AuthMiddleware struct {
