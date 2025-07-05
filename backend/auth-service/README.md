@@ -10,26 +10,6 @@ The auth-service provides endpoints for:
 - Token refresh
 - Health checks
 
-## Architecture
-
-Following the same patterns as other services in the project:
-
-```
-backend/auth-service/
-├── cmd/
-│   └── main.go              # Application entry point
-├── internal/
-│   ├── auth/
-│   │   ├── handler.go       # HTTP handlers
-│   │   ├── model.go         # Data models and DTOs
-│   │   └── service.go       # Business logic and Keycloak integration
-│   └── http/
-│       └── routes.go        # Route definitions
-├── Dockerfile
-├── go.mod
-└── README.md
-```
-
 ## Dependencies
 
 - **Keycloak**: Identity and access management
