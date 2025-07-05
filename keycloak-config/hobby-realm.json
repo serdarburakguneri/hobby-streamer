@@ -1,0 +1,50 @@
+{
+  "realm": "hobby",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "asset-manager",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": ["*"]
+    },
+    {
+      "clientId": "storage",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": ["*"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "admin" },
+      { "name": "user" }
+    ]
+  },
+  "users": [
+    {
+      "username": "user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    }
+  ]
+} 

@@ -20,9 +20,9 @@ The goal is to provide a hands-on, cost-free environment for learning, prototypi
 
 ## 📚 Service Documentation
 
-- [Asset Manager Service](services/asset-manager/README.md): REST API for managing assets, images, videos, and buckets.
-- [Transcoder Service](services/transcoder/README.md): Background worker for video analysis and transcoding jobs.
-- [Presigned Upload URL Lambda](services/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads.
+- [Asset Manager Service](backend/asset-manager/README.md): REST API for managing assets, images, videos, and buckets.
+- [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs.
+- [Storage Service](backend/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads.
 
 ## TODO
 
@@ -59,11 +59,5 @@ No manual setup is needed—just run the script and you're ready to go!
 ### Running the Services
 
 The Asset Manager and Transcoder services are started automatically by `build.sh`.
-
-### Testing the API
-`tbd`
-
-## Notes
-tbd
 
 

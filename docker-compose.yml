@@ -11,4 +11,18 @@ services:
       - DATA_DIR=/tmp/localstack/data
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./localstack-data:/tmp/localstack/data" 
+      - "./localstack-data:/tmp/localstack/data"
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    command: start-dev
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/hobby-realm.json
+    ports:
+      - "8080:8080"  # Keycloak web UI and API
+      - "8443:8443"  # Keycloak HTTPS (optional)
+    volumes:
+      - ./keycloak-config/hobby-realm.json:/opt/keycloak/data/import/hobby-realm.json
+    depends_on:
+      - localstack 
