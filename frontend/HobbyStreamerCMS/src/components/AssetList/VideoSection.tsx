@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import VideoUpload from './VideoUpload';
 
 interface VideoSectionProps {
-  videos: any[];
+  videos: any[] | undefined;
   onDeleteVideo: (videoType: string, videoName: string) => void;
   onUpdate: (field: string, value: any) => void;
+  assetId: string;
+  onUploadComplete: () => void;
+  onRefreshAsset: () => void;
 }
 
-export default function VideoSection({ videos, onDeleteVideo, onUpdate }: VideoSectionProps) {
+export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId, onUploadComplete, onRefreshAsset }: VideoSectionProps) {
   const [showUploadSection, setShowUploadSection] = useState(false);
 
   const getVideoIcon = (type: string) => {
@@ -144,12 +148,15 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate }: VideoS
       )}
       
       {showUploadSection && (
-        <View style={styles.uploadSection}>
-          <Text style={styles.uploadTitle}>Upload New Video</Text>
-          <Text style={styles.uploadDescription}>
-            Video upload functionality will be implemented here
-          </Text>
-        </View>
+        <VideoUpload
+          assetId={assetId}
+          onUploadComplete={() => {
+            onUploadComplete();
+            setShowUploadSection(false);
+          }}
+          onCancel={() => setShowUploadSection(false)}
+          onRefreshAsset={onRefreshAsset}
+        />
       )}
     </View>
   );

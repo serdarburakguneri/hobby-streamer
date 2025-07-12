@@ -40,6 +40,7 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
     children,
     childrenLoading,
     handleRefresh,
+    handleRefreshSelectedAsset,
     handleAssetSelect,
     handleDeleteAsset,
     handleDeleteVideo,
@@ -208,6 +209,7 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
             onSelectChild={handleAssetSelect}
             children={children}
             childrenLoading={childrenLoading}
+            onRefresh={handleRefreshSelectedAsset}
           />
         </View>
 

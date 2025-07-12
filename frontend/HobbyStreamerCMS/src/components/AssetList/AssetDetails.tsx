@@ -12,6 +12,7 @@ interface AssetDetailsProps {
   onSelectChild: (child: Asset) => void;
   children: Asset[];
   childrenLoading: boolean;
+  onRefresh?: () => void;
 }
 
 export default function AssetDetails({ 
@@ -20,7 +21,8 @@ export default function AssetDetails({
   onDeleteVideo, 
   onSelectChild,
   children,
-  childrenLoading
+  childrenLoading,
+  onRefresh
 }: AssetDetailsProps) {
   if (!asset) {
     return (
@@ -111,6 +113,17 @@ export default function AssetDetails({
         videos={asset.videos}
         onDeleteVideo={onDeleteVideo}
         onUpdate={onUpdate}
+        assetId={asset.id}
+        onUploadComplete={() => {
+          if (onRefresh) {
+            onRefresh();
+          }
+        }}
+        onRefreshAsset={() => {
+          if (onRefresh) {
+            onRefresh();
+          }
+        }}
       />
 
       <ChildrenSection

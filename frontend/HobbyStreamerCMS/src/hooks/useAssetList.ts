@@ -50,6 +50,27 @@ export function useAssetList(refreshTrigger?: number) {
     await loadAssets(true);
   };
 
+  const handleRefreshSelectedAsset = async () => {
+    if (!selectedAsset) return;
+    
+    try {
+      const response = await assetService.getAssets();
+      const refreshedAssets = response.assets;
+      setAssets(refreshedAssets);
+      
+      const refreshedAsset = refreshedAssets.find(a => a.id === selectedAsset.id);
+      if (refreshedAsset) {
+        setSelectedAsset(refreshedAsset);
+        
+        if (refreshedAsset.type === 'SERIES' || refreshedAsset.type === 'SEASON') {
+          await loadChildren(refreshedAsset.id);
+        }
+      }
+    } catch (err) {
+      console.error('Error refreshing selected asset:', err);
+    }
+  };
+
   const handleAssetSelect = async (asset: Asset) => {
     setSelectedAsset(asset);
     setChildren([]);
@@ -242,6 +263,7 @@ export function useAssetList(refreshTrigger?: number) {
     childrenLoading,
     loadAssets,
     handleRefresh,
+    handleRefreshSelectedAsset,
     handleAssetSelect,
     handleDeleteAsset,
     handleDeleteVideo,
