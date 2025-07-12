@@ -1,0 +1,214 @@
+directive @resolver on FIELD_DEFINITION
+
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+# --- ASSET ---
+
+type Asset {
+  id: ID!
+  slug: String!
+  title: String
+  description: String
+  type: AssetType!
+  genre: String
+  genres: [String!]
+  tags: [String!]
+  status: String
+  createdAt: Time!
+  updatedAt: Time!
+  metadata: String
+  ownerId: String
+  videos: [Video!]
+  publishRule: PublishRule
+
+  # Relationships
+  parent: Asset
+  children: [Asset!]
+  buckets: [Bucket!]
+}
+
+type Video {
+  type: VideoType!
+  raw: VideoFormat
+  hls: VideoFormat
+  dash: VideoFormat
+  thumbnail: Image
+  status: String
+}
+
+type VideoFormat {
+  storageLocation: S3Object!
+  width: Int
+  height: Int
+  duration: Float
+  bitrate: Int
+  codec: String
+  size: Int
+  contentType: String
+  streamInfo: StreamInfo
+  metadata: String
+}
+
+type Image {
+  fileName: String!
+  url: String!
+  storageLocation: S3Object
+  width: Int
+  height: Int
+  size: Int
+  contentType: String
+  metadata: String
+}
+
+type S3Object {
+  bucket: String!
+  key: String!
+  url: String!
+}
+
+type StreamInfo {
+  downloadUrl: String
+  cdnPrefix: String
+}
+
+enum VideoType {
+  MAIN
+  TRAILER
+  BEHIND_THE_SCENES
+  INTERVIEW
+}
+
+
+
+enum AssetType {
+  MOVIE
+  SERIES
+  SEASON
+  EPISODE
+  DOCUMENTARY
+  MUSIC
+  PODCAST
+  TRAILER
+  BEHIND_THE_SCENES
+  INTERVIEW
+}
+
+# --- BUCKET ---
+
+type Bucket {
+  id: ID!
+  key: String!
+  name: String!
+  description: String
+  type: BucketType!
+  status: BucketStatus
+  assetIds: [ID!]
+  createdAt: Time!
+  updatedAt: Time!
+  assets: [Asset!]
+}
+
+enum BucketType {
+  COLLECTION
+  PLAYLIST
+  CATEGORY
+}
+
+enum BucketStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+type PublishRule {
+  isPublic: Boolean!
+  publishAt: Time
+  unpublishAt: Time
+  regions: [String!]
+  ageRating: String
+}
+
+# --- PAGINATION ---
+
+type AssetPage {
+  items: [Asset!]!
+  nextKey: String
+}
+
+type BucketPage {
+  items: [Bucket!]!
+  nextKey: String
+}
+
+# --- QUERIES ---
+
+type Query {
+  asset(id: ID!): Asset
+  assetBySlug(slug: String!): Asset
+  assets(limit: Int = 10, nextKey: String): AssetPage
+  assetsByParent(parentId: ID!, limit: Int = 10, nextKey: String): AssetPage
+  searchAssets(query: String!, limit: Int = 10, nextKey: String): AssetPage
+  bucket(id: ID!): Bucket
+  bucketByKey(key: String!): Bucket
+  buckets(limit: Int = 10, nextKey: String): BucketPage
+}
+
+# --- MUTATIONS ---
+
+input AssetInput {
+  slug: String!
+  title: String
+  description: String
+  type: AssetType!
+  genre: String
+  genres: [String!]
+  tags: [String!]
+  metadata: String
+  ownerId: String
+  parentId: ID
+}
+
+input JSONPatch {
+  op: String!
+  path: String!
+  value: String
+}
+
+input BucketInput {
+  key: String!
+  name: String!
+  description: String
+  type: BucketType!
+  status: BucketStatus
+  assetIds: [ID!]
+}
+
+input UpdateBucketInput {
+  name: String!
+  description: String
+  type: BucketType!
+  status: BucketStatus
+}
+
+type Mutation {
+  createAsset(input: AssetInput!): Asset!
+  patchAsset(id: ID!, patches: [JSONPatch!]!): Asset!
+  deleteAsset(id: ID!): Boolean!
+  patchPublishRule(id: ID!, patches: [JSONPatch!]!): Asset!
+  updateVideoStatus(id: ID!, type: VideoType!, status: String!): Asset!
+  addVideo(id: ID!, type: VideoType!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
+  deleteVideo(id: ID!, type: VideoType!): Asset!
+
+  createBucket(input: BucketInput!): Bucket!
+  updateBucket(id: ID!, input: UpdateBucketInput!): Bucket!
+  patchBucket(id: ID!, patches: [JSONPatch!]!): Bucket!
+  deleteBucket(id: ID!): Boolean!
+  addAssetToBucket(bucketId: ID!, assetId: ID!): Bucket!
+  removeAssetFromBucket(bucketId: ID!, assetId: ID!): Bucket!
+}
+
+# --- SCALARS ---
+
+scalar Time

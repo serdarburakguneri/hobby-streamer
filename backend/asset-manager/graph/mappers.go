@@ -1,0 +1,413 @@
+package graph
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/graph/model"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+)
+
+func mapAssetToGraphQL(a *asset.Asset) *model.Asset {
+	if a == nil {
+		return nil
+	}
+
+	status := a.Status()
+	graphQLAsset := &model.Asset{
+		ID:          a.ID,
+		Slug:        a.Slug,
+		Title:       a.Title,
+		Description: a.Description,
+		Genre:       a.Genre,
+		Genres:      a.Genres,
+		Tags:        a.Tags,
+		Status:      &status,
+		CreatedAt:   a.CreatedAt,
+		UpdatedAt:   a.UpdatedAt,
+		OwnerID:     a.OwnerID,
+		Videos:      mapVideosToGraphQL(a.Videos),
+		PublishRule: mapPublishRuleToGraphQL(a.PublishRule),
+	}
+
+	// Map parent information
+	if a.Parent != nil {
+		graphQLAsset.Parent = mapAssetToGraphQL(a.Parent)
+	}
+
+	if a.Type != nil {
+		switch *a.Type {
+		case asset.AssetTypeMovie:
+			graphQLAsset.Type = model.AssetTypeMovie
+		case asset.AssetTypeSeries:
+			graphQLAsset.Type = model.AssetTypeSeries
+		case asset.AssetTypeSeason:
+			graphQLAsset.Type = model.AssetTypeSeason
+		case asset.AssetTypeEpisode:
+			graphQLAsset.Type = model.AssetTypeEpisode
+		case asset.AssetTypeDocumentary:
+			graphQLAsset.Type = model.AssetTypeDocumentary
+		}
+	}
+
+	if a.Metadata != nil {
+		metadataJSON, err := json.Marshal(a.Metadata)
+		if err == nil {
+			metadataStr := string(metadataJSON)
+			graphQLAsset.Metadata = &metadataStr
+		}
+	}
+
+	return graphQLAsset
+}
+
+func mapAssetsToGraphQL(assets []asset.Asset) []*model.Asset {
+	if assets == nil {
+		return nil
+	}
+
+	result := make([]*model.Asset, len(assets))
+	for i, a := range assets {
+		result[i] = mapAssetToGraphQL(&a)
+	}
+	return result
+}
+
+func mapGraphQLAssetInputToAsset(input model.AssetInput) *asset.Asset {
+	log := logger.Get().WithService("graphql-mapper")
+
+	assetModel := &asset.Asset{
+		ID:          "",
+		Slug:        input.Slug,
+		Title:       input.Title,
+		Description: input.Description,
+		Genre:       input.Genre,
+		Genres:      input.Genres,
+		Tags:        input.Tags,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		OwnerID:     input.OwnerID,
+		ParentID:    input.ParentID,
+	}
+
+	switch input.Type {
+	case model.AssetTypeMovie:
+		assetType := asset.AssetTypeMovie
+		assetModel.Type = &assetType
+	case model.AssetTypeSeries:
+		assetType := asset.AssetTypeSeries
+		assetModel.Type = &assetType
+	case model.AssetTypeSeason:
+		assetType := asset.AssetTypeSeason
+		assetModel.Type = &assetType
+	case model.AssetTypeEpisode:
+		assetType := asset.AssetTypeEpisode
+		assetModel.Type = &assetType
+	case model.AssetTypeDocumentary:
+		assetType := asset.AssetTypeDocumentary
+		assetModel.Type = &assetType
+	case model.AssetTypeMusic:
+		assetType := asset.AssetTypeMusic
+		assetModel.Type = &assetType
+	case model.AssetTypePodcast:
+		assetType := asset.AssetTypePodcast
+		assetModel.Type = &assetType
+	case model.AssetTypeTrailer:
+		assetType := asset.AssetTypeTrailer
+		assetModel.Type = &assetType
+	case model.AssetTypeBehindTheScenes:
+		assetType := asset.AssetTypeBehindTheScenes
+		assetModel.Type = &assetType
+	case model.AssetTypeInterview:
+		assetType := asset.AssetTypeInterview
+		assetModel.Type = &assetType
+	}
+
+	if input.Metadata != nil {
+		var metadata map[string]interface{}
+		if err := json.Unmarshal([]byte(*input.Metadata), &metadata); err == nil {
+			assetModel.Metadata = metadata
+		} else {
+			log.WithError(err).Error("Failed to parse metadata JSON")
+		}
+	} else {
+		assetModel.Metadata = make(map[string]interface{})
+	}
+
+	return assetModel
+}
+
+func mapBucketToGraphQL(b *bucket.Bucket) *model.Bucket {
+	if b == nil {
+		return nil
+	}
+
+	graphQLBucket := &model.Bucket{
+		ID:          b.ID,
+		Key:         b.Key,
+		Name:        b.Name,
+		Description: &b.Description,
+		CreatedAt:   b.CreatedAt,
+		UpdatedAt:   b.UpdatedAt,
+		AssetIds:    b.AssetIDs,
+	}
+
+	switch b.Type {
+	case bucket.BucketTypePlaylist:
+		graphQLBucket.Type = model.BucketTypePlaylist
+	case bucket.BucketTypeCollection:
+		graphQLBucket.Type = model.BucketTypeCollection
+	case bucket.BucketTypeCategory:
+		graphQLBucket.Type = model.BucketTypeCategory
+	}
+
+	switch b.Status {
+	case bucket.BucketStatusActive:
+		status := model.BucketStatusActive
+		graphQLBucket.Status = &status
+	case bucket.BucketStatusInactive:
+		status := model.BucketStatusInactive
+		graphQLBucket.Status = &status
+	case bucket.BucketStatusDraft:
+		status := model.BucketStatusDraft
+		graphQLBucket.Status = &status
+	}
+
+	return graphQLBucket
+}
+
+func mapBucketsToGraphQL(buckets []bucket.Bucket) []*model.Bucket {
+	if buckets == nil {
+		return nil
+	}
+
+	result := make([]*model.Bucket, len(buckets))
+	for i, b := range buckets {
+		result[i] = mapBucketToGraphQL(&b)
+	}
+	return result
+}
+
+func mapGraphQLBucketInputToBucket(input model.BucketInput) *bucket.Bucket {
+	description := ""
+	if input.Description != nil {
+		description = *input.Description
+	}
+
+	bucketModel := &bucket.Bucket{
+		ID:          "",
+		Key:         input.Key,
+		Name:        input.Name,
+		Description: description,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+		AssetIDs:    input.AssetIds,
+	}
+
+	switch input.Type {
+	case model.BucketTypePlaylist:
+		bucketModel.Type = bucket.BucketTypePlaylist
+	case model.BucketTypeCollection:
+		bucketModel.Type = bucket.BucketTypeCollection
+	case model.BucketTypeCategory:
+		bucketModel.Type = bucket.BucketTypeCategory
+	}
+
+	if input.Status != nil {
+		switch *input.Status {
+		case model.BucketStatusActive:
+			bucketModel.Status = bucket.BucketStatusActive
+		case model.BucketStatusInactive:
+			bucketModel.Status = bucket.BucketStatusInactive
+		case model.BucketStatusDraft:
+			bucketModel.Status = bucket.BucketStatusDraft
+		}
+	}
+
+	return bucketModel
+}
+
+func mapGraphQLUpdateBucketInputToBucket(input model.UpdateBucketInput) *bucket.Bucket {
+	description := ""
+	if input.Description != nil {
+		description = *input.Description
+	}
+
+	bucketModel := &bucket.Bucket{
+		Name:        input.Name,
+		Description: description,
+	}
+
+	switch input.Type {
+	case model.BucketTypePlaylist:
+		bucketModel.Type = bucket.BucketTypePlaylist
+	case model.BucketTypeCollection:
+		bucketModel.Type = bucket.BucketTypeCollection
+	case model.BucketTypeCategory:
+		bucketModel.Type = bucket.BucketTypeCategory
+	}
+
+	if input.Status != nil {
+		switch *input.Status {
+		case model.BucketStatusActive:
+			bucketModel.Status = bucket.BucketStatusActive
+		case model.BucketStatusInactive:
+			bucketModel.Status = bucket.BucketStatusInactive
+		case model.BucketStatusDraft:
+			bucketModel.Status = bucket.BucketStatusDraft
+		}
+	}
+
+	return bucketModel
+}
+
+// Pagination mappers
+
+func mapAssetPageToGraphQL(page *asset.AssetPage) *model.AssetPage {
+	if page == nil {
+		return nil
+	}
+
+	return &model.AssetPage{
+		Items: mapAssetsToGraphQL(page.Items),
+	}
+}
+
+func mapBucketPageToGraphQL(page *bucket.BucketPage) *model.BucketPage {
+	if page == nil {
+		return nil
+	}
+
+	return &model.BucketPage{
+		Items: mapBucketsToGraphQL(page.Items),
+	}
+}
+
+func mapPublishRuleToGraphQL(rule *asset.PublishRule) *model.PublishRule {
+	if rule == nil {
+		return nil
+	}
+
+	return &model.PublishRule{
+		IsPublic:    rule.IsPublic,
+		PublishAt:   &rule.PublishAt,
+		UnpublishAt: &rule.UnpublishAt,
+		Regions:     rule.Regions,
+		AgeRating:   &rule.AgeRating,
+	}
+}
+
+func mapVideosToGraphQL(videos []asset.Video) []*model.Video {
+	if videos == nil {
+		return nil
+	}
+
+	result := make([]*model.Video, 0, len(videos))
+	for _, video := range videos {
+		var videoType model.VideoType
+		switch video.Type {
+		case asset.VideoTypeMain:
+			videoType = model.VideoTypeMain
+		case asset.VideoTypeTrailer:
+			videoType = model.VideoTypeTrailer
+		case asset.VideoTypeBehind:
+			videoType = model.VideoTypeBehindTheScenes
+		case asset.VideoTypeInterview:
+			videoType = model.VideoTypeInterview
+		}
+
+		graphQLVideo := &model.Video{
+			Type:      videoType,
+			Raw:       mapVideoFormatToGraphQL(video.Raw),
+			Hls:       mapVideoFormatToGraphQL(video.HLS),
+			Dash:      mapVideoFormatToGraphQL(video.DASH),
+			Thumbnail: mapImageToGraphQL(video.Thumbnail),
+			Status:    &video.Status,
+		}
+
+		result = append(result, graphQLVideo)
+	}
+	return result
+}
+
+func mapVideoFormatToGraphQL(format *asset.VideoFormat) *model.VideoFormat {
+	if format == nil {
+		return nil
+	}
+
+	graphQLFormat := &model.VideoFormat{
+		StorageLocation: mapS3ObjectToGraphQL(&format.StorageLocation),
+		Width:           &format.Width,
+		Height:          &format.Height,
+		Duration:        &format.Duration,
+		Bitrate:         &format.Bitrate,
+		Codec:           &format.Codec,
+		Size:            &[]int{int(format.Size)}[0],
+		ContentType:     &format.ContentType,
+		StreamInfo:      mapStreamInfoToGraphQL(format.StreamInfo),
+	}
+
+	if format.Metadata != nil {
+		metadataJSON, err := json.Marshal(format.Metadata)
+		if err == nil {
+			metadataStr := string(metadataJSON)
+			graphQLFormat.Metadata = &metadataStr
+		}
+	}
+
+	return graphQLFormat
+}
+
+func mapImageToGraphQL(img *asset.Image) *model.Image {
+	if img == nil {
+		return nil
+	}
+
+	graphQLImage := &model.Image{
+		FileName:    img.FileName,
+		URL:         img.URL,
+		Width:       &img.Width,
+		Height:      &img.Height,
+		Size:        &[]int{int(img.Size)}[0],
+		ContentType: &img.ContentType,
+	}
+
+	if img.StorageLocation != nil {
+		graphQLImage.StorageLocation = mapS3ObjectToGraphQL(img.StorageLocation)
+	}
+
+	if img.Metadata != nil {
+		metadataJSON, err := json.Marshal(img.Metadata)
+		if err == nil {
+			metadataStr := string(metadataJSON)
+			graphQLImage.Metadata = &metadataStr
+		}
+	}
+
+	return graphQLImage
+}
+
+func mapS3ObjectToGraphQL(obj *asset.S3Object) *model.S3Object {
+	if obj == nil {
+		return nil
+	}
+
+	return &model.S3Object{
+		Bucket: obj.Bucket,
+		Key:    obj.Key,
+		URL:    obj.URL,
+	}
+}
+
+func mapStreamInfoToGraphQL(info *asset.StreamInfo) *model.StreamInfo {
+	if info == nil {
+		return nil
+	}
+
+	return &model.StreamInfo{
+		DownloadURL: info.DownloadURL,
+		CdnPrefix:   info.CdnPrefix,
+	}
+}

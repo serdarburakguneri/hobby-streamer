@@ -1,37 +1,176 @@
 # Hobby Streamer
 
-Scalable video upload, processing, and streaming platform using AWS Free Tier. Users upload videos processed with AWS Elemental MediaConvert, stored in S3, and streamed via CloudFront. Includes optional FFmpeg for custom transcoding.
+A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities.
 
-## Key Components
+## Overview
 
-S3: Store raw/processed videos.
+The project consists of several microservices working together to provide video streaming functionality:
 
-MediaConvert: Transcode videos.
+- **Asset Manager**: GraphQL service for managing video assets and metadata
+- **Auth Service**: Authentication and authorization using Keycloak
+- **Transcoder**: Video processing and format conversion
+- **Storage**: S3-based file storage with presigned URLs
+- **Frontend**: React Native CMS for content management
 
-DynamoDB: Manage video metadata.
+## Tech Stack
 
-CloudFront: Stream videos globally.
+### Backend Services
+- Go – Backend services
+- GraphQL – API layer for asset management
+- Neo4j – Graph database for asset relationships and metadata
+- Keycloak – Identity and access management
+- FFMPEG – Video processing and transcoding
 
-Lambda: Automate workflows.
+### Infrastructure & DevOps
+- Docker Compose – Containerized development environment
+- LocalStack – Local AWS service emulation (S3, SQS, Lambda)
+- SQS – Job processing for transcoding workflows
 
-IAM: Secure access.
+### Frontend
+- React Native – Cross-platform mobile and web development
+- Apollo Client – GraphQL client with caching
+- Expo – Development platform for React Native applications
 
-## Workflow Overview
+## Architecture
 
-Video Upload: Videos are uploaded to S3, triggering Lambda.
+![Architecture Diagram](docs/arch.png)
 
-Processing: Lambda calls MediaConvert, outputs saved to S3.
+## Service Documentation
 
-Metadata: Stored in DynamoDB.
+### Backend Services
+- [Asset Manager Service](backend/asset-manager/README.md): GraphQL API for managing assets and relationships
+- [Auth Service](backend/auth-service/README.md): JWT-based authentication service with Keycloak integration
+- [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs
 
-Streaming: CloudFront delivers videos with adaptive bitrate.
+### Storage Service
+- [Generate Presigned Upload URL Lambda](backend/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
+- [Delete Asset Files Lambda](backend/storage/cmd/delete_asset_files/README.md): Lambda for cleaning up S3 files when assets are deleted
 
-Cost Optimization
+### Frontend Services
+- [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
 
-Use AWS Free Tier (S3, CloudFront, DynamoDB).
+### Shared Libraries
+- [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
+- [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
 
-Automate storage cleanup with lifecycle rules.
+## Getting Started
 
-Leverage MediaConvert "Basic" tier for low-cost transcoding.
+### Prerequisites
+- Docker installed
+- Go (version 1.21+) installed
+- Python installed
+- FFmpeg installed (required for video transcoding)
+- pipx installed (for installing Python applications)
+- awscli-local (awslocal) installed:
+  ```sh
+  pipx install awscli-local
+  pipx ensurepath
+  ```
+- Node.js (version 22+) installed for frontend development
 
-Optimize caching to minimize S3 requests.
+### Quick Start
+
+To set up the development environment with all services, simply run:
+
+```sh
+./build.sh
+```
+
+This script will:
+- Start all infrastructure services (LocalStack, Neo4j, Keycloak)
+- Create required S3 buckets and SQS queues
+- Build and start all backend services
+- Install dependencies and start the Admin UI development server
+- Verify all services are running correctly
+
+### Service Ports
+- Auth Service: http://localhost:8080
+- Asset Manager GraphQL: http://localhost:8082/query
+- Neo4j Browser: http://localhost:7474
+- Keycloak: http://localhost:9090
+- LocalStack: http://localhost:4566
+- CMS UI Web: http://localhost:8081
+
+### Keycloak Setup
+
+Keycloak is used for authentication. Default credentials:
+
+- Admin User: `admin` / `admin`
+- Regular User: `user` / `user`
+
+### Running the CMS UI
+
+After running `./build.sh`, the CMS UI will be available at:
+
+```
+http://localhost:8081
+```
+
+Login with the Keycloak credentials above to start managing assets.
+
+### GraphQL Playground
+
+The Asset Manager GraphQL API can be explored at:
+
+```
+http://localhost:8082/graphql
+```
+
+### Neo4j Browser
+
+The graph database relationships can be explored at:
+
+```
+http://localhost:7474
+```
+
+Default credentials: `neo4j` / `password`
+
+## Development Workflow
+
+### Restarting Services
+
+```bash
+# Rebuild and restart specific services
+docker-compose up --build -d asset-manager
+docker-compose up --build -d auth-service
+docker-compose up --build -d transcoder
+
+# Rebuild everything
+./build.sh
+```
+
+### Viewing Logs
+
+```bash
+# View logs for specific services
+docker-compose logs -f asset-manager
+docker-compose logs -f auth-service
+docker-compose logs -f transcoder
+
+# View all logs
+docker-compose logs -f
+```
+
+### Health Checks
+
+```bash
+# Service health checks
+curl -s http://localhost:8080/health
+curl -s http://localhost:8082/health
+curl -s http://localhost:9090/health
+curl -s http://localhost:4566/health
+
+# GraphQL introspection
+curl -s -X POST http://localhost:8082/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { types { name } } }"}'
+```
+
+## Development
+
+This is a learning project focused on exploring streaming technologies. The codebase is structured to be simple and educational rather than production-ready.
+
+## License
+
+MIT

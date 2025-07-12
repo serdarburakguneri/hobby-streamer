@@ -1,0 +1,111 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"  # Main LocalStack edge port
+      - "8000:8000"  # DynamoDB (optional, for direct access)
+    environment:
+      - SERVICES=dynamodb,sqs,s3,lambda,apigateway
+      - PERSISTENCE=0
+      - ENABLE_CORS_ALLOW_ALL=1
+      - CORS_ALLOW_ORIGINS=http://localhost:8081,http://localhost:3000,http://localhost:8080
+      - S3_CORS_ALLOW_ORIGINS=http://localhost:8081,http://localhost:3000,http://localhost:8080
+      - S3_CORS_ALLOW_METHODS=GET,PUT,POST,DELETE,HEAD,OPTIONS
+      - S3_CORS_ALLOW_HEADERS=*
+      - S3_SKIP_SIGNATURE_VALIDATION=1
+      - S3_SKIP_OWNERSHIP_VALIDATION=1
+      - S3_SKIP_ACL_VALIDATION=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  neo4j:
+    image: neo4j:5.15-community
+    ports:
+      - "7474:7474"  # HTTP (Browser UI)
+      - "7687:7687"  # Bolt (Application connections)
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.6
+    command: start-dev --https-port=8443 --https-certificate-file=/opt/keycloak/certs/cert.pem --https-certificate-key-file=/opt/keycloak/certs/key.pem
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/hobby-realm.json
+    ports:
+      - "9090:8080"  # Keycloak web UI and API (mapped to 9090 to avoid conflict)
+      - "8443:8443"  # Keycloak HTTPS (optional)
+    volumes:
+      - ./keycloak-config/hobby-realm.json:/opt/keycloak/data/import/hobby-realm.json
+      - ./keycloak-certs:/opt/keycloak/certs
+    depends_on:
+      - localstack
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - KEYCLOAK_URL=https://keycloak:8443
+      - KEYCLOAK_REALM=hobby
+      - KEYCLOAK_CLIENT_ID=asset-manager
+      - AWS_REGION=us-east-1
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    depends_on:
+      - localstack
+      - keycloak
+
+  asset-manager:
+    build:
+      context: ./backend
+      dockerfile: asset-manager/Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      - KEYCLOAK_URL=https://keycloak:8443
+      - KEYCLOAK_REALM=hobby
+      - KEYCLOAK_CLIENT_ID=asset-manager
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=password
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    depends_on:
+      - localstack
+      - keycloak
+      - auth-service
+      - neo4j
+
+  transcoder:
+    build:
+      context: ./backend
+      dockerfile: transcoder/Dockerfile
+    environment:
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/transcoder-jobs
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    depends_on:
+      - localstack
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins: 
