@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import axios from 'axios';
 import { useAssetService } from '../../services/api';
 import { VideoType } from '../../types/asset';
+import { API_CONFIG } from '../../config/api';
 
 interface VideoUploadProps {
   assetId: string;
@@ -17,7 +18,7 @@ export default function VideoUpload({ assetId, onUploadComplete, onCancel, onRef
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType | null>(null);
-  const { getUploadUrl, addVideo } = useAssetService();
+  const { getUploadUrl, uploadFile, addVideo } = useAssetService();
 
   const handleFilePick = async () => {
     try {
@@ -65,15 +66,11 @@ export default function VideoUpload({ assetId, onUploadComplete, onCancel, onRef
       const response = await fetch(file.uri);
       const blob = await response.blob();
       
-      await axios.put(uploadUrl, blob, {
-        headers: {
-          'Content-Type': file.mimeType || 'video/mp4',
-        },
-      });
+      await uploadFile(uploadUrl, blob);
       
       const bucket = 'raw-storage';
       const key = fileName;
-      const url = `http://localhost:4566/${bucket}/${key}`;
+      const url = `${API_CONFIG.LOCALSTACK_BASE_URL}/${bucket}/${key}`;
       
       await addVideo(assetId, selectedVideoType, bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);
       

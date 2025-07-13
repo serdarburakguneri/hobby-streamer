@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,7 +56,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		localPath = p.Input
 	}
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localPath)
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localPath, "-f", "null", "-")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -83,9 +84,20 @@ func (a *AnalyzeRunner) downloadFromS3(ctx context.Context, s3URL string) (strin
 	bucket := parts[0]
 	key := parts[1]
 
+	awsEndpoint := os.Getenv("AWS_ENDPOINT")
+	if awsEndpoint == "" {
+		awsEndpoint = "http://localstack:4566"
+	}
+
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "us-east-1"
+	}
+
 	sess, err := session.NewSession(&aws.Config{
-		Region:   aws.String("us-east-1"),
-		Endpoint: aws.String("http://localstack:4566"),
+		Region:           aws.String(region),
+		Endpoint:         aws.String(awsEndpoint),
+		S3ForcePathStyle: aws.Bool(true),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create AWS session: %w", err)
@@ -108,13 +120,20 @@ func (a *AnalyzeRunner) downloadFromS3(ctx context.Context, s3URL string) (strin
 	}
 	defer file.Close()
 
-	_, err = client.GetObjectWithContext(ctx, &s3.GetObjectInput{
+	result, err := client.GetObjectWithContext(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
 		os.Remove(localPath)
 		return "", fmt.Errorf("failed to get object from S3: %w", err)
+	}
+	defer result.Body.Close()
+
+	_, err = io.Copy(file, result.Body)
+	if err != nil {
+		os.Remove(localPath)
+		return "", fmt.Errorf("failed to write file to disk: %w", err)
 	}
 
 	log.Info("Successfully downloaded from S3", "local_path", localPath)

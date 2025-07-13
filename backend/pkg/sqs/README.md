@@ -52,8 +52,9 @@ Messages are automatically wrapped in the expected format:
 
 ## Environment Variables
 
-- `AWS_ENDPOINT`: Custom endpoint for SQS (default: `http://localhost:4566` for LocalStack)
+- `AWS_ENDPOINT`: Custom endpoint for SQS (default: `http://localstack:4566` for LocalStack)
 - `AWS_REGION`: AWS region (default: `us-east-1`)
+- `SQS_QUEUE_URL`: The SQS queue URL to send messages to (required)
 
 ## Integration
 

@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# Load configuration
+if [ -f "config.env" ]; then
+  source config.env
+else
+  echo "[WARNING] config.env not found, using default values"
+  AWS_REGION="us-east-1"
+  AWS_ACCESS_KEY_ID="test"
+  AWS_SECRET_ACCESS_KEY="test"
+  LOCALSTACK_ENDPOINT="http://localstack:4566"
+  LOCALSTACK_EXTERNAL_ENDPOINT="http://localhost:4566"
+  SQS_QUEUE_URL="http://localstack:4566/000000000000/transcoder-jobs"
+  DELETE_FILES_LAMBDA_ENDPOINT="http://localstack:4566/2015-03-31/functions/delete-files/invocations"
+fi
+
 # Hobby Streamer Build Script
 # This script sets up the complete development environment including:
 # - LocalStack (S3, SQS, Lambda)
@@ -36,6 +50,16 @@ fi
 echo "[INFO] Stopping any existing Expo processes..."
 pkill -f "expo start" || true
 sleep 2
+
+# Export environment variables for docker-compose
+echo "[INFO] Exporting environment variables..."
+export AWS_REGION
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export LOCALSTACK_ENDPOINT
+export LOCALSTACK_EXTERNAL_ENDPOINT
+export SQS_QUEUE_URL
+export DELETE_ASSET_FILES_LAMBDA_ENDPOINT
 
 # Stop all running containers
 if docker-compose ps | grep -q 'Up'; then
@@ -87,9 +111,9 @@ sleep 10
 
 # Create S3 buckets if they do not exist (must be before CORS)
 for bucket in raw-storage transcoded-storage thumbnails-storage; do
-  if aws --endpoint-url=http://localhost:4566 s3 ls "s3://$bucket" 2>&1 | grep -q 'NoSuchBucket'; then
+  if aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3 ls "s3://$bucket" 2>&1 | grep -q 'NoSuchBucket'; then
     echo "[INFO] Creating S3 bucket: $bucket"
-    aws --endpoint-url=http://localhost:4566 s3api create-bucket --bucket $bucket --region eu-west-1 --create-bucket-configuration LocationConstraint=eu-west-1
+    aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api create-bucket --bucket $bucket --region $AWS_REGION
   else
     echo "[INFO] S3 bucket $bucket already exists."
   fi
@@ -97,14 +121,14 @@ done
 
 # Re-apply S3 CORS config after LocalStack is up and buckets exist
 echo "[INFO] Re-applying S3 CORS configuration..."
-aws --endpoint-url=http://localhost:4566 s3api put-bucket-cors --bucket raw-storage --cors-configuration file://cors.json
-aws --endpoint-url=http://localhost:4566 s3api put-bucket-cors --bucket transcoded-storage --cors-configuration file://cors.json
-aws --endpoint-url=http://localhost:4566 s3api put-bucket-cors --bucket thumbnails-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket raw-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket transcoded-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket thumbnails-storage --cors-configuration file://cors.json
 
 # Create SQS queue
-if ! aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name transcoder-jobs --region eu-west-1 > /dev/null 2>&1; then
+if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs get-queue-url --queue-name transcoder-jobs --region $AWS_REGION > /dev/null 2>&1; then
   echo "[INFO] Creating SQS queue: transcoder-jobs"
-  aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name transcoder-jobs --region eu-west-1 > /dev/null
+  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs create-queue --queue-name transcoder-jobs --region $AWS_REGION > /dev/null
 else
   echo "[INFO] SQS queue transcoder-jobs already exists."
 fi
@@ -116,26 +140,28 @@ GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
 
 # Create or update Lambda in LocalStack
-if awslocal --no-cli-pager lambda get-function --function-name generate-presigned-url > /dev/null 2>&1; then
+if awslocal --no-cli-pager --region $AWS_REGION lambda get-function --function-name generate-presigned-url > /dev/null 2>&1; then
   echo "[INFO] Updating existing Lambda function: generate-presigned-url"
-  awslocal --no-cli-pager lambda update-function-code --function-name generate-presigned-url --zip-file fileb://function.zip > /dev/null
+  awslocal --no-cli-pager --region $AWS_REGION lambda update-function-code --function-name generate-presigned-url --zip-file fileb://function.zip > /dev/null
 else
   echo "[INFO] Creating Lambda function: generate-presigned-url"
-  awslocal --no-cli-pager lambda create-function \
+  awslocal --no-cli-pager --region $AWS_REGION lambda create-function \
     --function-name generate-presigned-url \
     --runtime go1.x \
     --handler main \
     --zip-file fileb://function.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={BUCKET_NAME=raw-storage,BUCKET_REGION=eu-west-1,AWS_ENDPOINT=http://localhost:4566}" \
-    --region eu-west-1 > /dev/null
+    --environment "Variables={BUCKET_NAME=raw-storage,BUCKET_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
+    --region $AWS_REGION > /dev/null
 fi
 
 popd > /dev/null
 
-# Build and deploy the delete asset files Lambda
-pushd backend/storage/cmd/delete_asset_files > /dev/null
-echo "[INFO] Building delete asset files Lambda..."
+
+
+# Build and deploy the delete files Lambda
+pushd backend/storage/cmd/delete_files > /dev/null
+echo "[INFO] Building delete files Lambda..."
 
 # Ensure dependencies are resolved
 echo "[INFO] Resolving dependencies..."
@@ -146,19 +172,19 @@ GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
 
 # Create or update Lambda in LocalStack
-if awslocal --no-cli-pager lambda get-function --function-name delete-asset-files > /dev/null 2>&1; then
-  echo "[INFO] Updating existing Lambda function: delete-asset-files"
-  awslocal --no-cli-pager lambda update-function-code --function-name delete-asset-files --zip-file fileb://function.zip > /dev/null
+if awslocal --no-cli-pager --region $AWS_REGION lambda get-function --function-name delete-files > /dev/null 2>&1; then
+  echo "[INFO] Updating existing Lambda function: delete-files"
+  awslocal --no-cli-pager --region $AWS_REGION lambda update-function-code --function-name delete-files --zip-file fileb://function.zip > /dev/null
 else
-  echo "[INFO] Creating Lambda function: delete-asset-files"
-  awslocal --no-cli-pager lambda create-function \
-    --function-name delete-asset-files \
+  echo "[INFO] Creating Lambda function: delete-files"
+  awslocal --no-cli-pager --region $AWS_REGION lambda create-function \
+    --function-name delete-files \
     --runtime go1.x \
     --handler main \
     --zip-file fileb://function.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={AWS_ENDPOINT=http://localhost:4566,AWS_REGION=eu-west-1}" \
-    --region eu-west-1 > /dev/null
+    --environment "Variables={AWS_ENDPOINT=$LOCALSTACK_ENDPOINT,AWS_REGION=$AWS_REGION}" \
+    --region $AWS_REGION > /dev/null
 fi
 
 popd > /dev/null
@@ -166,7 +192,7 @@ popd > /dev/null
 # Remove invalid API Gateway ID if the API does not exist
 if [ -f ".api-gateway-id" ]; then
   API_ID=$(cat .api-gateway-id)
-  if [ -z "$API_ID" ] || ! awslocal --no-cli-pager apigateway get-rest-api --rest-api-id $API_ID > /dev/null 2>&1; then
+  if [ -z "$API_ID" ] || ! awslocal --no-cli-pager --region $AWS_REGION apigateway get-rest-api --rest-api-id $API_ID > /dev/null 2>&1; then
     echo "[INFO] Removing stale or empty API Gateway ID: $API_ID"
     rm -f .api-gateway-id
     API_ID=""
@@ -188,15 +214,18 @@ fi
 
 # Always redeploy the API Gateway stage to ensure CORS is active
 echo "[INFO] Redeploying API Gateway stage to ensure CORS is active..."
-awslocal --no-cli-pager apigateway create-deployment \
+awslocal --no-cli-pager --region $AWS_REGION apigateway create-deployment \
   --rest-api-id $API_ID \
   --stage-name dev > /dev/null
 
 echo "[INFO] API Gateway URL: http://localhost:4566/restapis/$API_ID/dev/_user_request_/upload"
 
-# Update frontend with new API Gateway ID
-echo "[INFO] Updating frontend with new API Gateway ID..."
-sed -i.bak "s/API_GATEWAY_ID: '[^']*'/API_GATEWAY_ID: '$API_ID'/" frontend/HobbyStreamerCMS/src/config/api.ts
+# Update frontend with new API Gateway ID and URLs
+echo "[INFO] Updating frontend with new API Gateway configuration..."
+sed -i.bak "s/getEnvVar('REACT_APP_API_GATEWAY_ID', '[^']*')/getEnvVar('REACT_APP_API_GATEWAY_ID', '$API_ID')/" frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', '[^']*')|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev')|" frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/auth')|" frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" frontend/HobbyStreamerCMS/src/config/api.ts
 rm -f frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 

@@ -3,6 +3,7 @@ package sqs
 import (
 	"context"
 	"encoding/json"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -17,10 +18,15 @@ type Producer struct {
 }
 
 func NewProducer(ctx context.Context, queueURL string) (*Producer, error) {
+	awsEndpoint := os.Getenv("AWS_ENDPOINT")
+	if awsEndpoint == "" {
+		awsEndpoint = "http://localstack:4566"
+	}
+
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			PartitionID:   "aws",
-			URL:           "http://localstack:4566",
+			URL:           awsEndpoint,
 			SigningRegion: region,
 		}, nil
 	})

@@ -29,7 +29,6 @@ type ErrorResponse struct {
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Handle CORS preflight requests
 	if event.HTTPMethod == "OPTIONS" {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
@@ -66,6 +65,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	awsConfig := &aws.Config{Region: aws.String(region)}
 	if endpoint != "" {
 		awsConfig.Endpoint = aws.String(endpoint)
+		awsConfig.S3ForcePathStyle = aws.Bool(true)
 	}
 
 	// Create AWS session

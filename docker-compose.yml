@@ -1,5 +1,7 @@
 services:
   localstack:
+    env_file:
+      - config.env
     image: localstack/localstack:latest
     ports:
       - "4566:4566"  # Main LocalStack edge port
@@ -55,11 +57,13 @@ services:
       dockerfile: auth-service/Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - config.env
     environment:
       - KEYCLOAK_URL=https://keycloak:8443
       - KEYCLOAK_REALM=hobby
       - KEYCLOAK_CLIENT_ID=asset-manager
-      - AWS_REGION=us-east-1
+      - AWS_REGION=${AWS_REGION}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:
@@ -72,17 +76,21 @@ services:
       dockerfile: asset-manager/Dockerfile
     ports:
       - "8082:8080"
+    env_file:
+      - config.env
     environment:
       - KEYCLOAK_URL=https://keycloak:8443
       - KEYCLOAK_REALM=hobby
       - KEYCLOAK_CLIENT_ID=asset-manager
-      - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USERNAME=neo4j
       - NEO4J_PASSWORD=password
-      - SQS_QUEUE_URL=http://localstack:4566/000000000000/transcoder-jobs
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - AWS_ENDPOINT=${LOCALSTACK_ENDPOINT}
+      - DELETE_ASSET_FILES_LAMBDA_ENDPOINT=${DELETE_ASSET_FILES_LAMBDA_ENDPOINT}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:
@@ -95,11 +103,14 @@ services:
     build:
       context: ./backend
       dockerfile: transcoder/Dockerfile
+    env_file:
+      - config.env
     environment:
-      - SQS_QUEUE_URL=http://localstack:4566/000000000000/transcoder-jobs
-      - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_ENDPOINT=${LOCALSTACK_ENDPOINT}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:

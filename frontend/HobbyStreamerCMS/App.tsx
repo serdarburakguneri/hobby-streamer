@@ -12,6 +12,7 @@ import BucketListScreen from './src/screens/BucketListScreen';
 import CreateBucketScreen from './src/screens/CreateBucketScreen';
 
 import { getAuthToken, setAuthTokens, clearAuthTokens, setLogoutCallback, validateTokenLocally, isTokenExpiringSoon, refreshTokenIfNeeded } from './src/services/api';
+import { API_CONFIG } from './src/config/api';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -24,7 +25,7 @@ export default function App() {
 
   const apolloClient = useMemo(() => {
     const httpLink = createHttpLink({
-      uri: 'http://localhost:8082/graphql',
+      uri: API_CONFIG.GRAPHQL_BASE_URL,
     });
 
     const authLink = setContext(async (_, { headers }) => {

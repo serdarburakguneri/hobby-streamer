@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,10 +19,15 @@ type SQSConsumer struct {
 }
 
 func NewSQSConsumer(ctx context.Context, queueURL string) (QueueConsumer, error) {
+	awsEndpoint := os.Getenv("AWS_ENDPOINT")
+	if awsEndpoint == "" {
+		awsEndpoint = "http://localstack:4566"
+	}
+
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			PartitionID:   "aws",
-			URL:           "http://localstack:4566",
+			URL:           awsEndpoint,
 			SigningRegion: region,
 		}, nil
 	})

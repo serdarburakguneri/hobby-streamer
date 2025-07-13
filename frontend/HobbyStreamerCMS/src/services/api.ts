@@ -1788,22 +1788,23 @@ export const useAssetService = () => {
 
     getUploadUrl: async (fileName: string): Promise<{ url: string }> => {
       try {
-        const response = await axios.post(`${API_CONFIG.LOCALSTACK_BASE_URL}/restapis/${API_CONFIG.API_GATEWAY_ID}/dev/_user_request_/upload`, {
+        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/upload`, {
           fileName: fileName
         }, {
           headers: {
             'Content-Type': 'application/json',
           },
         });
-        let url = response.data.url;
-        url = url.replace(/https?:\/\/(raw-storage\\.localhost|localhost|[\w.-]+):4566\/?([\w-]+)?\/?/, 'http://localhost:4566/raw-storage/');
-        return { url };
+        
+        const presignedUrl = response.data.url;
+        const localhostUrl = presignedUrl.replace('localstack:4566', 'localhost:4566');
+        
+        return { url: localhostUrl };
       } catch (error) {
         console.error('Error getting upload URL:', error);
         throw new Error('Failed to get upload URL');
       }
     },
-
 
     uploadFile: async (uploadUrl: string, file: File): Promise<void> => {
       await axios.put(uploadUrl, file, {
@@ -1952,7 +1953,7 @@ export const assetService = {
 
 export const authService = {
   login: async (username: string, password: string): Promise<{ accessToken: string; refreshToken: string }> => {
-    const response = await authApi.post('/auth/login', {
+    const response = await authApi.post('/login', {
       username,
       password,
       client_id: 'asset-manager',
@@ -1965,7 +1966,7 @@ export const authService = {
 
 
   refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
-    const response = await authApi.post('/auth/refresh', {
+    const response = await authApi.post('/refresh', {
       refresh_token: refreshToken,
     });
     return { 
@@ -1978,7 +1979,7 @@ export const authService = {
   validateToken: async (token: string): Promise<{ valid: boolean; user?: any }> => {
     try {
       console.log('validateToken called with token:', token ? `${token.substring(0, 20)}...` : 'null');
-      const response = await authApi.post('/auth/validate', { token });
+      const response = await authApi.post('/validate', { token });
       console.log('validateToken response:', response.data);
       return response.data;
     } catch (error) {
