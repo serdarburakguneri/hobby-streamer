@@ -17,6 +17,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 	neo4jUsername := getEnv("NEO4J_USERNAME", "neo4j")
 	neo4jPassword := getEnv("NEO4J_PASSWORD", "password")
 	port := getEnv("PORT", "8080")
+	sqsQueueURL := getEnv("SQS_QUEUE_URL", "http://localhost:4566/000000000000/transcoder-jobs")
 
 	driver, err := neo4j.NewDriver(neo4jURI, neo4j.BasicAuth(neo4jUsername, neo4jPassword, ""))
 	if err != nil {
@@ -43,7 +45,20 @@ func main() {
 	assetRepo := asset.NewRepository(driver)
 	bucketRepo := bucket.NewRepository(driver)
 
-	assetService := asset.NewService(assetRepo)
+	var assetService asset.AssetService
+	if sqsQueueURL != "" {
+		sqsProducer, err := sqs.NewProducer(context.Background(), sqsQueueURL)
+		if err != nil {
+			log.WithError(err).Error("Failed to create SQS producer, falling back to service without SQS")
+			assetService = asset.NewService(assetRepo)
+		} else {
+			log.Info("SQS producer initialized successfully", "queue_url", sqsQueueURL)
+			assetService = asset.NewServiceWithSQS(assetRepo, sqsProducer)
+		}
+	} else {
+		assetService = asset.NewService(assetRepo)
+	}
+
 	bucketService := bucket.NewService(bucketRepo)
 
 	router := mux.NewRouter()

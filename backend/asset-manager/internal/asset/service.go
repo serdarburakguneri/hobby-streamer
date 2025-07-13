@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 type AssetService interface {
@@ -40,7 +41,8 @@ type AssetService interface {
 }
 
 type Service struct {
-	Repo AssetRepository
+	Repo        AssetRepository
+	SQSProducer *sqs.Producer
 }
 
 var _ AssetService = (*Service)(nil)
@@ -305,7 +307,15 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 				video.Status = VideoStatusPending
 			}
 			asset.Videos[i] = *video
-			return s.Repo.SaveAsset(ctx, asset)
+			err = s.Repo.SaveAsset(ctx, asset)
+			if err != nil {
+				return err
+			}
+
+			if s.SQSProducer != nil && video.Raw != nil {
+				s.sendAnalyzeJob(ctx, asset.ID, video.Raw.StorageLocation)
+			}
+			return nil
 		}
 	}
 
@@ -314,7 +324,31 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 		video.Status = VideoStatusPending
 	}
 	asset.Videos = append(asset.Videos, *video)
-	return s.Repo.SaveAsset(ctx, asset)
+	err = s.Repo.SaveAsset(ctx, asset)
+	if err != nil {
+		return err
+	}
+
+	if s.SQSProducer != nil && video.Raw != nil {
+		s.sendAnalyzeJob(ctx, asset.ID, video.Raw.StorageLocation)
+	}
+	return nil
+}
+
+func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, storageLocation S3Object) {
+	log := logger.Get().WithService("asset-service")
+
+	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
+	payload := map[string]interface{}{
+		"input": input,
+	}
+
+	err := s.SQSProducer.SendMessage(ctx, "analyze", payload)
+	if err != nil {
+		log.WithError(err).Error("Failed to send analyze job", "asset_id", assetID, "input", input)
+	} else {
+		log.Info("Analyze job sent successfully", "asset_id", assetID, "input", input)
+	}
 }
 
 func (s *Service) DeleteVideo(ctx context.Context, id string, videoType VideoType) error {
@@ -489,4 +523,11 @@ func isValidSlug(slug string) bool {
 
 func NewService(repo AssetRepository) *Service {
 	return &Service{Repo: repo}
+}
+
+func NewServiceWithSQS(repo AssetRepository, sqsProducer *sqs.Producer) *Service {
+	return &Service{
+		Repo:        repo,
+		SQSProducer: sqsProducer,
+	}
 }

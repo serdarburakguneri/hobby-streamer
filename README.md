@@ -166,11 +166,3 @@ curl -s -X POST http://localhost:8082/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{ __schema { types { name } } }"}'
 ```
-
-## Development
-
-This is a learning project focused on exploring streaming technologies. The codebase is structured to be simple and educational rather than production-ready.
-
-## License
-
-MIT

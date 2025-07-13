@@ -1,9 +1,8 @@
-module github.com/serdarburakguneri/hobby-streamer/backend/transcoder
+module github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs
 
 go 1.22
 
 require (
-	github.com/aws/aws-sdk-go v1.53.0
 	github.com/aws/aws-sdk-go-v2 v1.36.5
 	github.com/aws/aws-sdk-go-v2/config v1.26.6
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.30.0
@@ -11,8 +10,7 @@ require (
 )
 
 replace (
-	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
-	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../logger
 )
 
 require (
@@ -27,5 +25,4 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.20 // indirect
 	github.com/aws/smithy-go v1.22.4 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
-)
+) 
