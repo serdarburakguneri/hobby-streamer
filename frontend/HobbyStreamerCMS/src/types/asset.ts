@@ -40,9 +40,12 @@ export interface S3Object {
   url: string;
 }
 
+export interface StreamInfo {
+  downloadUrl?: string;
+  cdnPrefix?: string;
+}
 
-
-export interface VideoFormat {
+export interface VideoVariant {
   storageLocation: S3Object;
   width?: number;
   height?: number;
@@ -53,20 +56,15 @@ export interface VideoFormat {
   contentType?: string;
   streamInfo?: StreamInfo;
   metadata?: Record<string, any>;
-}
-
-export interface StreamInfo {
-  downloadUrl?: string;
-  cdnPrefix?: string;
+  status?: string;
 }
 
 export interface Video {
   type: VideoType;
-  raw?: VideoFormat;
-  hls?: VideoFormat;
-  dash?: VideoFormat;
+  raw?: VideoVariant;
+  hls?: VideoVariant;
+  dash?: VideoVariant;
   thumbnail?: Image;
-  status?: string;
 }
 
 export interface Image {

@@ -126,15 +126,14 @@ type UpdateBucketInput struct {
 }
 
 type Video struct {
-	Type      VideoType    `json:"type"`
-	Raw       *VideoFormat `json:"raw,omitempty"`
-	Hls       *VideoFormat `json:"hls,omitempty"`
-	Dash      *VideoFormat `json:"dash,omitempty"`
-	Thumbnail *Image       `json:"thumbnail,omitempty"`
-	Status    *string      `json:"status,omitempty"`
+	Type      VideoType     `json:"type"`
+	Raw       *VideoVariant `json:"raw,omitempty"`
+	Hls       *VideoVariant `json:"hls,omitempty"`
+	Dash      *VideoVariant `json:"dash,omitempty"`
+	Thumbnail *Image        `json:"thumbnail,omitempty"`
 }
 
-type VideoFormat struct {
+type VideoVariant struct {
 	StorageLocation *S3Object   `json:"storageLocation"`
 	Width           *int        `json:"width,omitempty"`
 	Height          *int        `json:"height,omitempty"`
@@ -145,6 +144,7 @@ type VideoFormat struct {
 	ContentType     *string     `json:"contentType,omitempty"`
 	StreamInfo      *StreamInfo `json:"streamInfo,omitempty"`
 	Metadata        *string     `json:"metadata,omitempty"`
+	Status          *string     `json:"status,omitempty"`
 }
 
 type AssetType string

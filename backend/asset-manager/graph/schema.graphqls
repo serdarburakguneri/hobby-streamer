@@ -31,14 +31,13 @@ type Asset {
 
 type Video {
   type: VideoType!
-  raw: VideoFormat
-  hls: VideoFormat
-  dash: VideoFormat
+  raw: VideoVariant
+  hls: VideoVariant
+  dash: VideoVariant
   thumbnail: Image
-  status: String
 }
 
-type VideoFormat {
+type VideoVariant {
   storageLocation: S3Object!
   width: Int
   height: Int
@@ -49,6 +48,7 @@ type VideoFormat {
   contentType: String
   streamInfo: StreamInfo
   metadata: String
+  status: String
 }
 
 type Image {
@@ -198,6 +198,7 @@ type Mutation {
   deleteAsset(id: ID!): Boolean!
   patchPublishRule(id: ID!, patches: [JSONPatch!]!): Asset!
   updateVideoStatus(id: ID!, type: VideoType!, status: String!): Asset!
+  updateVideoVariantStatus(id: ID!, type: VideoType!, variant: String!, status: String!): Asset!
   addVideo(id: ID!, type: VideoType!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
   deleteVideo(id: ID!, type: VideoType!): Asset!
 

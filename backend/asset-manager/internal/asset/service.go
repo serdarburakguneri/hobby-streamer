@@ -33,9 +33,11 @@ type AssetService interface {
 	AddVideo(ctx context.Context, id string, videoType VideoType, video *Video) error
 	DeleteVideo(ctx context.Context, id string, videoType VideoType) error
 	UpdateVideoStatus(ctx context.Context, id string, videoType VideoType, status string) error
-	AddVideoFormat(ctx context.Context, id string, videoType VideoType, format string, videoFormat *VideoFormat) error
-	UpdateVideoFormat(ctx context.Context, id string, videoType VideoType, format string, videoFormat *VideoFormat) error
-	DeleteVideoFormat(ctx context.Context, id string, videoType VideoType, format string) error
+	AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
+	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
+	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
+	UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error
+	HandleStatusUpdateMessage(ctx context.Context, messageType string, payload map[string]interface{}) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
 	GetParent(ctx context.Context, childID string) (*Asset, error)
 	GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error)
@@ -306,8 +308,8 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 	for i, existingVideo := range asset.Videos {
 		if existingVideo.Type == videoType {
 			video.Type = videoType
-			if video.Status == "" {
-				video.Status = VideoStatusPending
+			if video.Raw != nil && video.Raw.Status == "" {
+				video.Raw.Status = VideoStatusPending
 			}
 			asset.Videos[i] = *video
 			err = s.Repo.SaveAsset(ctx, asset)
@@ -316,15 +318,15 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 			}
 
 			if s.SQSProducer != nil && video.Raw != nil {
-				s.sendAnalyzeJob(ctx, asset.ID, video.Raw.StorageLocation)
+				s.sendAnalyzeJob(ctx, asset.ID, videoType, video.Raw.StorageLocation)
 			}
 			return nil
 		}
 	}
 
 	video.Type = videoType
-	if video.Status == "" {
-		video.Status = VideoStatusPending
+	if video.Raw != nil && video.Raw.Status == "" {
+		video.Raw.Status = VideoStatusPending
 	}
 	asset.Videos = append(asset.Videos, *video)
 	err = s.Repo.SaveAsset(ctx, asset)
@@ -333,17 +335,19 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 	}
 
 	if s.SQSProducer != nil && video.Raw != nil {
-		s.sendAnalyzeJob(ctx, asset.ID, video.Raw.StorageLocation)
+		s.sendAnalyzeJob(ctx, asset.ID, videoType, video.Raw.StorageLocation)
 	}
 	return nil
 }
 
-func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, storageLocation S3Object) {
+func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoType VideoType, storageLocation S3Object) {
 	log := logger.Get().WithService("asset-service")
 
 	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
 	payload := map[string]interface{}{
-		"input": input,
+		"input":     input,
+		"assetId":   assetID,
+		"videoType": string(videoType),
 	}
 
 	err := s.SQSProducer.SendMessage(ctx, "analyze", payload)
@@ -384,22 +388,10 @@ func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre 
 }
 
 func (s *Service) UpdateVideoStatus(ctx context.Context, id string, videoType VideoType, status string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			asset.Videos[i].Status = status
-			return s.Repo.SaveAsset(ctx, asset)
-		}
-	}
-
-	return errors.New("video not found")
+	return s.UpdateVideoVariantStatus(ctx, id, videoType, VideoVariantRaw, status)
 }
 
-func (s *Service) AddVideoFormat(ctx context.Context, id string, videoType VideoType, format string, videoFormat *VideoFormat) error {
+func (s *Service) AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
 		return err
@@ -407,15 +399,15 @@ func (s *Service) AddVideoFormat(ctx context.Context, id string, videoType Video
 
 	for i, video := range asset.Videos {
 		if video.Type == videoType {
-			switch format {
-			case VideoFormatRaw:
-				asset.Videos[i].Raw = videoFormat
-			case VideoFormatHLS:
-				asset.Videos[i].HLS = videoFormat
-			case VideoFormatDASH:
-				asset.Videos[i].DASH = videoFormat
+			switch variant {
+			case VideoVariantRaw:
+				asset.Videos[i].Raw = videoVariant
+			case VideoVariantHLS:
+				asset.Videos[i].HLS = videoVariant
+			case VideoVariantDASH:
+				asset.Videos[i].DASH = videoVariant
 			default:
-				return errors.New("invalid format")
+				return errors.New("invalid variant")
 			}
 			return s.Repo.SaveAsset(ctx, asset)
 		}
@@ -424,11 +416,11 @@ func (s *Service) AddVideoFormat(ctx context.Context, id string, videoType Video
 	return errors.New("video not found")
 }
 
-func (s *Service) UpdateVideoFormat(ctx context.Context, id string, videoType VideoType, format string, videoFormat *VideoFormat) error {
-	return s.AddVideoFormat(ctx, id, videoType, format, videoFormat)
+func (s *Service) UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
+	return s.AddVideoVariant(ctx, id, videoType, variant, videoVariant)
 }
 
-func (s *Service) DeleteVideoFormat(ctx context.Context, id string, videoType VideoType, format string) error {
+func (s *Service) DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
 		return err
@@ -436,21 +428,110 @@ func (s *Service) DeleteVideoFormat(ctx context.Context, id string, videoType Vi
 
 	for i, video := range asset.Videos {
 		if video.Type == videoType {
-			switch format {
-			case VideoFormatRaw:
+			switch variant {
+			case VideoVariantRaw:
 				asset.Videos[i].Raw = nil
-			case VideoFormatHLS:
+			case VideoVariantHLS:
 				asset.Videos[i].HLS = nil
-			case VideoFormatDASH:
+			case VideoVariantDASH:
 				asset.Videos[i].DASH = nil
 			default:
-				return errors.New("invalid format")
+				return errors.New("invalid variant")
 			}
 			return s.Repo.SaveAsset(ctx, asset)
 		}
 	}
 
 	return errors.New("video not found")
+}
+
+func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error {
+	asset, err := s.Repo.GetAssetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	for i, video := range asset.Videos {
+		if video.Type == videoType {
+			switch variant {
+			case VideoVariantRaw:
+				if asset.Videos[i].Raw != nil {
+					asset.Videos[i].Raw.Status = status
+				}
+			case VideoVariantHLS:
+				if asset.Videos[i].HLS != nil {
+					asset.Videos[i].HLS.Status = status
+				}
+			case VideoVariantDASH:
+				if asset.Videos[i].DASH != nil {
+					asset.Videos[i].DASH.Status = status
+				}
+			default:
+				return errors.New("invalid variant")
+			}
+			return s.Repo.SaveAsset(ctx, asset)
+		}
+	}
+
+	return errors.New("video not found")
+}
+
+func (s *Service) HandleStatusUpdateMessage(ctx context.Context, messageType string, payload map[string]interface{}) error {
+	log := logger.Get().WithService("asset-service")
+
+	if messageType != "update-video-variant-status" {
+		return nil
+	}
+
+	assetID, ok := payload["assetId"].(string)
+	if !ok {
+		log.Error("Invalid assetId in status update message")
+		return errors.New("invalid assetId")
+	}
+
+	videoTypeStr, ok := payload["videoType"].(string)
+	if !ok {
+		log.Error("Invalid videoType in status update message")
+		return errors.New("invalid videoType")
+	}
+
+	variant, ok := payload["variant"].(string)
+	if !ok {
+		log.Error("Invalid variant in status update message")
+		return errors.New("invalid variant")
+	}
+
+	status, ok := payload["status"].(string)
+	if !ok {
+		log.Error("Invalid status in status update message")
+		return errors.New("invalid status")
+	}
+
+	var videoType VideoType
+	switch videoTypeStr {
+	case "main":
+		videoType = VideoTypeMain
+	case "trailer":
+		videoType = VideoTypeTrailer
+	case "behind_the_scenes":
+		videoType = VideoTypeBehind
+	case "interview":
+		videoType = VideoTypeInterview
+	default:
+		log.Error("Unknown video type in status update message", "video_type", videoTypeStr)
+		return errors.New("unknown video type")
+	}
+
+	log.Info("Processing status update", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+
+	err := s.UpdateVideoVariantStatus(ctx, assetID, videoType, variant, status)
+	if err != nil {
+		log.WithError(err).Error("Failed to update video variant status", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+		return err
+	}
+
+	log.Info("Status update processed successfully", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+	return nil
 }
 
 func (s *Service) validateAsset(a *Asset) error {

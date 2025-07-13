@@ -15,19 +15,30 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 type AnalyzePayload struct {
-	Input string `json:"input"`
+	Input     string `json:"input"`
+	AssetID   string `json:"assetId"`
+	VideoType string `json:"videoType"`
 }
 
 type AnalyzeRunner struct {
-	logger *logger.Logger
+	logger         *logger.Logger
+	statusProducer *sqs.Producer
 }
 
 func NewAnalyzeRunner() *AnalyzeRunner {
 	return &AnalyzeRunner{
 		logger: logger.WithService("analyze-runner"),
+	}
+}
+
+func NewAnalyzeRunnerWithStatusProducer(statusProducer *sqs.Producer) *AnalyzeRunner {
+	return &AnalyzeRunner{
+		logger:         logger.WithService("analyze-runner"),
+		statusProducer: statusProducer,
 	}
 }
 
@@ -40,7 +51,11 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		return err
 	}
 
-	log.Info("Starting video analysis", "input", p.Input)
+	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_type", p.VideoType)
+
+	if a.statusProducer != nil {
+		a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyzing")
+	}
 
 	var localPath string
 	var err error
@@ -49,6 +64,9 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		localPath, err = a.downloadFromS3(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download from S3", "input", p.Input)
+			if a.statusProducer != nil {
+				a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_failed")
+			}
 			return err
 		}
 		defer os.Remove(localPath)
@@ -61,12 +79,38 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "output", string(out))
+		if a.statusProducer != nil {
+			a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_failed")
+		}
 		return err
 	}
 
 	log.Info("Video analysis completed successfully", "input", localPath, "output_length", len(out))
 	log.Debug("FFmpeg analysis output", "output", string(out))
+
+	if a.statusProducer != nil {
+		a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_completed")
+	}
+
 	return nil
+}
+
+func (a *AnalyzeRunner) sendStatusUpdate(ctx context.Context, assetID, videoType, status string) {
+	log := a.logger.WithContext(ctx)
+
+	payload := map[string]interface{}{
+		"assetId":   assetID,
+		"videoType": videoType,
+		"variant":   "raw",
+		"status":    status,
+	}
+
+	err := a.statusProducer.SendMessage(ctx, "update-video-variant-status", payload)
+	if err != nil {
+		log.WithError(err).Error("Failed to send status update", "asset_id", assetID, "status", status)
+	} else {
+		log.Info("Status update sent successfully", "asset_id", assetID, "status", status)
+	}
 }
 
 func (a *AnalyzeRunner) downloadFromS3(ctx context.Context, s3URL string) (string, error) {

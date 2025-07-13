@@ -35,11 +35,13 @@ const (
 )
 
 const (
-	VideoStatusPending     = "pending"
-	VideoStatusAnalyzing   = "analyzing"
-	VideoStatusTranscoding = "transcoding"
-	VideoStatusReady       = "ready"
-	VideoStatusFailed      = "failed"
+	VideoStatusPending          = "pending"
+	VideoStatusAnalyzing        = "analyzing"
+	VideoStatusTranscoding      = "transcoding"
+	VideoStatusReady            = "ready"
+	VideoStatusFailed           = "failed"
+	VideoStatusAnalyzeCompleted = "analyze_completed"
+	VideoStatusAnalyzeFailed    = "analyze_failed"
 )
 
 const (
@@ -50,9 +52,9 @@ const (
 )
 
 const (
-	VideoFormatRaw  = "raw"
-	VideoFormatHLS  = "hls"
-	VideoFormatDASH = "dash"
+	VideoVariantRaw  = "raw"
+	VideoVariantHLS  = "hls"
+	VideoVariantDASH = "dash"
 )
 
 var (

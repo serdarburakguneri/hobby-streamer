@@ -59,7 +59,8 @@ export AWS_SECRET_ACCESS_KEY
 export LOCALSTACK_ENDPOINT
 export LOCALSTACK_EXTERNAL_ENDPOINT
 export SQS_QUEUE_URL
-export DELETE_ASSET_FILES_LAMBDA_ENDPOINT
+export STATUS_QUEUE_URL
+export DELETE_FILES_LAMBDA_ENDPOINT
 
 # Stop all running containers
 if docker-compose ps | grep -q 'Up'; then
@@ -125,12 +126,19 @@ aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket 
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket transcoded-storage --cors-configuration file://cors.json
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket thumbnails-storage --cors-configuration file://cors.json
 
-# Create SQS queue
+# Create SQS queues
 if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs get-queue-url --queue-name transcoder-jobs --region $AWS_REGION > /dev/null 2>&1; then
   echo "[INFO] Creating SQS queue: transcoder-jobs"
   aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs create-queue --queue-name transcoder-jobs --region $AWS_REGION > /dev/null
 else
   echo "[INFO] SQS queue transcoder-jobs already exists."
+fi
+
+if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs get-queue-url --queue-name status-updates --region $AWS_REGION > /dev/null 2>&1; then
+  echo "[INFO] Creating SQS queue: status-updates"
+  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs create-queue --queue-name status-updates --region $AWS_REGION > /dev/null
+else
+  echo "[INFO] SQS queue status-updates already exists."
 fi
 
 # Build and deploy the presigned upload URL Lambda
@@ -222,16 +230,20 @@ echo "[INFO] API Gateway URL: http://localhost:4566/restapis/$API_ID/dev/_user_r
 
 # Update frontend with new API Gateway ID and URLs
 echo "[INFO] Updating frontend with new API Gateway configuration..."
-sed -i.bak "s/getEnvVar('REACT_APP_API_GATEWAY_ID', '[^']*')/getEnvVar('REACT_APP_API_GATEWAY_ID', '$API_ID')/" frontend/HobbyStreamerCMS/src/config/api.ts
-sed -i.bak "s|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', '[^']*')|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev')|" frontend/HobbyStreamerCMS/src/config/api.ts
-sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/auth')|" frontend/HobbyStreamerCMS/src/config/api.ts
-sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s/getEnvVar('REACT_APP_API_GATEWAY_ID', '[^']*')/getEnvVar('REACT_APP_API_GATEWAY_ID', '$API_ID')/" \
+  frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', '[^']*')|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev')|" \
+  frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/auth')|" \
+  frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" \
+  frontend/HobbyStreamerCMS/src/config/api.ts
 rm -f frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 
 # Start and rebuild all backend services
 echo "[INFO] Building and starting all backend services with the latest code..."
-docker-compose up --build -d auth-service asset-manager transcoder
+docker-compose up -d auth-service asset-manager transcoder
 
 # Wait for services to be ready
 echo "[INFO] Waiting for services to be ready..."

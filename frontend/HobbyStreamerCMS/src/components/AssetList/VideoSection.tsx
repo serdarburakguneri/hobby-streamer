@@ -97,12 +97,12 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
               </View>
               <View style={styles.videoStatus}>
                 <Ionicons 
-                  name={getStatusIcon(video.status || 'unknown') as any} 
+                  name={getStatusIcon(video.raw?.status || 'unknown') as any} 
                   size={14} 
-                  color={getStatusColor(video.status || 'unknown')} 
+                  color={getStatusColor(video.raw?.status || 'unknown')} 
                 />
                 <Text style={styles.videoStatusText}>
-                  Status: {video.status || 'Unknown'}
+                  Status: {video.raw?.status || 'Unknown'}
                 </Text>
               </View>
               {video.raw && (

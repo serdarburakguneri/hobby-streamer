@@ -170,21 +170,21 @@ create_options_method() {
 echo "[INFO] Setting up auth endpoints..."
 
 # Login endpoint
-create_method_with_cors $LOGIN_ID "POST" "HTTP_PROXY" "http://auth-service:8080/auth/login"
+create_method_with_cors $LOGIN_ID "POST" "HTTP_PROXY" "http://host.docker.internal:8080/auth/login"
 create_options_method $LOGIN_ID
 
 # Validate endpoint
-create_method_with_cors $VALIDATE_ID "POST" "HTTP_PROXY" "http://auth-service:8080/auth/validate"
+create_method_with_cors $VALIDATE_ID "POST" "HTTP_PROXY" "http://host.docker.internal:8080/auth/validate"
 create_options_method $VALIDATE_ID
 
 # Refresh endpoint
-create_method_with_cors $REFRESH_ID "POST" "HTTP_PROXY" "http://auth-service:8080/auth/refresh"
+create_method_with_cors $REFRESH_ID "POST" "HTTP_PROXY" "http://host.docker.internal:8080/auth/refresh"
 create_options_method $REFRESH_ID
 
 # Create GraphQL endpoint
 echo "[INFO] Setting up GraphQL endpoint..."
-create_method_with_cors $GRAPHQL_ID "POST" "HTTP_PROXY" "http://asset-manager:8080/graphql"
-create_method_with_cors $GRAPHQL_ID "GET" "HTTP_PROXY" "http://asset-manager:8080/graphql"
+create_method_with_cors $GRAPHQL_ID "POST" "HTTP_PROXY" "http://host.docker.internal:8082/graphql"
+create_method_with_cors $GRAPHQL_ID "GET" "HTTP_PROXY" "http://host.docker.internal:8082/graphql"
 create_options_method $GRAPHQL_ID
 
 # Create upload endpoint (Lambda integration)

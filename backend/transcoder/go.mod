@@ -8,11 +8,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.26.6
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.30.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs v0.0.0
 )
 
 replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs => ../pkg/sqs
 )
 
 require (

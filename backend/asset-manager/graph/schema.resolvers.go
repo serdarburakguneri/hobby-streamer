@@ -335,6 +335,33 @@ func (r *mutationResolver) UpdateVideoStatus(ctx context.Context, id string, typ
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
+// UpdateVideoVariantStatus is the resolver for the updateVideoVariantStatus field.
+func (r *mutationResolver) UpdateVideoVariantStatus(ctx context.Context, id string, typeArg model.VideoType, variant string, status string) (*model.Asset, error) {
+	var assetVideoType asset.VideoType
+	switch typeArg {
+	case model.VideoTypeMain:
+		assetVideoType = asset.VideoTypeMain
+	case model.VideoTypeTrailer:
+		assetVideoType = asset.VideoTypeTrailer
+	case model.VideoTypeBehindTheScenes:
+		assetVideoType = asset.VideoTypeBehind
+	case model.VideoTypeInterview:
+		assetVideoType = asset.VideoTypeInterview
+	}
+
+	err := r.Resolver.AssetService.UpdateVideoVariantStatus(ctx, id, assetVideoType, variant, status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update video variant status: %w", err)
+	}
+
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated asset: %w", err)
+	}
+
+	return mapAssetToGraphQL(updatedAsset), nil
+}
+
 // AddVideo is the resolver for the addVideo field.
 func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg model.VideoType, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
 	var assetVideoType asset.VideoType
@@ -355,16 +382,16 @@ func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg mode
 		URL:    url,
 	}
 
-	videoFormat := &asset.VideoFormat{
+	videoVariant := &asset.VideoVariant{
 		StorageLocation: s3Object,
 		ContentType:     contentType,
 		Size:            int64(size),
+		Status:          "pending",
 	}
 
 	video := &asset.Video{
-		Type:   assetVideoType,
-		Raw:    videoFormat,
-		Status: "pending",
+		Type: assetVideoType,
+		Raw:  videoVariant,
 	}
 
 	err := r.Resolver.AssetService.AddVideo(ctx, id, assetVideoType, video)

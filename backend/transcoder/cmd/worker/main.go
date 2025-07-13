@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/app"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/job"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/queue"
@@ -28,8 +29,24 @@ func main() {
 
 	log.Debug("Queue configuration", "queue_url", queueURL)
 
+	var statusProducer *sqs.Producer
+	statusQueueURL := os.Getenv("STATUS_QUEUE_URL")
+	if statusQueueURL != "" {
+		var err error
+		statusProducer, err = sqs.NewProducer(ctx, statusQueueURL)
+		if err != nil {
+			log.WithError(err).Error("Failed to create status SQS producer, continuing without status updates")
+		} else {
+			log.Info("Status SQS producer initialized successfully", "status_queue_url", statusQueueURL)
+		}
+	}
+
 	r := job.NewRegistry()
-	r.Register("analyze", job.NewAnalyzeRunner())
+	if statusProducer != nil {
+		r.Register("analyze", job.NewAnalyzeRunnerWithStatusProducer(statusProducer))
+	} else {
+		r.Register("analyze", job.NewAnalyzeRunner())
+	}
 	r.Register("transcode-hls", job.NewTranscodeHLSRunner())
 	r.Register("transcode-dash", job.NewTranscodeDASHRunner())
 	d := app.NewDispatcher(r)

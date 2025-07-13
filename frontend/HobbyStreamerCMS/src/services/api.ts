@@ -266,6 +266,7 @@ const GET_ASSETS = gql`
               cdnPrefix
             }
             metadata
+            status
           }
           hls {
             storageLocation {
@@ -285,6 +286,7 @@ const GET_ASSETS = gql`
               cdnPrefix
             }
             metadata
+            status
           }
           dash {
             storageLocation {
@@ -304,6 +306,7 @@ const GET_ASSETS = gql`
               cdnPrefix
             }
             metadata
+            status
           }
           thumbnail {
             fileName
@@ -319,7 +322,6 @@ const GET_ASSETS = gql`
             contentType
             metadata
           }
-          status
         }
       }
       nextKey
@@ -374,6 +376,7 @@ const GET_BUCKETS = gql`
                 cdnPrefix
               }
               metadata
+              status
             }
             hls {
               storageLocation {
@@ -393,6 +396,7 @@ const GET_BUCKETS = gql`
                 cdnPrefix
               }
               metadata
+              status
             }
             dash {
               storageLocation {
@@ -412,6 +416,7 @@ const GET_BUCKETS = gql`
                 cdnPrefix
               }
               metadata
+              status
             }
             thumbnail {
               fileName
@@ -427,7 +432,6 @@ const GET_BUCKETS = gql`
               contentType
               metadata
             }
-            status
           }
         }
       }
@@ -534,8 +538,8 @@ const GET_BUCKET = gql`
             size
             contentType
             metadata
+            status
           }
-          status
         }
       }
     }
@@ -643,8 +647,8 @@ const GET_ASSETS_BY_PARENT = gql`
             size
             contentType
             metadata
+            status
           }
-          status
         }
       }
       nextKey
@@ -700,6 +704,7 @@ const GET_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -719,6 +724,7 @@ const GET_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -738,6 +744,7 @@ const GET_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -753,7 +760,6 @@ const GET_ASSET = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -821,6 +827,7 @@ const CREATE_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -840,6 +847,7 @@ const CREATE_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -859,6 +867,7 @@ const CREATE_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -874,7 +883,6 @@ const CREATE_ASSET = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -928,6 +936,7 @@ const PATCH_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -947,6 +956,7 @@ const PATCH_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -966,6 +976,7 @@ const PATCH_ASSET = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -981,7 +992,6 @@ const PATCH_ASSET = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -1034,6 +1044,7 @@ const PATCH_PUBLISH_RULE = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -1053,6 +1064,7 @@ const PATCH_PUBLISH_RULE = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -1072,6 +1084,7 @@ const PATCH_PUBLISH_RULE = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -1087,7 +1100,6 @@ const PATCH_PUBLISH_RULE = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -1134,6 +1146,7 @@ const DELETE_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -1153,6 +1166,7 @@ const DELETE_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -1172,6 +1186,7 @@ const DELETE_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -1187,7 +1202,6 @@ const DELETE_VIDEO = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -1228,6 +1242,7 @@ const UPDATE_VIDEO_STATUS = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -1247,6 +1262,7 @@ const UPDATE_VIDEO_STATUS = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -1266,6 +1282,7 @@ const UPDATE_VIDEO_STATUS = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -1281,7 +1298,6 @@ const UPDATE_VIDEO_STATUS = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }
@@ -1322,6 +1338,7 @@ const ADD_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         hls {
           storageLocation {
@@ -1341,6 +1358,7 @@ const ADD_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         dash {
           storageLocation {
@@ -1360,6 +1378,7 @@ const ADD_VIDEO = gql`
             cdnPrefix
           }
           metadata
+          status
         }
         thumbnail {
           fileName
@@ -1375,7 +1394,6 @@ const ADD_VIDEO = gql`
           contentType
           metadata
         }
-        status
       }
     }
   }

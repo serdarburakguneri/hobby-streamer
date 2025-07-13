@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +30,7 @@ func main() {
 	neo4jPassword := getEnv("NEO4J_PASSWORD", "password")
 	port := getEnv("PORT", "8080")
 	sqsQueueURL := getEnv("SQS_QUEUE_URL", "http://localhost:4566/000000000000/transcoder-jobs")
+	statusQueueURL := getEnv("STATUS_QUEUE_URL", "http://localhost:4566/000000000000/status-updates")
 
 	driver, err := neo4j.NewDriver(neo4jURI, neo4j.BasicAuth(neo4jUsername, neo4jPassword, ""))
 	if err != nil {
@@ -57,6 +59,25 @@ func main() {
 		}
 	} else {
 		assetService = asset.NewService(assetRepo)
+	}
+
+	if statusQueueURL != "" {
+		statusConsumer, err := sqs.NewConsumer(context.Background(), statusQueueURL)
+		if err != nil {
+			log.WithError(err).Error("Failed to create status queue consumer, continuing without status updates")
+		} else {
+			log.Info("Status queue consumer initialized successfully", "status_queue_url", statusQueueURL)
+			go func() {
+				statusConsumer.Start(context.Background(), func(msg sqs.Message) error {
+					var payload map[string]interface{}
+					if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+						log.WithError(err).Error("Failed to unmarshal status message payload")
+						return err
+					}
+					return assetService.HandleStatusUpdateMessage(context.Background(), msg.Type, payload)
+				})
+			}()
+		}
 	}
 
 	bucketService := bucket.NewService(bucketRepo)
