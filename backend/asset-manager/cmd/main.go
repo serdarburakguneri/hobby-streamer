@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/graph"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
+	assetconsumer "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/consumer"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -29,7 +29,7 @@ func main() {
 	neo4jUsername := getEnv("NEO4J_USERNAME", "neo4j")
 	neo4jPassword := getEnv("NEO4J_PASSWORD", "password")
 	port := getEnv("PORT", "8080")
-	sqsQueueURL := getEnv("SQS_QUEUE_URL", "http://localhost:4566/000000000000/transcoder-jobs")
+	transcoderQueueURL := getEnv("TRANSCODER_QUEUE_URL", "http://localhost:4566/000000000000/transcoder-jobs")
 	statusQueueURL := getEnv("STATUS_QUEUE_URL", "http://localhost:4566/000000000000/status-updates")
 
 	driver, err := neo4j.NewDriver(neo4jURI, neo4j.BasicAuth(neo4jUsername, neo4jPassword, ""))
@@ -48,36 +48,29 @@ func main() {
 	bucketRepo := bucket.NewRepository(driver)
 
 	var assetService asset.AssetService
-	if sqsQueueURL != "" {
-		sqsProducer, err := sqs.NewProducer(context.Background(), sqsQueueURL)
+	if transcoderQueueURL != "" {
+		sqsProducer, err := sqs.NewProducer(context.Background(), transcoderQueueURL)
 		if err != nil {
 			log.WithError(err).Error("Failed to create SQS producer, falling back to service without SQS")
 			assetService = asset.NewService(assetRepo)
 		} else {
-			log.Info("SQS producer initialized successfully", "queue_url", sqsQueueURL)
+			log.Info("SQS producer initialized successfully", "queue_url", transcoderQueueURL)
 			assetService = asset.NewServiceWithSQS(assetRepo, sqsProducer)
 		}
 	} else {
 		assetService = asset.NewService(assetRepo)
 	}
 
+	consumerRegistry := sqs.NewConsumerRegistry()
+
 	if statusQueueURL != "" {
-		statusConsumer, err := sqs.NewConsumer(context.Background(), statusQueueURL)
-		if err != nil {
-			log.WithError(err).Error("Failed to create status queue consumer, continuing without status updates")
-		} else {
-			log.Info("Status queue consumer initialized successfully", "status_queue_url", statusQueueURL)
-			go func() {
-				statusConsumer.Start(context.Background(), func(msg sqs.Message) error {
-					var payload map[string]interface{}
-					if err := json.Unmarshal(msg.Payload, &payload); err != nil {
-						log.WithError(err).Error("Failed to unmarshal status message payload")
-						return err
-					}
-					return assetService.HandleStatusUpdateMessage(context.Background(), msg.Type, payload)
-				})
-			}()
-		}
+		statusConsumer := assetconsumer.NewStatusConsumer(assetService)
+		consumerRegistry.Register(statusQueueURL, statusConsumer.HandleMessage)
+		log.Info("Status consumer registered", "queue_url", statusQueueURL)
+	}
+
+	if err := consumerRegistry.Start(context.Background()); err != nil {
+		log.WithError(err).Error("Failed to start consumer registry")
 	}
 
 	bucketService := bucket.NewService(bucketRepo)
@@ -90,15 +83,10 @@ func main() {
 
 	resolver := graph.NewResolver(assetService, bucketService)
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: resolver})
+	srv := handler.New(schema)
 
-	srv := handler.NewDefaultServer(schema)
-
-	// Use simple http.Handle for GraphQL routes
-	http.Handle("/graphql", srv)
-	http.Handle("/graphql/", srv)
-
-	// Mount the http.Handle routes on the main router
-	router.PathPrefix("/graphql").Handler(http.DefaultServeMux)
+	router.Handle("/graphql", srv)
+	router.Handle("/graphql/", srv)
 
 	if getEnv("ENV", "development") == "development" {
 		playgroundHandler := playground.Handler("GraphQL", "/graphql")
@@ -127,6 +115,8 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	consumerRegistry.Stop()
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.WithError(err).Error("Server forced to shutdown")

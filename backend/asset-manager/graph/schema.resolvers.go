@@ -308,33 +308,6 @@ func (r *mutationResolver) PatchPublishRule(ctx context.Context, id string, patc
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
-// UpdateVideoStatus is the resolver for the updateVideoStatus field.
-func (r *mutationResolver) UpdateVideoStatus(ctx context.Context, id string, typeArg model.VideoType, status string) (*model.Asset, error) {
-	var assetVideoType asset.VideoType
-	switch typeArg {
-	case model.VideoTypeMain:
-		assetVideoType = asset.VideoTypeMain
-	case model.VideoTypeTrailer:
-		assetVideoType = asset.VideoTypeTrailer
-	case model.VideoTypeBehindTheScenes:
-		assetVideoType = asset.VideoTypeBehind
-	case model.VideoTypeInterview:
-		assetVideoType = asset.VideoTypeInterview
-	}
-
-	err := r.Resolver.AssetService.UpdateVideoStatus(ctx, id, assetVideoType, status)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update video status: %w", err)
-	}
-
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get updated asset: %w", err)
-	}
-
-	return mapAssetToGraphQL(updatedAsset), nil
-}
-
 // UpdateVideoVariantStatus is the resolver for the updateVideoVariantStatus field.
 func (r *mutationResolver) UpdateVideoVariantStatus(ctx context.Context, id string, typeArg model.VideoType, variant string, status string) (*model.Asset, error) {
 	var assetVideoType asset.VideoType

@@ -1,6 +1,8 @@
 module github.com/serdarburakguneri/hobby-streamer/backend/transcoder
 
-go 1.22
+go 1.23.0
+
+toolchain go1.23.4
 
 require (
 	github.com/aws/aws-sdk-go v1.53.0

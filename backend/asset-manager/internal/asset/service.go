@@ -32,7 +32,6 @@ type AssetService interface {
 	DeleteImage(ctx context.Context, id string, filename string) error
 	AddVideo(ctx context.Context, id string, videoType VideoType, video *Video) error
 	DeleteVideo(ctx context.Context, id string, videoType VideoType) error
-	UpdateVideoStatus(ctx context.Context, id string, videoType VideoType, status string) error
 	AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
 	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
 	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
@@ -385,10 +384,6 @@ func (s *Service) GetParent(ctx context.Context, childID string) (*Asset, error)
 
 func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error) {
 	return s.Repo.GetAssetsByTypeAndGenre(ctx, assetType, genre)
-}
-
-func (s *Service) UpdateVideoStatus(ctx context.Context, id string, videoType VideoType, status string) error {
-	return s.UpdateVideoVariantStatus(ctx, id, videoType, VideoVariantRaw, status)
 }
 
 func (s *Service) AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {

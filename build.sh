@@ -299,7 +299,7 @@ else
 fi
 
 echo ""
-echo "[INFO] 🎉 Build completed successfully!"
+echo "[INFO] Build completed successfully!"
 echo "[INFO] All services are running and ready for development."
 echo ""
 echo "[INFO] Quick access:"

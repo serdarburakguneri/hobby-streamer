@@ -1207,101 +1207,7 @@ const DELETE_VIDEO = gql`
   }
 `;
 
-const UPDATE_VIDEO_STATUS = gql`
-  mutation UpdateVideoStatus($id: ID!, $type: VideoType!, $status: String!) {
-    updateVideoStatus(id: $id, type: $type, status: $status) {
-      id
-      title
-      description
-      type
-      genre
-      genres
-      tags
-      status
-      createdAt
-      updatedAt
-      metadata
-      ownerId
-      videos {
-        type
-        raw {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-          }
-          metadata
-          status
-        }
-        hls {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-          }
-          metadata
-          status
-        }
-        dash {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-          }
-          metadata
-          status
-        }
-        thumbnail {
-          fileName
-          url
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          size
-          contentType
-          metadata
-        }
-      }
-    }
-  }
-`;
+
 
 const ADD_VIDEO = gql`
   mutation AddVideo($id: ID!, $type: VideoType!, $bucket: String!, $key: String!, $url: String!, $contentType: String!, $size: Int!) {
@@ -1749,13 +1655,7 @@ export const useAssetService = () => {
     },
 
 
-    updateVideoStatus: async (id: string, videoType: string, status: string): Promise<Asset> => {
-      const response = await client.mutate({
-        mutation: UPDATE_VIDEO_STATUS,
-        variables: { id, type: videoType, status },
-      });
-      return convertAssetMetadata(response.data.updateVideoStatus);
-    },
+
 
 
     addVideo: async (id: string, videoType: string, bucket: string, key: string, url: string, contentType: string, size: number): Promise<Asset> => {

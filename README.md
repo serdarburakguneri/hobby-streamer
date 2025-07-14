@@ -24,11 +24,9 @@ The project consists of several microservices working together to provide video 
 ### Infrastructure & DevOps
 - Docker Compose – Containerized development environment
 - LocalStack – Local AWS service emulation (S3, SQS, Lambda)
-- SQS – Job processing for transcoding workflows
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
-- Apollo Client – GraphQL client with caching
 - Expo – Development platform for React Native applications
 
 ## Architecture
@@ -44,7 +42,7 @@ The project consists of several microservices working together to provide video 
 
 ### Storage Service
 - [Generate Presigned Upload URL Lambda](backend/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
-- [Delete Asset Files Lambda](backend/storage/cmd/delete_asset_files/README.md): Lambda for cleaning up S3 files when assets are deleted
+- [Delete Files Lambda](backend/storage/cmd/delete_files/README.md): Lambda for cleaning up S3 files when assets are deleted
 
 ### Frontend Services
 - [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
@@ -52,14 +50,15 @@ The project consists of several microservices working together to provide video 
 ### Shared Libraries
 - [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
 - [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
+- [SQS Package](backend/pkg/sqs/README.md): AWS SQS client library with producer, consumer, and consumer registry functionality
 
 ## Getting Started
 
 ### Prerequisites
 - Docker installed
 - Go (version 1.21+) installed
-- Python installed
 - FFmpeg installed (required for video transcoding)
+- Python installed (For localstack)
 - pipx installed (for installing Python applications)
 - awscli-local (awslocal) installed:
   ```sh

@@ -6,10 +6,11 @@ A simple GraphQL API service for managing media assets and buckets in the hobby 
 
 - GraphQL API for assets and buckets
 - Asset status management (draft/published)
-- Video processing status tracking
+- Video processing status tracking via SQS status queue
 - Hierarchical asset relationships
 - Neo4j graph database backend
 - JWT authentication via Keycloak
+- SQS integration for transcoder job publishing and status updates
 
 ## Quick Start
 
@@ -17,6 +18,7 @@ A simple GraphQL API service for managing media assets and buckets in the hobby 
 - Go 1.23+
 - Neo4j database
 - Keycloak server
+- LocalStack (for local AWS emulation)
 
 ### Environment Variables
 ```
@@ -27,6 +29,8 @@ NEO4J_PASSWORD=password
 KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=hobby-realm
 KEYCLOAK_CLIENT_ID=asset-manager
+TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs
+STATUS_QUEUE_URL=http://localhost:4566/000000000000/status-updates
 ENV=development
 ```
 
@@ -130,6 +134,18 @@ mutation {
 }
 ```
 
+## Architecture
+
+### SQS Integration
+- **Transcoder Jobs**: Publishes video processing jobs to SQS queue for transcoder service
+- **Status Updates**: Consumes status update messages from transcoder service via SQS consumer registry
+- **Shared Package**: Uses `pkg/sqs` for both producer and consumer operations
+
+### Status Consumer
+- Automatically updates video variant statuses based on SQS messages
+- Handles status updates from transcoder service (analyzing, transcoding, ready, failed)
+- Runs as part of the consumer registry alongside the GraphQL server
+
 ## Project Structure
 
 ```
@@ -137,6 +153,7 @@ cmd/main.go          # Application entry point
 internal/
 ├── asset/           # Asset domain logic
 ├── bucket/          # Bucket domain logic
+├── consumer/        # SQS consumer handlers
 graph/
 ├── schema.graphqls  # GraphQL schema
 └── schema.resolvers.go # Resolvers
@@ -157,4 +174,4 @@ go build ./...
 Run tests:
 ```bash
 go test ./...
-``` 
+```
