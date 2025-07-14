@@ -65,22 +65,22 @@ func main() {
 	}
 
 	bucketService := bucket.NewService(bucketRepo)
-	
-	statusQueueURL := getEnv("STATUS_QUEUE_URL", "")
+
+	analyzeQueueURL := getEnv("ANALYZE_QUEUE_URL", "")
 	var consumerRegistry *sqs.ConsumerRegistry
-	if statusQueueURL != "" {
+	if analyzeQueueURL != "" {
 		consumerRegistry = sqs.NewConsumerRegistry()
-		statusConsumer := asset.NewVideoVariantStatusConsumer(assetService)
-		consumerRegistry.Register(statusQueueURL, statusConsumer.HandleMessage)
-		
+		analyzeConsumer := asset.NewAnalyzeCompletionConsumer(assetService)
+		consumerRegistry.Register(analyzeQueueURL, analyzeConsumer.HandleMessage)
+
 		go func() {
 			if err := consumerRegistry.Start(context.Background()); err != nil {
 				log.WithError(err).Error("Failed to start consumer registry")
 			}
 		}()
-		log.Info("Status update consumer initialized", "queue_url", statusQueueURL)
+		log.Info("Analyze completion consumer initialized", "queue_url", analyzeQueueURL)
 	} else {
-		log.Info("Status update consumer not initialized - no queue URL provided")
+		log.Info("Analyze completion consumer not initialized - no queue URL provided")
 	}
 
 	router := mux.NewRouter()

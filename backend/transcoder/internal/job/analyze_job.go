@@ -25,8 +25,8 @@ type AnalyzePayload struct {
 }
 
 type AnalyzeRunner struct {
-	logger         *logger.Logger
-	statusProducer *sqs.Producer
+	logger          *logger.Logger
+	analyzeProducer *sqs.Producer
 }
 
 func NewAnalyzeRunner() *AnalyzeRunner {
@@ -35,10 +35,10 @@ func NewAnalyzeRunner() *AnalyzeRunner {
 	}
 }
 
-func NewAnalyzeRunnerWithStatusProducer(statusProducer *sqs.Producer) *AnalyzeRunner {
+func NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *AnalyzeRunner {
 	return &AnalyzeRunner{
-		logger:         logger.WithService("analyze-runner"),
-		statusProducer: statusProducer,
+		logger:          logger.WithService("analyze-runner"),
+		analyzeProducer: analyzeProducer,
 	}
 }
 
@@ -53,10 +53,6 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 
 	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_type", p.VideoType)
 
-	if a.statusProducer != nil {
-		a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyzing")
-	}
-
 	var localPath string
 	var err error
 
@@ -64,8 +60,8 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		localPath, err = a.downloadFromS3(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download from S3", "input", p.Input)
-			if a.statusProducer != nil {
-				a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_failed")
+			if a.analyzeProducer != nil {
+				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, false, err.Error())
 			}
 			return err
 		}
@@ -79,8 +75,8 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "output", string(out))
-		if a.statusProducer != nil {
-			a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_failed")
+		if a.analyzeProducer != nil {
+			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, false, err.Error())
 		}
 		return err
 	}
@@ -88,28 +84,31 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	log.Info("Video analysis completed successfully", "input", localPath, "output_length", len(out))
 	log.Debug("FFmpeg analysis output", "output", string(out))
 
-	if a.statusProducer != nil {
-		a.sendStatusUpdate(ctx, p.AssetID, p.VideoType, "analyze_completed")
+	if a.analyzeProducer != nil {
+		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, true, "")
 	}
 
 	return nil
 }
 
-func (a *AnalyzeRunner) sendStatusUpdate(ctx context.Context, assetID, videoType, status string) {
+func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, videoType string, success bool, errorMessage string) {
 	log := a.logger.WithContext(ctx)
 
 	payload := map[string]interface{}{
 		"assetId":   assetID,
 		"videoType": videoType,
-		"variant":   "raw",
-		"status":    status,
+		"success":   success,
 	}
 
-	err := a.statusProducer.SendMessage(ctx, "update-video-variant-status", payload)
+	if !success && errorMessage != "" {
+		payload["error"] = errorMessage
+	}
+
+	err := a.analyzeProducer.SendMessage(ctx, "analyze-completed", payload)
 	if err != nil {
-		log.WithError(err).Error("Failed to send status update", "asset_id", assetID, "status", status)
+		log.WithError(err).Error("Failed to send analyze completed message", "asset_id", assetID, "success", success)
 	} else {
-		log.Info("Status update sent successfully", "asset_id", assetID, "status", status)
+		log.Info("Analyze completed message sent successfully", "asset_id", assetID, "success", success)
 	}
 }
 

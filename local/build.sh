@@ -14,6 +14,7 @@ else
   LOCALSTACK_ENDPOINT="http://localstack:4566"
   LOCALSTACK_EXTERNAL_ENDPOINT="http://localhost:4566"
   SQS_QUEUE_URL="http://localstack:4566/000000000000/transcoder-jobs"
+  ANALYZE_QUEUE_URL="http://localstack:4566/000000000000/analyze-completed"
   DELETE_FILES_LAMBDA_ENDPOINT="http://localstack:4566/2015-03-31/functions/delete-files/invocations"
 fi
 
@@ -61,7 +62,7 @@ export AWS_SECRET_ACCESS_KEY
 export LOCALSTACK_ENDPOINT
 export LOCALSTACK_EXTERNAL_ENDPOINT
 export SQS_QUEUE_URL
-export STATUS_QUEUE_URL
+export ANALYZE_QUEUE_URL
 export DELETE_FILES_LAMBDA_ENDPOINT
 
 # Stop all running containers
@@ -136,11 +137,11 @@ else
   echo "[INFO] SQS queue transcoder-jobs already exists."
 fi
 
-if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs get-queue-url --queue-name status-updates --region $AWS_REGION > /dev/null 2>&1; then
-  echo "[INFO] Creating SQS queue: status-updates"
-  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs create-queue --queue-name status-updates --region $AWS_REGION > /dev/null
+if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs get-queue-url --queue-name analyze-completed --region $AWS_REGION > /dev/null 2>&1; then
+  echo "[INFO] Creating SQS queue: analyze-completed"
+  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT sqs create-queue --queue-name analyze-completed --region $AWS_REGION > /dev/null
 else
-  echo "[INFO] SQS queue status-updates already exists."
+  echo "[INFO] SQS queue analyze-completed already exists."
 fi
 
 # Build and deploy the presigned upload URL Lambda
@@ -245,7 +246,7 @@ echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 
 # Start and rebuild all backend services
 echo "[INFO] Building and starting all backend services with the latest code..."
-docker-compose up -d auth-service asset-manager transcoder
+docker-compose up --build -d auth-service asset-manager transcoder
 
 # Wait for services to be ready
 echo "[INFO] Waiting for services to be ready..."

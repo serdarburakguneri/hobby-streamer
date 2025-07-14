@@ -36,7 +36,7 @@ type AssetService interface {
 	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
 	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
 	UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error
-	HandleStatusUpdateMessage(ctx context.Context, messageType string, payload map[string]interface{}) error
+	HandleAnalyzeCompletionMessage(ctx context.Context, messageType string, payload map[string]interface{}) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
 	GetParent(ctx context.Context, childID string) (*Asset, error)
 	GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error)
@@ -471,35 +471,29 @@ func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, video
 	return errors.New("video not found")
 }
 
-func (s *Service) HandleStatusUpdateMessage(ctx context.Context, messageType string, payload map[string]interface{}) error {
+func (s *Service) HandleAnalyzeCompletionMessage(ctx context.Context, messageType string, payload map[string]interface{}) error {
 	log := logger.Get().WithService("asset-service")
 
-	if messageType != "update-video-variant-status" {
+	if messageType != "analyze-completed" {
 		return nil
 	}
 
 	assetID, ok := payload["assetId"].(string)
 	if !ok {
-		log.Error("Invalid assetId in status update message")
+		log.Error("Invalid assetId in analyze completion message")
 		return errors.New("invalid assetId")
 	}
 
 	videoTypeStr, ok := payload["videoType"].(string)
 	if !ok {
-		log.Error("Invalid videoType in status update message")
+		log.Error("Invalid videoType in analyze completion message")
 		return errors.New("invalid videoType")
 	}
 
-	variant, ok := payload["variant"].(string)
+	success, ok := payload["success"].(bool)
 	if !ok {
-		log.Error("Invalid variant in status update message")
-		return errors.New("invalid variant")
-	}
-
-	status, ok := payload["status"].(string)
-	if !ok {
-		log.Error("Invalid status in status update message")
-		return errors.New("invalid status")
+		log.Error("Invalid success in analyze completion message")
+		return errors.New("invalid success")
 	}
 
 	var videoType VideoType
@@ -513,19 +507,26 @@ func (s *Service) HandleStatusUpdateMessage(ctx context.Context, messageType str
 	case "interview":
 		videoType = VideoTypeInterview
 	default:
-		log.Error("Unknown video type in status update message", "video_type", videoTypeStr)
+		log.Error("Unknown video type in analyze completion message", "video_type", videoTypeStr)
 		return errors.New("unknown video type")
 	}
 
-	log.Info("Processing status update", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+	var status string
+	if success {
+		status = VideoStatusReady
+	} else {
+		status = VideoStatusFailed
+	}
 
-	err := s.UpdateVideoVariantStatus(ctx, assetID, videoType, variant, status)
+	log.Info("Processing analyze completion", "asset_id", assetID, "video_type", videoType, "success", success, "status", status)
+
+	err := s.UpdateVideoVariantStatus(ctx, assetID, videoType, VideoVariantRaw, status)
 	if err != nil {
-		log.WithError(err).Error("Failed to update video variant status", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+		log.WithError(err).Error("Failed to update video variant status after analyze completion", "asset_id", assetID, "video_type", videoType, "status", status)
 		return err
 	}
 
-	log.Info("Status update processed successfully", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+	log.Info("Analyze completion processed successfully", "asset_id", assetID, "video_type", videoType, "success", success, "status", status)
 	return nil
 }
 

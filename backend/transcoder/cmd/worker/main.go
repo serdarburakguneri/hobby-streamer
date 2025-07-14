@@ -29,19 +29,19 @@ func main() {
 
 	log.Debug("Queue configuration", "queue_url", queueURL)
 
-	statusQueueURL := os.Getenv("STATUS_QUEUE_URL")
-	var statusProducer *sqs.Producer
-	if statusQueueURL != "" {
+	analyzeQueueURL := os.Getenv("ANALYZE_QUEUE_URL")
+	var analyzeProducer *sqs.Producer
+	if analyzeQueueURL != "" {
 		var err error
-		statusProducer, err = sqs.NewProducer(ctx, statusQueueURL)
+		analyzeProducer, err = sqs.NewProducer(ctx, analyzeQueueURL)
 		if err != nil {
-			log.WithError(err).Error("Failed to create status SQS producer, continuing without status updates")
+			log.WithError(err).Error("Failed to create analyze SQS producer, continuing without analyze completion messages")
 		} else {
-			log.Info("Status SQS producer initialized successfully", "status_queue_url", statusQueueURL)
+			log.Info("Analyze SQS producer initialized successfully", "analyze_queue_url", analyzeQueueURL)
 		}
 	}
 
-	analyzeRunner := job.NewAnalyzeRunnerWithStatusProducer(statusProducer)
+	analyzeRunner := job.NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer)
 	transcodeHLSRunner := job.NewTranscodeHLSRunner()
 	transcodeDASHRunner := job.NewTranscodeDASHRunner()
 
@@ -71,7 +71,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

@@ -30,7 +30,7 @@ KEYCLOAK_URL=http://localhost:8080
 KEYCLOAK_REALM=hobby-realm
 KEYCLOAK_CLIENT_ID=asset-manager
 TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs
-STATUS_QUEUE_URL=http://localhost:4566/000000000000/status-updates
+ANALYZE_QUEUE_URL=http://localhost:4566/000000000000/analyze-completed
 ENV=development
 ```
 
@@ -136,12 +136,12 @@ mutation {
 
 ### SQS Integration
 - **Transcoder Jobs**: Publishes video processing jobs to SQS queue for transcoder service
-- **Status Updates**: Consumes status update messages from transcoder service via SQS consumer registry
+- **Analyze Completion**: Consumes analyze completion messages from transcoder service via SQS consumer registry
 - **Shared Package**: Uses `pkg/sqs` for both producer and consumer operations
 
-### Status Consumer
-- Automatically updates video variant statuses based on SQS messages
-- Handles status updates from transcoder service (analyzing, transcoding, ready, failed)
+### Analyze Completion Consumer
+- Automatically updates video variant statuses based on analyze completion messages
+- Handles analyze completion from transcoder service (success/failure)
 - Runs as part of the consumer registry alongside the GraphQL server
 
 ## Project Structure

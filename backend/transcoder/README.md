@@ -14,7 +14,7 @@ The Transcoder service processes video jobs from an SQS queue, including analysi
 
 ## Environment Variables
 - `TRANSCODER_QUEUE_URL`: The SQS queue URL to consume jobs from (required)
-- `STATUS_QUEUE_URL`: Optional SQS queue URL for status updates
+- `ANALYZE_QUEUE_URL`: Optional SQS queue URL for analyze completion messages
 - `AWS_ENDPOINT`: Custom endpoint for AWS services (default: `http://localstack:4566` for LocalStack)
 - `AWS_REGION`: AWS region (default: `us-east-1`)
 - `AWS_ACCESS_KEY_ID`: AWS access key (default: `test` for LocalStack)

@@ -6,19 +6,19 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
-type VideoVariantStatusConsumer struct {
+type AnalyzeCompletionConsumer struct {
 	assetService AssetService
 	logger       *logger.Logger
 }
 
-func NewVideoVariantStatusConsumer(assetService AssetService) *VideoVariantStatusConsumer {
-	return &VideoVariantStatusConsumer{
+func NewAnalyzeCompletionConsumer(assetService AssetService) *AnalyzeCompletionConsumer {
+	return &AnalyzeCompletionConsumer{
 		assetService: assetService,
-		logger:       logger.Get().WithService("video-variant-status-consumer"),
+		logger:       logger.Get().WithService("analyze-completion-consumer"),
 	}
 }
 
-func (v *VideoVariantStatusConsumer) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
-	v.logger.Info("Processing video variant status message", "message_type", msgType)
-	return v.assetService.HandleStatusUpdateMessage(ctx, msgType, payload)
+func (a *AnalyzeCompletionConsumer) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
+	a.logger.Info("Processing analyze completion message", "message_type", msgType)
+	return a.assetService.HandleAnalyzeCompletionMessage(ctx, msgType, payload)
 }
