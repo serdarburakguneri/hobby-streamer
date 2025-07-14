@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
 
+cd "$(dirname "$0")"
+
 # Load configuration
-if [ -f "config.env" ]; then
-  source config.env
+if [ -f "../.env" ]; then
+  source ../.env
 else
   echo "[WARNING] config.env not found, using default values"
   AWS_REGION="us-east-1"
@@ -27,8 +29,8 @@ fi
 
 # Stop CMS UI if running
 echo "[INFO] Stopping any existing CMS UI processes..."
-if [ -d "frontend/HobbyStreamerCMS" ]; then
-  cd frontend/HobbyStreamerCMS
+if [ -d "../frontend/HobbyStreamerCMS" ]; then
+  cd ../frontend/HobbyStreamerCMS
   
   # Stop any running npm processes for this project
   pkill -f "npm run web" || true
@@ -37,7 +39,7 @@ if [ -d "frontend/HobbyStreamerCMS" ]; then
   # Also stop any processes on the web port
   lsof -ti:8081 | xargs kill -9 2>/dev/null || true
   
-  cd ../..
+  cd ../../local
 fi
 
 # Generate Keycloak certificates if they don't exist
@@ -142,7 +144,7 @@ else
 fi
 
 # Build and deploy the presigned upload URL Lambda
-pushd backend/storage/cmd/generate_presigned_upload_url > /dev/null
+pushd ../backend/storage/cmd/generate_presigned_upload_url > /dev/null
 echo "[INFO] Building presigned upload URL Lambda..."
 GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
@@ -168,7 +170,7 @@ popd > /dev/null
 
 
 # Build and deploy the delete files Lambda
-pushd backend/storage/cmd/delete_files > /dev/null
+pushd ../backend/storage/cmd/delete_files > /dev/null
 echo "[INFO] Building delete files Lambda..."
 
 # Ensure dependencies are resolved
@@ -231,14 +233,14 @@ echo "[INFO] API Gateway URL: http://localhost:4566/restapis/$API_ID/dev/_user_r
 # Update frontend with new API Gateway ID and URLs
 echo "[INFO] Updating frontend with new API Gateway configuration..."
 sed -i.bak "s/getEnvVar('REACT_APP_API_GATEWAY_ID', '[^']*')/getEnvVar('REACT_APP_API_GATEWAY_ID', '$API_ID')/" \
-  frontend/HobbyStreamerCMS/src/config/api.ts
+  ../frontend/HobbyStreamerCMS/src/config/api.ts
 sed -i.bak "s|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', '[^']*')|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev')|" \
-  frontend/HobbyStreamerCMS/src/config/api.ts
+  ../frontend/HobbyStreamerCMS/src/config/api.ts
 sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/auth')|" \
-  frontend/HobbyStreamerCMS/src/config/api.ts
+  ../frontend/HobbyStreamerCMS/src/config/api.ts
 sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" \
-  frontend/HobbyStreamerCMS/src/config/api.ts
-rm -f frontend/HobbyStreamerCMS/src/config/api.ts.bak
+  ../frontend/HobbyStreamerCMS/src/config/api.ts
+rm -f ../frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 
 # Start and rebuild all backend services
@@ -266,8 +268,8 @@ echo "[INFO] - LocalStack: http://localhost:4566"
 
 # Setup CMS UI
 echo "[INFO] Setting up CMS UI..."
-if [ -d "frontend/HobbyStreamerCMS" ]; then
-  cd frontend/HobbyStreamerCMS
+if [ -d "../frontend/HobbyStreamerCMS" ]; then
+  cd ../frontend/HobbyStreamerCMS
   
   # Ensure correct Node.js version and clean install dependencies
   echo "[INFO] Ensuring correct Node.js version..."
@@ -293,9 +295,9 @@ if [ -d "frontend/HobbyStreamerCMS" ]; then
   echo "[INFO]   - Android: npm run android"
   echo "[INFO]   - iOS: npm run ios"
   
-  cd ../..
+  cd ../../local
 else
-  echo "[WARNING] CMS UI directory not found at frontend/HobbyStreamerCMS"
+  echo "[WARNING] CMS UI directory not found at ../frontend/HobbyStreamerCMS"
 fi
 
 echo ""

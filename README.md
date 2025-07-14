@@ -72,7 +72,7 @@ The project consists of several microservices working together to provide video 
 To set up the development environment with all services, simply run:
 
 ```sh
-./build.sh
+./local/build.sh
 ```
 
 This script will:
@@ -99,7 +99,7 @@ Keycloak is used for authentication. Default credentials:
 
 ### Running the CMS UI
 
-After running `./build.sh`, the CMS UI will be available at:
+After running `./local/build.sh`, the CMS UI will be available at:
 
 ```
 http://localhost:8081
@@ -136,7 +136,7 @@ docker-compose up --build -d auth-service
 docker-compose up --build -d transcoder
 
 # Rebuild everything
-./build.sh
+./local/build.sh
 ```
 
 ### Viewing Logs

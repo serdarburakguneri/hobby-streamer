@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.17.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs v0.0.0

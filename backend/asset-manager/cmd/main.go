@@ -22,6 +22,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 func main() {
@@ -48,8 +49,39 @@ func main() {
 	assetRepo := asset.NewRepository(driver)
 	bucketRepo := bucket.NewRepository(driver)
 
-	assetService := asset.NewService(assetRepo)
+	sqsQueueURL := getEnv("TRANSCODER_QUEUE_URL", "")
+	var assetService *asset.Service
+	if sqsQueueURL != "" {
+		sqsProducer, err := sqs.NewProducer(context.Background(), sqsQueueURL)
+		if err != nil {
+			log.WithError(err).Error("Failed to create SQS producer")
+			os.Exit(1)
+		}
+		assetService = asset.NewServiceWithSQS(assetRepo, sqsProducer)
+		log.Info("Asset service initialized with SQS producer", "queue_url", sqsQueueURL)
+	} else {
+		assetService = asset.NewService(assetRepo)
+		log.Info("Asset service initialized without SQS producer")
+	}
+
 	bucketService := bucket.NewService(bucketRepo)
+	
+	statusQueueURL := getEnv("STATUS_QUEUE_URL", "")
+	var consumerRegistry *sqs.ConsumerRegistry
+	if statusQueueURL != "" {
+		consumerRegistry = sqs.NewConsumerRegistry()
+		statusConsumer := asset.NewVideoVariantStatusConsumer(assetService)
+		consumerRegistry.Register(statusQueueURL, statusConsumer.HandleMessage)
+		
+		go func() {
+			if err := consumerRegistry.Start(context.Background()); err != nil {
+				log.WithError(err).Error("Failed to start consumer registry")
+			}
+		}()
+		log.Info("Status update consumer initialized", "queue_url", statusQueueURL)
+	} else {
+		log.Info("Status update consumer not initialized - no queue URL provided")
+	}
 
 	router := mux.NewRouter()
 
