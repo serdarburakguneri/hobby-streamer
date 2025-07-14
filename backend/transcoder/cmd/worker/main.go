@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -28,9 +30,10 @@ func main() {
 	log.Debug("Queue configuration", "queue_url", queueURL)
 
 	statusQueueURL := os.Getenv("STATUS_QUEUE_URL")
+	var statusProducer *sqs.Producer
 	if statusQueueURL != "" {
 		var err error
-		_, err = sqs.NewProducer(ctx, statusQueueURL)
+		statusProducer, err = sqs.NewProducer(ctx, statusQueueURL)
 		if err != nil {
 			log.WithError(err).Error("Failed to create status SQS producer, continuing without status updates")
 		} else {
@@ -38,7 +41,7 @@ func main() {
 		}
 	}
 
-	analyzeRunner := job.NewAnalyzeRunner()
+	analyzeRunner := job.NewAnalyzeRunnerWithStatusProducer(statusProducer)
 	transcodeHLSRunner := job.NewTranscodeHLSRunner()
 	transcodeDASHRunner := job.NewTranscodeDASHRunner()
 
@@ -63,7 +66,19 @@ func main() {
 	log.Info("Job registry initialized", "job_types", []string{"analyze", "transcode-hls", "transcode-dash"})
 
 	log.Info("Starting SQS consumer")
-	registry.Start(ctx)
+	if err := registry.Start(ctx); err != nil {
+		log.WithError(err).Error("Failed to start consumer registry")
+		os.Exit(1)
+	}
+
+	// Wait for shutdown signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info("Shutting down transcoder worker...")
+	registry.Stop()
+	log.Info("Transcoder worker stopped")
 }
 
 func getEnv(key, defaultValue string) string {
