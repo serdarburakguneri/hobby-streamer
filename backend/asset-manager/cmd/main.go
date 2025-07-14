@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,28 +10,28 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/graph"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
-	assetconsumer "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/consumer"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 func main() {
-	log := logger.Get().WithService("asset-manager")
+	log := logger.New(slog.LevelInfo, "text").WithService("asset-manager")
 	log.Info("Starting asset-manager service")
 
 	neo4jURI := getEnv("NEO4J_URI", "bolt://localhost:7687")
 	neo4jUsername := getEnv("NEO4J_USERNAME", "neo4j")
 	neo4jPassword := getEnv("NEO4J_PASSWORD", "password")
 	port := getEnv("PORT", "8080")
-	transcoderQueueURL := getEnv("TRANSCODER_QUEUE_URL", "http://localhost:4566/000000000000/transcoder-jobs")
-	statusQueueURL := getEnv("STATUS_QUEUE_URL", "http://localhost:4566/000000000000/status-updates")
 
 	driver, err := neo4j.NewDriver(neo4jURI, neo4j.BasicAuth(neo4jUsername, neo4jPassword, ""))
 	if err != nil {
@@ -47,35 +48,70 @@ func main() {
 	assetRepo := asset.NewRepository(driver)
 	bucketRepo := bucket.NewRepository(driver)
 
-	var assetService asset.AssetService
-	if transcoderQueueURL != "" {
-		sqsProducer, err := sqs.NewProducer(context.Background(), transcoderQueueURL)
-		if err != nil {
-			log.WithError(err).Error("Failed to create SQS producer, falling back to service without SQS")
-			assetService = asset.NewService(assetRepo)
-		} else {
-			log.Info("SQS producer initialized successfully", "queue_url", transcoderQueueURL)
-			assetService = asset.NewServiceWithSQS(assetRepo, sqsProducer)
-		}
-	} else {
-		assetService = asset.NewService(assetRepo)
-	}
-
-	consumerRegistry := sqs.NewConsumerRegistry()
-
-	if statusQueueURL != "" {
-		statusConsumer := assetconsumer.NewStatusConsumer(assetService)
-		consumerRegistry.Register(statusQueueURL, statusConsumer.HandleMessage)
-		log.Info("Status consumer registered", "queue_url", statusQueueURL)
-	}
-
-	if err := consumerRegistry.Start(context.Background()); err != nil {
-		log.WithError(err).Error("Failed to start consumer registry")
-	}
-
+	assetService := asset.NewService(assetRepo)
 	bucketService := bucket.NewService(bucketRepo)
 
 	router := mux.NewRouter()
+
+	corsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	loggerMiddleware := func(log *logger.Logger) func(http.Handler) http.Handler {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				log.Info("HTTP request", "method", r.Method, "path", r.URL.Path)
+				next.ServeHTTP(w, r)
+			})
+		}
+	}
+
+	authMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			token := r.Header.Get("Authorization")
+			if token == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			if len(token) > 7 && token[:7] == "Bearer " {
+				token = token[7:]
+			}
+
+			keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
+			realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
+			clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
+
+			log := logger.New(slog.LevelInfo, "text").WithService("auth-middleware")
+			log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", realm, "clientID", clientID)
+
+			validator := auth.NewKeycloakValidator(keycloakURL, realm, clientID)
+			user, err := validator.ValidateToken(r.Context(), token)
+			if err != nil {
+				log.WithError(err).Error("Token validation failed")
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			log.Debug("Token validated successfully", "user", user.Username, "roles", user.Roles)
+			ctx := context.WithValue(r.Context(), "user", user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 
 	router.Use(corsMiddleware)
 	router.Use(loggerMiddleware(log))
@@ -83,16 +119,23 @@ func main() {
 
 	resolver := graph.NewResolver(assetService, bucketService)
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: resolver})
-	srv := handler.New(schema)
+	gqlHandler := handler.New(schema)
 
-	router.Handle("/graphql", srv)
-	router.Handle("/graphql/", srv)
+	gqlHandler.AddTransport(&transport.Websocket{
+		Upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool { return true },
+		},
+		KeepAlivePingInterval: 10 * time.Second,
+	})
 
-	if getEnv("ENV", "development") == "development" {
-		playgroundHandler := playground.Handler("GraphQL", "/graphql")
-		router.Handle("/playground", playgroundHandler)
-		log.Info("GraphQL playground available at /playground")
-	}
+	gqlHandler.AddTransport(&transport.Options{})
+	gqlHandler.AddTransport(&transport.GET{})
+	gqlHandler.AddTransport(&transport.POST{})
+	gqlHandler.AddTransport(&transport.MultipartForm{})
+	gqlHandler.Use(extension.Introspection{})
+
+	router.Handle("/graphql", gqlHandler).Methods("GET", "POST", "OPTIONS")
+	router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 
 	server := &http.Server{
 		Addr:    ":" + port,
@@ -100,10 +143,9 @@ func main() {
 	}
 
 	go func() {
-		log.Info("Starting HTTP server", "port", port)
+		log.Info("Starting server", "port", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.WithError(err).Error("Failed to start server")
-			os.Exit(1)
+			log.Error("Server error", "error", err)
 		}
 	}()
 
@@ -116,84 +158,11 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	consumerRegistry.Stop()
-
 	if err := server.Shutdown(ctx); err != nil {
-		log.WithError(err).Error("Server forced to shutdown")
-		os.Exit(1)
+		log.Error("Server forced to shutdown", "error", err)
 	}
 
 	log.Info("Server exited")
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		token := r.Header.Get("Authorization")
-		if token == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		if len(token) > 7 && token[:7] == "Bearer " {
-			token = token[7:]
-		}
-
-		keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
-		realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
-		clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
-
-		log := logger.Get().WithService("auth-middleware")
-		log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", realm, "clientID", clientID)
-
-		validator := auth.NewKeycloakValidator(keycloakURL, realm, clientID)
-		user, err := validator.ValidateToken(r.Context(), token)
-		if err != nil {
-			log.WithError(err).Error("Token validation failed")
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		log.Debug("Token validated successfully", "user", user.Username, "roles", user.Roles)
-		ctx := context.WithValue(r.Context(), "user", user)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func loggerMiddleware(log *logger.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			next.ServeHTTP(w, r)
-
-			log.Info("HTTP Request",
-				"method", r.Method,
-				"path", r.URL.Path,
-				"duration", time.Since(start),
-				"user_agent", r.UserAgent(),
-			)
-		})
-	}
 }
 
 func getEnv(key, defaultValue string) string {

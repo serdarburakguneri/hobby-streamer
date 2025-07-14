@@ -96,8 +96,7 @@ services:
       - LOG_FORMAT=json
     depends_on:
       - localstack
-      - keycloak
-      - auth-service
+      - keycloak     
       - neo4j
 
   transcoder:

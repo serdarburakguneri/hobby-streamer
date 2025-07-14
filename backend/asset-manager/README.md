@@ -58,8 +58,6 @@ docker run -p 8080:8080 asset-manager
 - Documentary, Music, Podcast
 - Trailer, BehindTheScenes, Interview
 
-### Asset Shapes
-- Video, Image, Audio, Document
 
 ### Asset Status
 - `draft` - Default status for assets without publish rules

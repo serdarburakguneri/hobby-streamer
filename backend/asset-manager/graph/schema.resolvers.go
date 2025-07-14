@@ -699,3 +699,26 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 type bucketResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *Resolver) __InputValue() __InputValueResolver { return &__inputValueResolver{r} }
+func (r *Resolver) __Type() __TypeResolver { return &__typeResolver{r} }
+type __inputValueResolver struct{ *Resolver }
+type __typeResolver struct{ *Resolver }
+func (r *__inputValueResolver) IsDeprecated(ctx context.Context, obj *introspection.InputValue) (bool, error) {
+	return obj.IsDeprecated(), nil
+}
+func (r *__inputValueResolver) DeprecationReason(ctx context.Context, obj *introspection.InputValue) (*string, error) {
+	return obj.DeprecationReason(), nil
+}
+func (r *__typeResolver) IsOneOf(ctx context.Context, obj *introspection.Type) (*bool, error) {
+	result := obj.IsOneOf()
+	return &result, nil
+}
+*/
