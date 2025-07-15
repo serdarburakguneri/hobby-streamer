@@ -3,18 +3,13 @@ package job
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
@@ -34,18 +29,23 @@ type TranscodeDASHRunner struct {
 	outputBucket    string
 	outputKey       string
 	outputFileName  string
+	s3Client        *s3.Client
 }
 
 func NewTranscodeDASHRunner() *TranscodeDASHRunner {
+	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeDASHRunner{
-		logger: logger.WithService("dash-runner"),
+		logger:   logger.WithService("dash-runner"),
+		s3Client: s3Client,
 	}
 }
 
 func NewTranscodeDASHRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *TranscodeDASHRunner {
+	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeDASHRunner{
 		logger:          logger.WithService("dash-runner"),
 		analyzeProducer: analyzeProducer,
+		s3Client:        s3Client,
 	}
 }
 
@@ -60,7 +60,6 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		}
 		return err
 	}
-
 	d.outputBucket = p.OutputBucket
 	d.outputKey = p.OutputKey
 	d.outputFileName = p.OutputFileName
@@ -69,7 +68,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	var err error
 
 	if strings.HasPrefix(p.Input, "s3://") {
-		localInputPath, err = d.downloadFromS3(ctx, p.Input)
+		localInputPath, err = d.s3Client.Download(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input)
 			if d.analyzeProducer != nil {
@@ -111,7 +110,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	log.Info("DASH transcoding completed successfully", "input", localInputPath, "manifest", manifestPath, "output_length", len(out))
 	log.Debug("FFmpeg DASH output", "output", string(out))
 
-	err = d.uploadToS3(ctx, manifestPath, d.outputBucket, d.outputKey)
+	err = d.s3Client.Upload(ctx, manifestPath, d.outputBucket, d.outputKey)
 	if err != nil {
 		log.WithError(err).Error("Failed to upload DASH manifest to S3", "bucket", d.outputBucket, "key", d.outputKey)
 		if d.analyzeProducer != nil {
@@ -127,8 +126,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		for _, segmentFile := range segmentFiles {
 			segmentName := filepath.Base(segmentFile)
 			segmentKey := strings.TrimSuffix(d.outputKey, ".mpd") + "/" + segmentName
-
-			err = d.uploadToS3(ctx, segmentFile, d.outputBucket, segmentKey)
+			err = d.s3Client.Upload(ctx, segmentFile, d.outputBucket, segmentKey)
 			if err != nil {
 				log.WithError(err).Error("Failed to upload DASH segment to S3", "bucket", d.outputBucket, "key", segmentKey, "file", segmentFile)
 			} else {
@@ -136,130 +134,13 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 			}
 		}
 	}
-
-	// Clean up
+	
 	defer os.RemoveAll(outputDir)
 
 	if d.analyzeProducer != nil {
 		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, true, "")
 	}
 
-	return nil
-}
-
-func (d *TranscodeDASHRunner) downloadFromS3(ctx context.Context, s3URL string) (string, error) {
-	log := d.logger.WithContext(ctx)
-
-	if !strings.HasPrefix(s3URL, "s3://") {
-		return "", fmt.Errorf("invalid S3 URL: %s", s3URL)
-	}
-
-	parts := strings.SplitN(s3URL[5:], "/", 2)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid S3 URL format: %s", s3URL)
-	}
-
-	bucket := parts[0]
-	key := parts[1]
-
-	awsEndpoint := os.Getenv("AWS_ENDPOINT")
-	if awsEndpoint == "" {
-		awsEndpoint = "http://localstack:4566"
-	}
-
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Endpoint:         aws.String(awsEndpoint),
-		S3ForcePathStyle: aws.Bool(true),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	client := s3.New(sess)
-
-	tempDir := os.TempDir()
-	filename := filepath.Base(key)
-	if filename == "" {
-		filename = fmt.Sprintf("video_%d.mp4", time.Now().Unix())
-	}
-	localPath := filepath.Join(tempDir, filename)
-
-	log.Info("Downloading from S3", "bucket", bucket, "key", key, "local_path", localPath)
-
-	file, err := os.Create(localPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create local file: %w", err)
-	}
-	defer file.Close()
-
-	result, err := client.GetObjectWithContext(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		os.Remove(localPath)
-		return "", fmt.Errorf("failed to get object from S3: %w", err)
-	}
-	defer result.Body.Close()
-
-	_, err = io.Copy(file, result.Body)
-	if err != nil {
-		os.Remove(localPath)
-		return "", fmt.Errorf("failed to write file to disk: %w", err)
-	}
-
-	log.Info("Successfully downloaded from S3", "local_path", localPath)
-	return localPath, nil
-}
-
-func (d *TranscodeDASHRunner) uploadToS3(ctx context.Context, localPath, bucket, key string) error {
-	log := d.logger.WithContext(ctx)
-
-	awsEndpoint := os.Getenv("AWS_ENDPOINT")
-	if awsEndpoint == "" {
-		awsEndpoint = "http://localstack:4566"
-	}
-
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Endpoint:         aws.String(awsEndpoint),
-		S3ForcePathStyle: aws.Bool(true),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	client := s3.New(sess)
-
-	file, err := os.Open(localPath)
-	if err != nil {
-		return fmt.Errorf("failed to open local file: %w", err)
-	}
-	defer file.Close()
-
-	log.Info("Uploading to S3", "bucket", bucket, "key", key, "local_path", localPath)
-
-	_, err = client.PutObjectWithContext(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Body:   file,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload object to S3: %w", err)
-	}
-
-	log.Info("Successfully uploaded to S3", "bucket", bucket, "key", key)
 	return nil
 }
 
@@ -277,7 +158,7 @@ func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetI
 		payload["bucket"] = d.outputBucket
 		payload["key"] = d.outputKey
 		payload["fileName"] = d.outputFileName
-		payload["url"] = fmt.Sprintf("s3://%s/%s", d.outputBucket, d.outputKey)
+		payload["url"] = "s3://" + d.outputBucket + "/" + d.outputKey
 	}
 
 	if !success && errorMessage != "" {

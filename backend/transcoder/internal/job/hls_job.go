@@ -3,18 +3,13 @@ package job
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
@@ -34,18 +29,23 @@ type TranscodeHLSRunner struct {
 	outputBucket    string
 	outputKey       string
 	outputFileName  string
+	s3Client        *s3.Client
 }
 
 func NewTranscodeHLSRunner() *TranscodeHLSRunner {
+	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeHLSRunner{
-		logger: logger.WithService("hls-runner"),
+		logger:   logger.WithService("hls-runner"),
+		s3Client: s3Client,
 	}
 }
 
 func NewTranscodeHLSRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *TranscodeHLSRunner {
+	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeHLSRunner{
 		logger:          logger.WithService("hls-runner"),
 		analyzeProducer: analyzeProducer,
+		s3Client:        s3Client,
 	}
 }
 
@@ -70,7 +70,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	var err error
 
 	if strings.HasPrefix(p.Input, "s3://") {
-		localInputPath, err = h.downloadFromS3(ctx, p.Input)
+		localInputPath, err = h.s3Client.Download(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input)
 			if h.analyzeProducer != nil {
@@ -101,7 +101,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	log.Info("HLS transcoding completed successfully", "input", localInputPath, "output", localOutputPath, "output_length", len(out))
 	log.Debug("FFmpeg HLS output", "output", string(out))
 
-	err = h.uploadToS3(ctx, localOutputPath, h.outputBucket, h.outputKey)
+	err = h.s3Client.Upload(ctx, localOutputPath, h.outputBucket, h.outputKey)
 	if err != nil {
 		log.WithError(err).Error("Failed to upload output to S3", "bucket", h.outputBucket, "key", h.outputKey)
 		if h.analyzeProducer != nil {
@@ -115,122 +115,6 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, true, "")
 	}
 
-	return nil
-}
-
-func (h *TranscodeHLSRunner) downloadFromS3(ctx context.Context, s3URL string) (string, error) {
-	log := h.logger.WithContext(ctx)
-
-	if !strings.HasPrefix(s3URL, "s3://") {
-		return "", fmt.Errorf("invalid S3 URL: %s", s3URL)
-	}
-
-	parts := strings.SplitN(s3URL[5:], "/", 2)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid S3 URL format: %s", s3URL)
-	}
-
-	bucket := parts[0]
-	key := parts[1]
-
-	awsEndpoint := os.Getenv("AWS_ENDPOINT")
-	if awsEndpoint == "" {
-		awsEndpoint = "http://localstack:4566"
-	}
-
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Endpoint:         aws.String(awsEndpoint),
-		S3ForcePathStyle: aws.Bool(true),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	client := s3.New(sess)
-
-	tempDir := os.TempDir()
-	filename := filepath.Base(key)
-	if filename == "" {
-		filename = fmt.Sprintf("video_%d.mp4", time.Now().Unix())
-	}
-	localPath := filepath.Join(tempDir, filename)
-
-	log.Info("Downloading from S3", "bucket", bucket, "key", key, "local_path", localPath)
-
-	file, err := os.Create(localPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create local file: %w", err)
-	}
-	defer file.Close()
-
-	result, err := client.GetObjectWithContext(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		os.Remove(localPath)
-		return "", fmt.Errorf("failed to get object from S3: %w", err)
-	}
-	defer result.Body.Close()
-
-	_, err = io.Copy(file, result.Body)
-	if err != nil {
-		os.Remove(localPath)
-		return "", fmt.Errorf("failed to write file to disk: %w", err)
-	}
-
-	log.Info("Successfully downloaded from S3", "local_path", localPath)
-	return localPath, nil
-}
-
-func (h *TranscodeHLSRunner) uploadToS3(ctx context.Context, localPath, bucket, key string) error {
-	log := h.logger.WithContext(ctx)
-
-	awsEndpoint := os.Getenv("AWS_ENDPOINT")
-	if awsEndpoint == "" {
-		awsEndpoint = "http://localstack:4566"
-	}
-
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		region = "us-east-1"
-	}
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Endpoint:         aws.String(awsEndpoint),
-		S3ForcePathStyle: aws.Bool(true),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	client := s3.New(sess)
-
-	file, err := os.Open(localPath)
-	if err != nil {
-		return fmt.Errorf("failed to open local file: %w", err)
-	}
-	defer file.Close()
-
-	log.Info("Uploading to S3", "bucket", bucket, "key", key, "local_path", localPath)
-
-	_, err = client.PutObjectWithContext(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Body:   file,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to upload object to S3: %w", err)
-	}
-
-	log.Info("Successfully uploaded to S3", "bucket", bucket, "key", key)
 	return nil
 }
 
@@ -248,7 +132,7 @@ func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID
 		payload["bucket"] = h.outputBucket
 		payload["key"] = h.outputKey
 		payload["fileName"] = h.outputFileName
-		payload["url"] = fmt.Sprintf("s3://%s/%s", h.outputBucket, h.outputKey)
+		payload["url"] = "s3://" + h.outputBucket + "/" + h.outputKey
 	}
 
 	if !success && errorMessage != "" {
