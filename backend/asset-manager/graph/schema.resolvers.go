@@ -335,6 +335,33 @@ func (r *mutationResolver) UpdateVideoVariantStatus(ctx context.Context, id stri
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
+// UpdateVideoCDN is the resolver for the updateVideoCDN field.
+func (r *mutationResolver) UpdateVideoCDN(ctx context.Context, id string, videoType model.VideoType, format string, cdnPrefix string) (*model.Asset, error) {
+	var assetVideoType asset.VideoType
+	switch videoType {
+	case model.VideoTypeMain:
+		assetVideoType = asset.VideoTypeMain
+	case model.VideoTypeTrailer:
+		assetVideoType = asset.VideoTypeTrailer
+	case model.VideoTypeBehindTheScenes:
+		assetVideoType = asset.VideoTypeBehind
+	case model.VideoTypeInterview:
+		assetVideoType = asset.VideoTypeInterview
+	}
+
+	err := r.Resolver.AssetService.UpdateVideoCDN(ctx, id, assetVideoType, format, cdnPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update video CDN: %w", err)
+	}
+
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated asset: %w", err)
+	}
+
+	return mapAssetToGraphQL(updatedAsset), nil
+}
+
 // AddVideo is the resolver for the addVideo field.
 func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg model.VideoType, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
 	var assetVideoType asset.VideoType

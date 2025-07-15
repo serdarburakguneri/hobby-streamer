@@ -37,6 +37,7 @@ type AssetService interface {
 	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
 	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
 	UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error
+	UpdateVideoCDN(ctx context.Context, id string, videoType VideoType, format string, cdnPrefix string) error
 	HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error
 	HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}, variant string) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
@@ -388,29 +389,63 @@ func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre 
 	return s.Repo.GetAssetsByTypeAndGenre(ctx, assetType, genre)
 }
 
+// --- Helper Types and Functions ---
+
+type videoVariantPtr struct {
+	get func(v *Video) **VideoVariant
+	set func(v *Video, vv *VideoVariant)
+}
+
+var variantAccessors = map[string]videoVariantPtr{
+	VideoVariantRaw: {
+		get: func(v *Video) **VideoVariant { return &v.Raw },
+		set: func(v *Video, vv *VideoVariant) { v.Raw = vv },
+	},
+	VideoVariantHLS: {
+		get: func(v *Video) **VideoVariant { return &v.HLS },
+		set: func(v *Video, vv *VideoVariant) { v.HLS = vv },
+	},
+	VideoVariantDASH: {
+		get: func(v *Video) **VideoVariant { return &v.DASH },
+		set: func(v *Video, vv *VideoVariant) { v.DASH = vv },
+	},
+}
+
+func getVideoIndex(asset *Asset, videoType VideoType) int {
+	for i, video := range asset.Videos {
+		if video.Type == videoType {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *Service) setCDNPrefixIfAvailable(variant *VideoVariant, bucket string) {
+	cdnPrefix := s.getCDNPrefixForBucket(bucket)
+	if cdnPrefix != "" {
+		if variant.StreamInfo == nil {
+			variant.StreamInfo = &StreamInfo{}
+		}
+		variant.StreamInfo.CdnPrefix = &cdnPrefix
+	}
+}
+
+// --- AssetService Methods ---
+
 func (s *Service) AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			switch variant {
-			case VideoVariantRaw:
-				asset.Videos[i].Raw = videoVariant
-			case VideoVariantHLS:
-				asset.Videos[i].HLS = videoVariant
-			case VideoVariantDASH:
-				asset.Videos[i].DASH = videoVariant
-			default:
-				return errors.New("invalid variant")
-			}
-			return s.Repo.SaveAsset(ctx, asset)
-		}
+	idx := getVideoIndex(asset, videoType)
+	if idx == -1 {
+		return errors.New("video not found")
 	}
-
-	return errors.New("video not found")
+	if acc, ok := variantAccessors[variant]; ok {
+		acc.set(&asset.Videos[idx], videoVariant)
+		return s.Repo.SaveAsset(ctx, asset)
+	}
+	return errors.New("invalid variant")
 }
 
 func (s *Service) UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
@@ -422,24 +457,15 @@ func (s *Service) DeleteVideoVariant(ctx context.Context, id string, videoType V
 	if err != nil {
 		return err
 	}
-
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			switch variant {
-			case VideoVariantRaw:
-				asset.Videos[i].Raw = nil
-			case VideoVariantHLS:
-				asset.Videos[i].HLS = nil
-			case VideoVariantDASH:
-				asset.Videos[i].DASH = nil
-			default:
-				return errors.New("invalid variant")
-			}
-			return s.Repo.SaveAsset(ctx, asset)
-		}
+	idx := getVideoIndex(asset, videoType)
+	if idx == -1 {
+		return errors.New("video not found")
 	}
-
-	return errors.New("video not found")
+	if acc, ok := variantAccessors[variant]; ok {
+		acc.set(&asset.Videos[idx], nil)
+		return s.Repo.SaveAsset(ctx, asset)
+	}
+	return errors.New("invalid variant")
 }
 
 func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error {
@@ -447,30 +473,43 @@ func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, video
 	if err != nil {
 		return err
 	}
-
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			switch variant {
-			case VideoVariantRaw:
-				if asset.Videos[i].Raw != nil {
-					asset.Videos[i].Raw.Status = status
-				}
-			case VideoVariantHLS:
-				if asset.Videos[i].HLS != nil {
-					asset.Videos[i].HLS.Status = status
-				}
-			case VideoVariantDASH:
-				if asset.Videos[i].DASH != nil {
-					asset.Videos[i].DASH.Status = status
-				}
-			default:
-				return errors.New("invalid variant")
+	idx := getVideoIndex(asset, videoType)
+	if idx == -1 {
+		return errors.New("video not found")
+	}
+	if acc, ok := variantAccessors[variant]; ok {
+		vv := *acc.get(&asset.Videos[idx])
+		if vv != nil {
+			vv.Status = status
+			if variant == VideoVariantHLS || variant == VideoVariantDASH {
+				s.setCDNPrefixIfAvailable(vv, vv.StorageLocation.Bucket)
 			}
 			return s.Repo.SaveAsset(ctx, asset)
 		}
 	}
+	return errors.New("invalid variant or variant not found")
+}
 
-	return errors.New("video not found")
+func (s *Service) UpdateVideoCDN(ctx context.Context, id string, videoType VideoType, format string, cdnPrefix string) error {
+	asset, err := s.Repo.GetAssetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	idx := getVideoIndex(asset, videoType)
+	if idx == -1 {
+		return errors.New("video not found")
+	}
+	if acc, ok := variantAccessors[format]; ok {
+		vv := *acc.get(&asset.Videos[idx])
+		if vv != nil {
+			if vv.StreamInfo == nil {
+				vv.StreamInfo = &StreamInfo{}
+			}
+			vv.StreamInfo.CdnPrefix = &cdnPrefix
+			return s.Repo.SaveAsset(ctx, asset)
+		}
+	}
+	return errors.New("invalid format or variant not found")
 }
 
 func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
@@ -608,6 +647,17 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 			videoVariant.ContentType = "application/dash+xml"
 		}
 
+		cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
+		log.Debug("CDN prefix lookup", "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix)
+		if cdnPrefix != "" {
+			videoVariant.StreamInfo = &StreamInfo{
+				CdnPrefix: &cdnPrefix,
+			}
+			log.Debug("Set CDN prefix for video variant", "asset_id", transcodePayload.AssetID, "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix)
+		} else {
+			log.Warn("No CDN prefix found for bucket", "bucket", transcodePayload.Bucket)
+		}
+
 		switch variant {
 		case VideoVariantHLS:
 			asset.Videos[videoIndex].HLS = videoVariant
@@ -632,6 +682,19 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 
 	log.Info("Transcode completion processed successfully", "asset_id", transcodePayload.AssetID, "video_type", videoType, "format", transcodePayload.Format, "variant", variant, "success", transcodePayload.Success, "status", status)
 	return nil
+}
+
+func (s *Service) getCDNPrefixForBucket(bucket string) string {
+	switch bucket {
+	case "hls-storage":
+		return os.Getenv("HLS_CDN_PREFIX")
+	case "dash-storage":
+		return os.Getenv("DASH_CDN_PREFIX")
+	case "thumbnails-storage":
+		return os.Getenv("THUMBNAILS_CDN_PREFIX")
+	default:
+		return ""
+	}
 }
 
 func (s *Service) validateAsset(a *Asset) error {

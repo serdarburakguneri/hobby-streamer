@@ -154,6 +154,9 @@ services:
       - ANALYZE_QUEUE_URL=${ANALYZE_QUEUE_URL}
       - AWS_ENDPOINT=${LOCALSTACK_ENDPOINT}
       - DELETE_ASSET_FILES_LAMBDA_ENDPOINT=${DELETE_FILES_LAMBDA_ENDPOINT}
+      - HLS_CDN_PREFIX=${HLS_CDN_PREFIX:-https://hls-streaming.localhost}
+      - DASH_CDN_PREFIX=${DASH_CDN_PREFIX:-https://dash-streaming.localhost}
+      - THUMBNAILS_CDN_PREFIX=${THUMBNAILS_CDN_PREFIX:-https://thumbnails.localhost}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:
