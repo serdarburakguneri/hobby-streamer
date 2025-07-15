@@ -40,9 +40,10 @@ The project consists of several microservices working together to provide video 
 - [Auth Service](backend/auth-service/README.md): JWT-based authentication service with Keycloak integration
 - [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs
 
-### Storage Service
-- [Generate Presigned Upload URL Lambda](backend/storage/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
-- [Delete Files Lambda](backend/storage/cmd/delete_files/README.md): Lambda for cleaning up S3 files when assets are deleted
+### Lambdas
+- [Generate Presigned Upload URL Lambda](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
+- [Delete Files Lambda](backend/lambdas/cmd/delete_files/README.md): Lambda for cleaning up S3 files when assets are deleted
+- [Trigger Transcode Job Lambda](backend/lambdas/cmd/trigger_transcode_job/README.md): Lambda for triggering video transcoding jobs
 
 ### Frontend Services
 - [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
@@ -51,6 +52,7 @@ The project consists of several microservices working together to provide video 
 - [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
 - [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
 - [SQS Package](backend/pkg/sqs/README.md): AWS SQS client library with producer, consumer, and consumer registry functionality
+- [S3 Package](backend/pkg/s3/README.md): S3 client library for file upload, download, and directory operations with LocalStack support
 
 ## Getting Started
 
