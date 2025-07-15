@@ -85,13 +85,14 @@ func (c *Consumer) Start(ctx context.Context, handle func(Message) error) {
 		}
 
 		for _, m := range out.Messages {
+			log.Debug("Raw SQS message body", "body", *m.Body, "message_id", *m.MessageId)
 			var msg Message
 			if err := json.Unmarshal([]byte(*m.Body), &msg); err != nil {
 				log.WithError(err).Error("Failed to unmarshal SQS message")
 				continue
 			}
 
-			log.Debug("Processing message", "message_type", msg.Type, "message_id", *m.MessageId)
+			log.Debug("Processing message", "message_type", msg.Type, "message_id", *m.MessageId, "payload_length", len(msg.Payload))
 			if err := handle(msg); err == nil {
 				_, _ = c.client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 					QueueUrl:      &c.queueURL,

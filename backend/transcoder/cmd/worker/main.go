@@ -42,11 +42,12 @@ func main() {
 	}
 
 	analyzeRunner := job.NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer)
-	transcodeHLSRunner := job.NewTranscodeHLSRunner()
-	transcodeDASHRunner := job.NewTranscodeDASHRunner()
+	transcodeHLSRunner := job.NewTranscodeHLSRunnerWithAnalyzeProducer(analyzeProducer)
+	transcodeDASHRunner := job.NewTranscodeDASHRunnerWithAnalyzeProducer(analyzeProducer)
 
 	registry := sqs.NewConsumerRegistry()
 	registry.Register(queueURL, func(ctx context.Context, msgType string, payload map[string]interface{}) error {
+		log.Info("SQS message received", "msgType", msgType, "payload", payload)
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
 			return err

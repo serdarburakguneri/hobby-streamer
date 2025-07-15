@@ -62,6 +62,7 @@ func (r *ConsumerRegistry) Start(ctx context.Context) error {
 					c.Logger.WithError(err).Error("Failed to unmarshal message payload")
 					return err
 				}
+				c.Logger.Info("Processing message", "type", msg.Type, "payload", payload)
 				return c.Handler(ctx, msg.Type, payload)
 			})
 		}(consumer)

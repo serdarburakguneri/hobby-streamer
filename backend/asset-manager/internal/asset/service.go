@@ -36,7 +36,8 @@ type AssetService interface {
 	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
 	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
 	UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error
-	HandleAnalyzeCompletionMessage(ctx context.Context, messageType string, payload map[string]interface{}) error
+	HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error
+	HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}, variant string) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
 	GetParent(ctx context.Context, childID string) (*Asset, error)
 	GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error)
@@ -471,12 +472,8 @@ func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, video
 	return errors.New("video not found")
 }
 
-func (s *Service) HandleAnalyzeCompletionMessage(ctx context.Context, messageType string, payload map[string]interface{}) error {
+func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
 	log := logger.Get().WithService("asset-service")
-
-	if messageType != "analyze-completed" {
-		return nil
-	}
 
 	assetID, ok := payload["assetId"].(string)
 	if !ok {
@@ -527,6 +524,148 @@ func (s *Service) HandleAnalyzeCompletionMessage(ctx context.Context, messageTyp
 	}
 
 	log.Info("Analyze completion processed successfully", "asset_id", assetID, "video_type", videoType, "success", success, "status", status)
+	return nil
+}
+
+func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}, variant string) error {
+	log := logger.Get().WithService("asset-service")
+
+	assetID, ok := payload["assetId"].(string)
+	if !ok {
+		log.Error("Invalid assetId in transcode completion message")
+		return errors.New("invalid assetId")
+	}
+
+	videoTypeStr, ok := payload["videoType"].(string)
+	if !ok {
+		log.Error("Invalid videoType in transcode completion message")
+		return errors.New("invalid videoType")
+	}
+
+	format, ok := payload["format"].(string)
+	if !ok {
+		log.Error("Invalid format in transcode completion message")
+		return errors.New("invalid format")
+	}
+
+	success, ok := payload["success"].(bool)
+	if !ok {
+		log.Error("Invalid success in transcode completion message")
+		return errors.New("invalid success")
+	}
+
+	var videoType VideoType
+	switch videoTypeStr {
+	case "main":
+		videoType = VideoTypeMain
+	case "trailer":
+		videoType = VideoTypeTrailer
+	case "behind_the_scenes":
+		videoType = VideoTypeBehind
+	case "interview":
+		videoType = VideoTypeInterview
+	default:
+		log.Error("Unknown video type in transcode completion message", "video_type", videoTypeStr)
+		return errors.New("unknown video type")
+	}
+
+	var status string
+	if success {
+		status = VideoStatusReady
+	} else {
+		status = VideoStatusFailed
+	}
+
+	log.Info("Processing transcode completion", "asset_id", assetID, "video_type", videoType, "format", format, "variant", variant, "success", success, "status", status)
+
+	asset, err := s.Repo.GetAssetByID(ctx, assetID)
+	if err != nil {
+		log.WithError(err).Error("Failed to get asset for transcode completion", "asset_id", assetID)
+		return err
+	}
+
+	var videoIndex = -1
+	for i, video := range asset.Videos {
+		if video.Type == videoType {
+			videoIndex = i
+			break
+		}
+	}
+
+	if videoIndex == -1 {
+		log.Error("Video not found for transcode completion", "asset_id", assetID, "video_type", videoType)
+		return errors.New("video not found")
+	}
+
+	var variantExists bool
+	switch variant {
+	case VideoVariantHLS:
+		variantExists = asset.Videos[videoIndex].HLS != nil
+	case VideoVariantDASH:
+		variantExists = asset.Videos[videoIndex].DASH != nil
+	default:
+		log.Error("Invalid variant in transcode completion", "variant", variant)
+		return errors.New("invalid variant")
+	}
+
+	if !variantExists && success {
+		bucket, ok := payload["bucket"].(string)
+		if !ok {
+			log.Error("Invalid bucket in transcode completion message")
+			return errors.New("invalid bucket")
+		}
+
+		key, ok := payload["key"].(string)
+		if !ok {
+			log.Error("Invalid key in transcode completion message")
+			return errors.New("invalid key")
+		}
+
+		url, ok := payload["url"].(string)
+		if !ok {
+			log.Error("Invalid url in transcode completion message")
+			return errors.New("invalid url")
+		}
+
+		s3Object := S3Object{
+			Bucket: bucket,
+			Key:    key,
+			URL:    url,
+		}
+
+		videoVariant := &VideoVariant{
+			StorageLocation: s3Object,
+			Status:          status,
+			ContentType:     "application/x-mpegURL",
+		}
+
+		if variant == VideoVariantDASH {
+			videoVariant.ContentType = "application/dash+xml"
+		}
+
+		switch variant {
+		case VideoVariantHLS:
+			asset.Videos[videoIndex].HLS = videoVariant
+		case VideoVariantDASH:
+			asset.Videos[videoIndex].DASH = videoVariant
+		}
+
+		log.Info("Created new video variant", "asset_id", assetID, "video_type", videoType, "variant", variant, "s3_location", s3Object)
+
+		err = s.Repo.SaveAsset(ctx, asset)
+		if err != nil {
+			log.WithError(err).Error("Failed to save asset after creating video variant", "asset_id", assetID)
+			return err
+		}
+	} else {
+		err = s.UpdateVideoVariantStatus(ctx, assetID, videoType, variant, status)
+		if err != nil {
+			log.WithError(err).Error("Failed to update video variant status after transcode completion", "asset_id", assetID, "video_type", videoType, "variant", variant, "status", status)
+			return err
+		}
+	}
+
+	log.Info("Transcode completion processed successfully", "asset_id", assetID, "video_type", videoType, "format", format, "variant", variant, "success", success, "status", status)
 	return nil
 }
 

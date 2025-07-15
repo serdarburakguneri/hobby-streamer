@@ -114,7 +114,7 @@ docker-compose restart localstack
 sleep 10
 
 # Create S3 buckets if they do not exist (must be before CORS)
-for bucket in raw-storage transcoded-storage thumbnails-storage; do
+for bucket in raw-storage hls-storage dash-storage thumbnails-storage; do
   if aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3 ls "s3://$bucket" 2>&1 | grep -q 'NoSuchBucket'; then
     echo "[INFO] Creating S3 bucket: $bucket"
     aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api create-bucket --bucket $bucket --region $AWS_REGION
@@ -126,7 +126,8 @@ done
 # Re-apply S3 CORS config after LocalStack is up and buckets exist
 echo "[INFO] Re-applying S3 CORS configuration..."
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket raw-storage --cors-configuration file://cors.json
-aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket transcoded-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket hls-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket dash-storage --cors-configuration file://cors.json
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket thumbnails-storage --cors-configuration file://cors.json
 
 # Create SQS queues
@@ -145,8 +146,12 @@ else
 fi
 
 # Build and deploy the presigned upload URL Lambda
-pushd ../backend/storage/cmd/generate_presigned_upload_url > /dev/null
+pushd ../backend/lambdas/cmd/generate_presigned_upload_url > /dev/null
 echo "[INFO] Building presigned upload URL Lambda..."
+# Ensure dependencies are resolved
+echo "[INFO] Resolving dependencies..."
+go mod tidy
+
 GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
 
@@ -168,10 +173,37 @@ fi
 
 popd > /dev/null
 
+# Build and deploy the trigger transcode job Lambda
+pushd ../backend/lambdas/cmd/trigger_transcode_job > /dev/null
+echo "[INFO] Building trigger transcode job Lambda..."
+# Ensure dependencies are resolved
+echo "[INFO] Resolving dependencies..."
+go mod tidy
+
+GOOS=linux GOARCH=amd64 go build -o main main.go
+zip -j function.zip main
+
+# Create or update Lambda in LocalStack
+if awslocal --no-cli-pager --region $AWS_REGION lambda get-function --function-name trigger-transcode-job > /dev/null 2>&1; then
+  echo "[INFO] Updating existing Lambda function: trigger-transcode-job"
+  awslocal --no-cli-pager --region $AWS_REGION lambda update-function-code --function-name trigger-transcode-job --zip-file fileb://function.zip > /dev/null
+else
+  echo "[INFO] Creating Lambda function: trigger-transcode-job"
+  awslocal --no-cli-pager --region $AWS_REGION lambda create-function \
+    --function-name trigger-transcode-job \
+    --runtime go1.x \
+    --handler main \
+    --zip-file fileb://function.zip \
+    --role arn:aws:iam::000000000000:role/lambda-role \
+    --environment "Variables={TRANSCODER_QUEUE_URL=$TRANSCODER_QUEUE_URL,AWS_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
+    --region $AWS_REGION > /dev/null
+fi
+
+popd > /dev/null
 
 
 # Build and deploy the delete files Lambda
-pushd ../backend/storage/cmd/delete_files > /dev/null
+pushd ../backend/lambdas/cmd/delete_files > /dev/null
 echo "[INFO] Building delete files Lambda..."
 
 # Ensure dependencies are resolved
@@ -241,12 +273,14 @@ sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP
   ../frontend/HobbyStreamerCMS/src/config/api.ts
 sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" \
   ../frontend/HobbyStreamerCMS/src/config/api.ts
+sed -i.bak "s|getEnvVar('REACT_APP_TRANSCODE_BASE_URL', '[^']*')|getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/transcode')|" \
+  ../frontend/HobbyStreamerCMS/src/config/api.ts
 rm -f ../frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 
 # Start and rebuild all backend services
 echo "[INFO] Building and starting all backend services with the latest code..."
-docker-compose up --build -d auth-service asset-manager transcoder
+docker-compose up -d auth-service asset-manager transcoder
 
 # Wait for services to be ready
 echo "[INFO] Waiting for services to be ready..."

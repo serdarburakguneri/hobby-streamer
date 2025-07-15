@@ -647,7 +647,6 @@ const GET_ASSETS_BY_PARENT = gql`
             size
             contentType
             metadata
-            status
           }
         }
       }
@@ -1867,6 +1866,56 @@ export const assetService = {
   uploadFile: async (uploadUrl: string, file: any): Promise<void> => {
     throw new Error('Use useAssetService hook instead');
   },
+};
+
+export const triggerTranscodeJob = async (
+  assetId: string, 
+  videoType: string, 
+  format: 'hls' | 'dash',
+  s3Info?: { bucket: string; key: string; sourceFileName?: string }
+): Promise<any> => {
+  try {
+    const token = await refreshTokenIfNeeded();
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+
+    const payload: any = {
+      assetId,
+      videoType,
+      format
+    };
+
+    if (s3Info) {
+      payload.input = `s3://${s3Info.bucket}/${s3Info.key}`;
+      if (s3Info.sourceFileName) {
+        payload.sourceFileName = s3Info.sourceFileName;
+      }
+    }
+
+    const response = await axios.post(
+      `${API_CONFIG.TRANSCODE_BASE_URL}`,
+      payload,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Failed to trigger transcoding job:', error);
+    if (error.response?.status === 401) {
+      await clearAuthTokens();
+      if (logoutCallback) {
+        logoutCallback();
+      }
+    }
+    throw error;
+  }
 };
 
 export const authService = {

@@ -20,6 +20,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/graph"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/consumer"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -70,17 +71,18 @@ func main() {
 	var consumerRegistry *sqs.ConsumerRegistry
 	if analyzeQueueURL != "" {
 		consumerRegistry = sqs.NewConsumerRegistry()
-		analyzeConsumer := asset.NewAnalyzeCompletionConsumer(assetService)
-		consumerRegistry.Register(analyzeQueueURL, analyzeConsumer.HandleMessage)
+
+		messageRouter := consumer.NewMessageRouter(assetService)
+		consumerRegistry.Register(analyzeQueueURL, messageRouter.HandleMessage)
 
 		go func() {
 			if err := consumerRegistry.Start(context.Background()); err != nil {
 				log.WithError(err).Error("Failed to start consumer registry")
 			}
 		}()
-		log.Info("Analyze completion consumer initialized", "queue_url", analyzeQueueURL)
+		log.Info("Message router initialized", "queue_url", analyzeQueueURL, "supported_messages", []string{"analyze-completed", "transcode-hls-completed", "transcode-dash-completed"})
 	} else {
-		log.Info("Analyze completion consumer not initialized - no queue URL provided")
+		log.Info("Message router not initialized - no queue URL provided")
 	}
 
 	router := mux.NewRouter()
