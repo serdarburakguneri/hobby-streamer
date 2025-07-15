@@ -19,13 +19,6 @@ The logging system includes distributed tracing capabilities using tracking IDs 
 3. **Context Injection**: Each service includes the tracking ID in all log entries
 4. **Cross-Service Tracing**: You can trace a single operation across your entire system
 
-### Example Flow
-
-```
-Frontend → Auth Service → Asset Manager → Lambda → Transcoder
-   ↓           ↓              ↓           ↓         ↓
-tracking_id  tracking_id   tracking_id  tracking_id tracking_id
-```
 
 ### Benefits
 
@@ -217,26 +210,3 @@ logging:
     tag: "docker.service-name"
 ```
 
-## Troubleshooting
-
-### Check if logging is working:
-1. Verify Elasticsearch is running: `curl http://localhost:9200/_cluster/health`
-2. Verify Kibana is running: `curl http://localhost:5601/api/status`
-3. Check Fluentd logs: `./local/logs.sh fluentd`
-
-### Common Issues:
-- **No logs appearing**: Check if Fluentd is receiving logs from containers
-- **Kibana not loading**: Wait for Elasticsearch to be fully ready
-- **High memory usage**: Elasticsearch is configured with 512MB heap size
-
-### Reset Logging:
-```bash
-# Stop and remove logging containers
-docker-compose down elasticsearch kibana fluentd
-
-# Remove volumes (will delete all logs)
-docker volume rm hobby-streamer_elasticsearch_data
-
-# Restart
-./local/build.sh
-``` 

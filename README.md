@@ -166,39 +166,6 @@ The project includes a centralized logging system that collects logs from all se
 - Use "Dashboard" for predefined views
 - Search by service, log level, HTTP details, user context, etc.
 
-#### Command Line
-```bash
-# View logs for specific services
-./local/logs.sh auth
-./local/logs.sh asset
-./local/logs.sh transcoder
-
-# View all logs
-./local/logs.sh all
-
-# Traditional Docker logs (still available)
-docker-compose logs -f asset-manager
-docker-compose logs -f auth-service
-docker-compose logs -f transcoder
-docker-compose logs -f
-```
-
-#### Log Search Examples
-```bash
-# Find all errors
-level:error
-
-# Find slow requests (>1 second)
-duration_ms:>1000
-
-# Find auth service logs
-service_name:auth-service
-
-# Find 5xx errors with error details
-status_code:[500 TO 599] AND error:*
-```
-
-See [Logging Documentation](local/LOGGING.md) for detailed information about the logging system.
 
 ### Health Checks
 
