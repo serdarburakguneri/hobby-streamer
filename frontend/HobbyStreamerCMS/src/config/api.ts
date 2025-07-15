@@ -6,10 +6,10 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 };
 
 export const API_CONFIG = {
-  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', 'mszdtjbyzl'),
-  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/mszdtjbyzl/dev'),
-  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/mszdtjbyzl/dev/auth'),
-  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/mszdtjbyzl/dev/graphql'),
-  TRANSCODE_BASE_URL: getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/mszdtjbyzl/dev/transcode'),
+  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', 'fiq9e7rowa'),
+  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/fiq9e7rowa/dev'),
+  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/fiq9e7rowa/dev/auth'),
+  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/fiq9e7rowa/dev/graphql'),
+  TRANSCODE_BASE_URL: getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/fiq9e7rowa/dev/transcode'),
   LOCALSTACK_BASE_URL: getEnvVar('REACT_APP_LOCALSTACK_BASE_URL', 'http://localhost:4566')
 }; 

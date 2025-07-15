@@ -27,7 +27,10 @@ import (
 )
 
 func main() {
-	log := logger.New(slog.LevelInfo, "text").WithService("asset-manager")
+	logLevel := getLogLevel()
+	logFormat := getEnv("LOG_FORMAT", "text")
+	logger.Init(logLevel, logFormat)
+	log := logger.WithService("asset-manager")
 	log.Info("Starting asset-manager service")
 
 	neo4jURI := getEnv("NEO4J_URI", "bolt://localhost:7687")
@@ -130,7 +133,7 @@ func main() {
 			realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
 			clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
 
-			log := logger.New(slog.LevelInfo, "text").WithService("auth-middleware")
+			log := logger.WithService("auth-middleware")
 			log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", realm, "clientID", clientID)
 
 			validator := auth.NewKeycloakValidator(keycloakURL, realm, clientID)
@@ -204,4 +207,20 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func getLogLevel() slog.Level {
+	level := getEnv("LOG_LEVEL", "info")
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }

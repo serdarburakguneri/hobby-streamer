@@ -11,6 +11,7 @@ The project consists of several microservices working together to provide video 
 - **Transcoder**: Video processing and format conversion
 - **Storage**: S3-based file storage with presigned URLs
 - **Frontend**: React Native CMS for content management
+- **Logging**: Centralized logging system with Fluentd, Elasticsearch, and Kibana
 
 ## Tech Stack
 
@@ -24,6 +25,9 @@ The project consists of several microservices working together to provide video 
 ### Infrastructure & DevOps
 - Docker Compose – Containerized development environment
 - LocalStack – Local AWS service emulation (S3, SQS, Lambda)
+- Fluentd – Log collection and forwarding
+- Elasticsearch – Log storage and search
+- Kibana – Log visualization and analysis
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
@@ -47,6 +51,9 @@ The project consists of several microservices working together to provide video 
 
 ### Frontend Services
 - [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
+
+### Infrastructure & Logging
+- [Logging System](local/LOGGING.md): Centralized logging with Fluentd, Elasticsearch, and Kibana
 
 ### Shared Libraries
 See [Shared Libraries Documentation](backend/pkg/README.md) for detailed information about the shared library architecture and available packages.
@@ -83,10 +90,11 @@ To set up the development environment with all services, simply run:
 ```
 
 This script will:
-- Start all infrastructure services (LocalStack, Neo4j, Keycloak)
+- Start all infrastructure services (LocalStack, Neo4j, Keycloak, Elasticsearch, Kibana, Fluentd)
 - Create required S3 buckets and SQS queues
 - Build and start all backend services
 - Install dependencies and start the Admin UI development server
+- Set up centralized logging system
 - Verify all services are running correctly
 
 ### Service Ports
@@ -96,6 +104,8 @@ This script will:
 - Keycloak: http://localhost:9090
 - LocalStack: http://localhost:4566
 - CMS UI Web: http://localhost:8081
+- Kibana (Logs): http://localhost:5601
+- Elasticsearch: http://localhost:9200
 
 ### Keycloak Setup
 
@@ -146,17 +156,49 @@ docker-compose up --build -d transcoder
 ./local/build.sh
 ```
 
-### Viewing Logs
+### Viewing Container Logs
 
+The project includes a centralized logging system that collects logs from all services and makes them searchable through Kibana.
+
+#### Kibana UI (Recommended)
+- Access logs at: http://localhost:5601
+- Go to "Discover" for advanced log searching
+- Use "Dashboard" for predefined views
+- Search by service, log level, HTTP details, user context, etc.
+
+#### Command Line
 ```bash
 # View logs for specific services
+./local/logs.sh auth
+./local/logs.sh asset
+./local/logs.sh transcoder
+
+# View all logs
+./local/logs.sh all
+
+# Traditional Docker logs (still available)
 docker-compose logs -f asset-manager
 docker-compose logs -f auth-service
 docker-compose logs -f transcoder
-
-# View all logs
 docker-compose logs -f
 ```
+
+#### Log Search Examples
+```bash
+# Find all errors
+level:error
+
+# Find slow requests (>1 second)
+duration_ms:>1000
+
+# Find auth service logs
+service_name:auth-service
+
+# Find 5xx errors with error details
+status_code:[500 TO 599] AND error:*
+```
+
+See [Logging Documentation](local/LOGGING.md) for detailed information about the logging system.
 
 ### Health Checks
 
@@ -172,3 +214,4 @@ curl -s -X POST http://localhost:8082/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{ __schema { types { name } } }"}'
 ```
+

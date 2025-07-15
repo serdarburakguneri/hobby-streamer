@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 if [ -f "../.env" ]; then
   source ../.env
 else
-  echo "[WARNING] config.env not found, using default values"
+  echo "[WARNING] .env not found, using default values"
   AWS_REGION="us-east-1"
   AWS_ACCESS_KEY_ID="test"
   AWS_SECRET_ACCESS_KEY="test"
@@ -18,15 +18,17 @@ else
   DELETE_FILES_LAMBDA_ENDPOINT="http://localstack:4566/2015-03-31/functions/delete-files/invocations"
 fi
 
-# Hobby Streamer Build Script
-# This script sets up the complete development environment including:
-# - LocalStack (S3, SQS, Lambda)
-# - Neo4j (Graph database for asset management)
-# - Keycloak (Authentication)
-# - Auth Service (REST API)
-# - Asset Manager (GraphQL API)
-# - Transcoder Service
-# - CMS UI (React Native/Expo)
+# Export environment variables for docker-compose
+echo "[INFO] Exporting environment variables..."
+export AWS_REGION
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export LOCALSTACK_ENDPOINT
+export LOCALSTACK_EXTERNAL_ENDPOINT
+export SQS_QUEUE_URL
+export ANALYZE_QUEUE_URL
+export DELETE_FILES_LAMBDA_ENDPOINT
+
 
 # Stop CMS UI if running
 echo "[INFO] Stopping any existing CMS UI processes..."
@@ -43,67 +45,112 @@ if [ -d "../frontend/HobbyStreamerCMS" ]; then
   cd ../../local
 fi
 
+# Stop any existing Expo processes
+echo "[INFO] Stopping any existing Expo processes..."
+pkill -f "expo start" || true
+sleep 2
+
+# Stop all running containers for fresh start
+echo "[INFO] Stopping all running containers for fresh start..."
+docker-compose down
+
+# Phase 1: Start Elasticsearch and Kibana first
+echo "[INFO] Starting Elasticsearch and Kibana..."
+docker-compose up -d elasticsearch kibana
+
+# Wait for Elasticsearch to be ready
+echo "[INFO] Waiting for Elasticsearch to be ready..."
+max_attempts=60
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s http://localhost:9200/_cluster/health > /dev/null 2>&1; then
+    echo "[INFO] Elasticsearch is ready."
+    break
+  fi
+  echo "[INFO] Elasticsearch not ready yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
+  sleep 3
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "[ERROR] Elasticsearch failed to become ready after $max_attempts attempts"
+  exit 1
+fi
+
+# Phase 2: Start Fluentd after Elasticsearch is ready
+echo "[INFO] Starting Fluentd..."
+docker-compose up -d fluentd
+
+# Wait for Fluentd to be healthy
+echo "[INFO] Waiting for Fluentd to be healthy..."
+max_attempts=60
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  container_id=$(docker-compose ps -q fluentd)
+  if [ -n "$container_id" ]; then
+    health_status=$(docker inspect --format='{{.State.Health.Status}}' "$container_id" 2>/dev/null || echo "unknown")
+    if [ "$health_status" == "healthy" ]; then
+      echo "[INFO] Fluentd is healthy."
+      break
+    fi
+  fi
+  echo "[INFO] Fluentd not healthy yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "[ERROR] Fluentd failed to become healthy after $max_attempts attempts"
+  exit 1
+fi
+
+# Phase 3: Start infrastructure services
+echo "[INFO] Starting infrastructure services (LocalStack, Neo4j, Keycloak)..."
+
 # Generate Keycloak certificates if they don't exist
 if [ ! -f "keycloak-certs/cert.pem" ] || [ ! -f "keycloak-certs/key.pem" ]; then
   echo "[INFO] Generating Keycloak HTTPS certificates..."
   ./generate-keycloak-certs.sh
 fi
 
-# Stop any existing Expo processes
-echo "[INFO] Stopping any existing Expo processes..."
-pkill -f "expo start" || true
-sleep 2
-
-# Export environment variables for docker-compose
-echo "[INFO] Exporting environment variables..."
-export AWS_REGION
-export AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY
-export LOCALSTACK_ENDPOINT
-export LOCALSTACK_EXTERNAL_ENDPOINT
-export SQS_QUEUE_URL
-export ANALYZE_QUEUE_URL
-export DELETE_FILES_LAMBDA_ENDPOINT
-
-# Stop all running containers
-if docker-compose ps | grep -q 'Up'; then
-  echo "[INFO] Stopping all running containers..."
-  docker-compose down
-fi
-
-# Start infrastructure services (LocalStack, Keycloak, and Neo4j)
-echo "[INFO] Starting infrastructure services..."
-docker-compose up -d localstack keycloak neo4j
-
-# Wait for LocalStack to be ready
-until curl -s http://localhost:4566/health > /dev/null 2>&1; do
-  echo "[INFO] Waiting for LocalStack to be ready..."
-  sleep 2
-done
-echo "[INFO] LocalStack is up. Waiting for all services to be ready..."
-sleep 10
+docker-compose up -d localstack neo4j keycloak
 
 # Wait for Keycloak to be ready
 echo "[INFO] Waiting for Keycloak to be ready..."
-until curl -s http://localhost:9090/realms/master > /dev/null 2>&1; do
-  sleep 2
+max_attempts=60
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s http://localhost:9090/realms/master > /dev/null 2>&1; then
+    echo "[INFO] Keycloak master realm is up."
+    break
+  fi
+  echo "[INFO] Keycloak not ready yet, waiting... (attempt $((attempt + 1))/$max_attempts)"
+  sleep 3
+  attempt=$((attempt + 1))
 done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "[ERROR] Keycloak failed to become ready after $max_attempts attempts"
+  exit 1
+fi
+
+# Wait a bit longer to ensure Keycloak is fully initialized
+sleep 10
 
 # Import the hobby realm if it doesn't exist
 if ! curl -s http://localhost:9090/realms/hobby | grep -q '"realm":"hobby"'; then
   echo "[INFO] Importing Keycloak hobby realm..."
   docker exec hobby-streamer-keycloak-1 /opt/keycloak/bin/kc.sh import --file=/opt/keycloak/data/import/hobby-realm.json --override=true
+  # Check if import succeeded
+  if curl -s http://localhost:9090/realms/hobby | grep -q '"realm":"hobby"'; then
+    echo "[INFO] Hobby realm imported successfully."
+  else
+    echo "[ERROR] Failed to import hobby realm!"
+    exit 1
+  fi
 else
   echo "[INFO] Keycloak hobby realm already exists."
 fi
-
-# Wait for Neo4j to be ready
-echo "[INFO] Waiting for Neo4j to be ready..."
-until curl -s http://localhost:7474 > /dev/null 2>&1; do
-  echo "[INFO] Waiting for Neo4j to be ready..."
-  sleep 3
-done
-echo "[INFO] Neo4j is up and running."
 
 
 echo "[INFO] LocalStack is up. Creating resources..."
@@ -201,7 +248,6 @@ fi
 
 popd > /dev/null
 
-
 # Build and deploy the delete files Lambda
 pushd ../backend/lambdas/cmd/delete_files > /dev/null
 echo "[INFO] Building delete files Lambda..."
@@ -278,9 +324,19 @@ sed -i.bak "s|getEnvVar('REACT_APP_TRANSCODE_BASE_URL', '[^']*')|getEnvVar('REAC
 rm -f ../frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"
 
-# Start and rebuild all backend services
-echo "[INFO] Building and starting all backend services with the latest code..."
+
+# Phase 4: Start backend services
+echo "[INFO] Starting backend services (auth-service, asset-manager, transcoder)..."
 docker-compose up -d auth-service asset-manager transcoder
+
+
+echo "[INFO] All services are running successfully!"
+echo "[INFO] You can view logs using: docker-compose logs <service-name>"
+echo "[INFO] Or access Kibana at http://localhost:5601"
+
+# Setup Kibana dashboard
+echo "[INFO] Setting up Kibana dashboard..."
+./setup-kibana-dashboard.sh
 
 # Wait for services to be ready
 echo "[INFO] Waiting for services to be ready..."
@@ -300,6 +356,8 @@ echo "[INFO] - Asset Manager GraphQL: http://localhost:8082/query"
 echo "[INFO] - Neo4j Browser: http://localhost:7474"
 echo "[INFO] - Keycloak: http://localhost:9090"
 echo "[INFO] - LocalStack: http://localhost:4566"
+echo "[INFO] - Kibana (Logs): http://localhost:5601"
+echo "[INFO] - Elasticsearch: http://localhost:9200"
 
 # Setup CMS UI
 echo "[INFO] Setting up CMS UI..."
@@ -343,6 +401,7 @@ echo "[INFO] Quick access:"
 echo "[INFO] - CMS UI: http://localhost:8081"
 echo "[INFO] - Asset Manager: http://localhost:8082/query"
 echo "[INFO] - Auth Service: http://localhost:8080"
+echo "[INFO] - Kibana (Logs): http://localhost:5601"
 echo ""
 echo "[INFO] To stop all services: docker-compose down"
 echo "[INFO] To stop CMS UI: pkill -f 'npm run web'"

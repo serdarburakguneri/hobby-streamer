@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 )
 
@@ -36,6 +37,21 @@ type ErrorResponse struct {
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract tracking ID from headers
+	trackingID := ""
+	if trackingHeader, exists := event.Headers["X-Tracking-ID"]; exists {
+		trackingID = trackingHeader
+	} else if trackingHeader, exists := event.Headers["x-tracking-id"]; exists {
+		trackingID = trackingHeader
+	}
+
+	// Create logger with tracking ID
+	log := logger.WithService("trigger-transcode-job")
+	if trackingID != "" {
+		log = log.WithTrackingID(trackingID)
+	}
+	log = log.WithContext(ctx)
+
 	if event.HTTPMethod == "OPTIONS" {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
@@ -54,21 +70,23 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	var req TranscodeRequest
 	if err := json.Unmarshal([]byte(event.Body), &req); err != nil {
-		log.Printf("Invalid request body: %v | raw body: %s", err, event.Body)
+		log.WithError(err).Error("Invalid request body", "raw_body", event.Body)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request body"})
 	}
 
 	if strings.TrimSpace(req.AssetID) == "" || strings.TrimSpace(req.VideoType) == "" || strings.TrimSpace(req.Format) == "" {
+		log.Error("Missing required fields", "asset_id", req.AssetID, "video_type", req.VideoType, "format", req.Format)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "assetId, videoType, and format are required"})
 	}
 
 	if req.Format != "hls" && req.Format != "dash" {
+		log.Error("Invalid format", "format", req.Format)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "format must be either 'hls' or 'dash'"})
 	}
 
 	queueURL := os.Getenv("TRANSCODER_QUEUE_URL")
 	if queueURL == "" {
-		log.Println("Missing TRANSCODER_QUEUE_URL env variable")
+		log.Error("Missing TRANSCODER_QUEUE_URL env variable")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Server configuration error: missing queue URL"})
 	}
 
@@ -86,7 +104,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
-		log.Printf("Failed to create AWS session: %v", err)
+		log.WithError(err).Error("Failed to create AWS session")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to initialize AWS session"})
 	}
 
@@ -114,7 +132,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	}
 
 	if outputFilename == "" {
-		log.Printf("Warning: SourceFileName is empty, using fallback filename for asset %s", req.AssetID)
+		log.Warn("SourceFileName is empty, using fallback filename", "asset_id", req.AssetID)
 		switch req.Format {
 		case "hls":
 			outputFilename = "playlist.m3u8"
@@ -142,7 +160,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	case "dash":
 		messageType = messages.MessageTypeTranscodeDASH
 	default:
-		log.Printf("Unknown format: %s", req.Format)
+		log.Error("Unknown format", "format", req.Format)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid format"})
 	}
 
@@ -151,11 +169,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		"payload": payload,
 	})
 	if err != nil {
-		log.Printf("Failed to marshal message: %v", err)
+		log.WithError(err).Error("Failed to marshal message")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create job message"})
 	}
 
-	log.Printf("Sending SQS message for %s: %s", messageType, string(messageBody))
+	log.Info("Sending SQS message", "message_type", messageType, "asset_id", req.AssetID, "output_bucket", outputBucketName, "output_key", outputKey)
 
 	input := &sqs.SendMessageInput{
 		QueueUrl:    aws.String(queueURL),
@@ -164,22 +182,34 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	_, err = svc.SendMessageWithContext(ctx, input)
 	if err != nil {
-		log.Printf("Failed to send SQS message: %v", err)
+		log.WithError(err).Error("Failed to send SQS message", "queue_url", queueURL)
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to trigger transcoding job"})
 	}
 
-	log.Printf("Transcoding job triggered successfully: %s for asset %s", messageType, req.AssetID)
+	log.Info("Transcoding job triggered successfully", "message_type", messageType, "asset_id", req.AssetID)
 
-	return respondJSON(http.StatusOK, TranscodeResponse{
+	response, err := respondJSON(http.StatusOK, TranscodeResponse{
 		Message: "Transcoding job triggered successfully",
 		JobType: messageType,
 	})
+	if err != nil {
+		return response, err
+	}
+
+	// Add tracking ID to response headers
+	if trackingID != "" {
+		response.Headers["X-Tracking-ID"] = trackingID
+	}
+
+	return response, nil
 }
 
 func respondJSON(status int, payload interface{}) (events.APIGatewayProxyResponse, error) {
+	log := logger.WithService("trigger-transcode-job")
+
 	body, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Failed to marshal JSON response: %v", err)
+		log.WithError(err).Error("Failed to marshal JSON response")
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
@@ -197,5 +227,6 @@ func respondJSON(status int, payload interface{}) (events.APIGatewayProxyRespons
 }
 
 func main() {
+	logger.Init(slog.LevelInfo, "json")
 	lambda.Start(handler)
 }

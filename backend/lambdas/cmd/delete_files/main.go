@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
 type DeleteRequest struct {
@@ -36,25 +37,40 @@ type ErrorResponse struct {
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Parse request body
+	// Extract tracking ID from headers
+	trackingID := ""
+	if trackingHeader, exists := event.Headers["X-Tracking-ID"]; exists {
+		trackingID = trackingHeader
+	} else if trackingHeader, exists := event.Headers["x-tracking-id"]; exists {
+		trackingID = trackingHeader
+	}
+
+	// Create logger with tracking ID
+	log := logger.WithService("delete-files")
+	if trackingID != "" {
+		log = log.WithTrackingID(trackingID)
+	}
+	log = log.WithContext(ctx)
+
 	var req DeleteRequest
 	if err := json.Unmarshal([]byte(event.Body), &req); err != nil {
-		log.Printf("Invalid request body: %v | raw body: %s", err, event.Body)
+		log.WithError(err).Error("Invalid request body", "raw_body", event.Body)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request body"})
 	}
 
 	if req.AssetID == "" {
+		log.Error("Missing assetId in request")
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "assetId is required"})
 	}
 
 	if len(req.Files) == 0 {
+		log.Info("No files to delete", "asset_id", req.AssetID)
 		return respondJSON(http.StatusOK, DeleteResponse{
 			Message: "No files to delete",
 			Deleted: []S3File{},
 		})
 	}
 
-	// Support custom endpoint for LocalStack
 	endpoint := os.Getenv("AWS_ENDPOINT")
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
@@ -66,16 +82,14 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		awsConfig.Endpoint = aws.String(endpoint)
 	}
 
-	// Create AWS session
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
-		log.Printf("Failed to create AWS session: %v", err)
+		log.WithError(err).Error("Failed to create AWS session")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to initialize AWS session"})
 	}
 
 	svc := s3.New(sess)
 
-	// Group files by bucket for efficient deletion
 	bucketFiles := make(map[string][]string)
 	for _, file := range req.Files {
 		bucketFiles[file.Bucket] = append(bucketFiles[file.Bucket], file.Key)
@@ -84,7 +98,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	var deleted []S3File
 	var errors []string
 
-	// Delete files from each bucket
 	for bucket, keys := range bucketFiles {
 		if len(keys) == 0 {
 			continue
@@ -105,12 +118,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 		result, err := svc.DeleteObjectsWithContext(ctx, input)
 		if err != nil {
-			log.Printf("Failed to delete objects from bucket %s: %v", bucket, err)
+			log.WithError(err).Error("Failed to delete objects from bucket", "bucket", bucket, "file_count", len(keys))
 			errors = append(errors, fmt.Sprintf("Failed to delete from bucket %s: %v", bucket, err))
 			continue
 		}
 
-		// Add successfully deleted files
 		for _, deletedObj := range result.Deleted {
 			deleted = append(deleted, S3File{
 				Bucket: bucket,
@@ -118,13 +130,14 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 			})
 		}
 
-		// Log any errors
 		for _, err := range result.Errors {
 			errorMsg := fmt.Sprintf("Failed to delete %s from %s: %s", *err.Key, bucket, *err.Message)
 			errors = append(errors, errorMsg)
-			log.Printf("Delete error: %s", errorMsg)
+			log.Error("Delete error", "bucket", bucket, "key", *err.Key, "error", *err.Message)
 		}
 	}
+
+	log.Info("File deletion completed", "asset_id", req.AssetID, "deleted_count", len(deleted), "error_count", len(errors))
 
 	response := DeleteResponse{
 		Message: fmt.Sprintf("Deleted %d files for asset %s", len(deleted), req.AssetID),
@@ -135,13 +148,25 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		response.Errors = errors
 	}
 
-	return respondJSON(http.StatusOK, response)
+	apiResponse, err := respondJSON(http.StatusOK, response)
+	if err != nil {
+		return apiResponse, err
+	}
+
+	// Add tracking ID to response headers
+	if trackingID != "" {
+		apiResponse.Headers["X-Tracking-ID"] = trackingID
+	}
+
+	return apiResponse, nil
 }
 
 func respondJSON(status int, payload interface{}) (events.APIGatewayProxyResponse, error) {
+	log := logger.WithService("delete-files")
+
 	body, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Failed to marshal JSON response: %v", err)
+		log.WithError(err).Error("Failed to marshal JSON response")
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
@@ -155,5 +180,6 @@ func respondJSON(status int, payload interface{}) (events.APIGatewayProxyRespons
 }
 
 func main() {
+	logger.Init(slog.LevelInfo, "json")
 	lambda.Start(handler)
 }

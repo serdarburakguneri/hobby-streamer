@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
 type UploadRequest struct {
@@ -29,6 +30,21 @@ type ErrorResponse struct {
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// Extract tracking ID from headers
+	trackingID := ""
+	if trackingHeader, exists := event.Headers["X-Tracking-ID"]; exists {
+		trackingID = trackingHeader
+	} else if trackingHeader, exists := event.Headers["x-tracking-id"]; exists {
+		trackingID = trackingHeader
+	}
+	
+	// Create logger with tracking ID
+	log := logger.WithService("generate-presigned-url")
+	if trackingID != "" {
+		log = log.WithTrackingID(trackingID)
+	}
+	log = log.WithContext(ctx)
+
 	if event.HTTPMethod == "OPTIONS" {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
@@ -41,17 +57,15 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		}, nil
 	}
 
-	// Parse request body
 	var req UploadRequest
 	if err := json.Unmarshal([]byte(event.Body), &req); err != nil || strings.TrimSpace(req.FileName) == "" {
-		log.Printf("Invalid request body: %v | raw body: %s", err, event.Body)
+		log.WithError(err).Error("Invalid request body", "raw_body", event.Body)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "fileName is required in the request body"})
 	}
 
-	// Validate environment variables
 	bucket := os.Getenv("BUCKET_NAME")
 	if bucket == "" {
-		log.Println("Missing BUCKET_NAME env variable")
+		log.Error("Missing BUCKET_NAME env variable")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Server configuration error: missing bucket name"})
 	}
 
@@ -60,7 +74,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		region = "us-east-1"
 	}
 
-	// Support custom endpoint for LocalStack
 	endpoint := os.Getenv("AWS_ENDPOINT")
 	awsConfig := &aws.Config{Region: aws.String(region)}
 	if endpoint != "" {
@@ -68,36 +81,45 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		awsConfig.S3ForcePathStyle = aws.Bool(true)
 	}
 
-	// Create AWS session
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
-		log.Printf("Failed to create AWS session: %v", err)
+		log.WithError(err).Error("Failed to create AWS session")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to initialize AWS session"})
 	}
 
 	svc := s3.New(sess)
 
-	// TODO: Support multiple buckets (raw, processing, public) based on logic or request
-	// Create pre-signed URL for PUT
 	reqObj, _ := svc.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(req.FileName),
 	})
 	url, err := reqObj.Presign(15 * time.Minute)
 	if err != nil {
-		log.Printf("Failed to generate pre-signed URL: %v", err)
+		log.WithError(err).Error("Failed to generate pre-signed URL")
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate pre-signed URL"})
 	}
 
-	log.Printf("Generated presigned URL: %s", url)
+	log.Info("Generated presigned URL", "bucket", bucket, "key", req.FileName, "expires_in_minutes", 15)
 
-	return respondJSON(http.StatusOK, UploadResponse{URL: url})
+	response, err := respondJSON(http.StatusOK, UploadResponse{URL: url})
+	if err != nil {
+		return response, err
+	}
+	
+	// Add tracking ID to response headers
+	if trackingID != "" {
+		response.Headers["X-Tracking-ID"] = trackingID
+	}
+	
+	return response, nil
 }
 
 func respondJSON(status int, payload interface{}) (events.APIGatewayProxyResponse, error) {
+	log := logger.WithService("generate-presigned-url")
+
 	body, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Failed to marshal JSON response: %v", err)
+		log.WithError(err).Error("Failed to marshal JSON response")
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
@@ -115,5 +137,6 @@ func respondJSON(status int, payload interface{}) (events.APIGatewayProxyRespons
 }
 
 func main() {
+	logger.Init(slog.LevelInfo, "json")
 	lambda.Start(handler)
 }
