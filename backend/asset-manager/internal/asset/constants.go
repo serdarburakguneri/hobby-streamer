@@ -52,9 +52,9 @@ const (
 )
 
 const (
-	VideoVariantRaw  = "raw"
-	VideoVariantHLS  = "hls"
-	VideoVariantDASH = "dash"
+	VideoFormatRaw  VideoFormat = "raw"
+	VideoFormatHLS  VideoFormat = "hls"
+	VideoFormatDASH VideoFormat = "dash"
 )
 
 var (

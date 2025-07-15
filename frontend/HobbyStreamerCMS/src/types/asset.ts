@@ -34,6 +34,12 @@ export enum VideoType {
   INTERVIEW = 'INTERVIEW'
 }
 
+export enum VideoFormat {
+  RAW = 'raw',
+  HLS = 'hls',
+  DASH = 'dash'
+}
+
 export interface S3Object {
   bucket: string;
   key: string;
@@ -45,7 +51,10 @@ export interface StreamInfo {
   cdnPrefix?: string;
 }
 
-export interface VideoVariant {
+export interface Video {
+  id: string;
+  type: VideoType;
+  format: string;
   storageLocation: S3Object;
   width?: number;
   height?: number;
@@ -57,14 +66,9 @@ export interface VideoVariant {
   streamInfo?: StreamInfo;
   metadata?: Record<string, any>;
   status?: string;
-}
-
-export interface Video {
-  type: VideoType;
-  raw?: VideoVariant;
-  hls?: VideoVariant;
-  dash?: VideoVariant;
   thumbnail?: Image;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Image {

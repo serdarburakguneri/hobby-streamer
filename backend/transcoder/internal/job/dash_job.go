@@ -47,7 +47,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal DASH payload")
 		if d.analyzeProducer != nil {
-			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
@@ -65,7 +65,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input)
 			if d.analyzeProducer != nil {
-				d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+				d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 			}
 			return err
 		}
@@ -84,7 +84,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg DASH transcoding failed", "input", localInputPath, "output", localOutputPath, "ffmpeg_output", string(out))
 		if d.analyzeProducer != nil {
-			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
@@ -96,27 +96,27 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	if err != nil {
 		log.WithError(err).Error("Failed to upload output to S3", "bucket", d.outputBucket, "key", d.outputKey)
 		if d.analyzeProducer != nil {
-			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
 	defer os.Remove(localOutputPath)
 
 	if d.analyzeProducer != nil {
-		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, true, "")
+		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
 	}
 
 	return nil
 }
 
-func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoType, format string, success bool, errorMessage string) {
+func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoID, format string, success bool, errorMessage string) {
 	log := d.logger.WithContext(ctx)
 
 	payload := messages.TranscodeCompletionPayload{
-		AssetID:   assetID,
-		VideoType: videoType,
-		Format:    format,
-		Success:   success,
+		AssetID: assetID,
+		VideoID: videoID,
+		Format:  format,
+		Success: success,
 	}
 
 	if success {

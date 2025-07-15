@@ -47,7 +47,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal HLS payload")
 		if h.analyzeProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
@@ -65,7 +65,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input)
 			if h.analyzeProducer != nil {
-				h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+				h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 			}
 			return err
 		}
@@ -84,7 +84,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	if err != nil {
 		log.WithError(err).Error("FFmpeg HLS transcoding failed", "input", localInputPath, "output", localOutputPath, "ffmpeg_output", string(out))
 		if h.analyzeProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
@@ -96,27 +96,27 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	if err != nil {
 		log.WithError(err).Error("Failed to upload output to S3", "bucket", h.outputBucket, "key", h.outputKey)
 		if h.analyzeProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
 	defer os.Remove(localOutputPath)
 
 	if h.analyzeProducer != nil {
-		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, true, "")
+		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
 	}
 
 	return nil
 }
 
-func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoType, format string, success bool, errorMessage string) {
+func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoID, format string, success bool, errorMessage string) {
 	log := h.logger.WithContext(ctx)
 
 	payload := messages.TranscodeCompletionPayload{
-		AssetID:   assetID,
-		VideoType: videoType,
-		Format:    format,
-		Success:   success,
+		AssetID: assetID,
+		VideoID: videoID,
+		Format:  format,
+		Success: success,
 	}
 
 	if success {

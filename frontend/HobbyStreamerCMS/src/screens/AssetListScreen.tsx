@@ -24,7 +24,7 @@ interface AssetListScreenProps {
 export default function AssetListScreen({ onCreateAsset, refreshTrigger }: AssetListScreenProps) {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showDeleteVideoConfirmation, setShowDeleteVideoConfirmation] = useState(false);
-  const [videoToDelete, setVideoToDelete] = useState<{ type: string; name: string } | null>(null);
+  const [videoToDelete, setVideoToDelete] = useState<{ id: string; type: string; format: string } | null>(null);
 
   const {
     assets,
@@ -50,14 +50,17 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
 
 
 
-  const handleDeleteVideoWithConfirmation = (videoType: string, videoName: string) => {
-    setVideoToDelete({ type: videoType, name: videoName });
-    setShowDeleteVideoConfirmation(true);
+  const handleDeleteVideoWithConfirmation = (videoId: string) => {
+    const video = selectedAsset?.videos?.find(v => v.id === videoId);
+    if (video) {
+      setVideoToDelete({ id: videoId, type: video.type, format: video.format });
+      setShowDeleteVideoConfirmation(true);
+    }
   };
 
   const performDeleteVideo = async () => {
     if (!videoToDelete) return;
-    await handleDeleteVideo(videoToDelete.type, videoToDelete.name);
+    await handleDeleteVideo(videoToDelete.id);
     setShowDeleteVideoConfirmation(false);
     setVideoToDelete(null);
   };
@@ -140,7 +143,7 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Delete Video</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to delete the "{videoToDelete?.name}" video from "{selectedAsset?.title || `Asset ${selectedAsset?.id}`}"? This action cannot be undone.
+              Are you sure you want to delete the {videoToDelete?.format.toUpperCase()} {videoToDelete?.type.toLowerCase()} video from "{selectedAsset?.title || `Asset ${selectedAsset?.id}`}"? This action cannot be undone.
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity 

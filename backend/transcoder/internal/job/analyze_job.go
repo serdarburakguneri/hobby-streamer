@@ -45,7 +45,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		return err
 	}
 
-	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_type", p.VideoType)
+	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
 
 	var localPath string
 	var err error
@@ -55,7 +55,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		if err != nil {
 			log.WithError(err).Error("Failed to download from S3", "input", p.Input)
 			if a.analyzeProducer != nil {
-				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, false, err.Error())
+				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, err.Error())
 			}
 			return err
 		}
@@ -70,7 +70,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "output", string(out))
 		if a.analyzeProducer != nil {
-			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, false, err.Error())
+			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, err.Error())
 		}
 		return err
 	}
@@ -79,19 +79,19 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	log.Debug("FFmpeg analysis output", "output", string(out))
 
 	if a.analyzeProducer != nil {
-		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoType, true, "")
+		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, true, "")
 	}
 
 	return nil
 }
 
-func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, videoType string, success bool, errorMessage string) {
+func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, videoID string, success bool, errorMessage string) {
 	log := a.logger.WithContext(ctx)
 
 	payload := messages.AnalyzeCompletionPayload{
-		AssetID:   assetID,
-		VideoType: videoType,
-		Success:   success,
+		AssetID: assetID,
+		VideoID: videoID,
+		Success: success,
 	}
 
 	if !success && errorMessage != "" {

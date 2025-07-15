@@ -12,9 +12,6 @@ echo "[INFO] All services are running successfully!"
 echo "[INFO] You can view logs using: docker-compose logs <service-name>"
 echo "[INFO] Or access Kibana at http://localhost:5601"
 
-echo "[INFO] Setting up Kibana dashboard..."
-./setup-kibana-dashboard.sh
-
 echo "[INFO] Waiting for services to be ready..."
 sleep 10
 

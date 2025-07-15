@@ -21,5 +21,5 @@ func NewHLSCompletionConsumer(assetService asset.AssetService) *HLSCompletionCon
 
 func (h *HLSCompletionConsumer) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
 	h.logger.Info("Processing HLS transcoding completion message", "message_type", msgType)
-	return h.assetService.HandleTranscodeCompletion(ctx, payload, asset.VideoVariantHLS)
+	return h.assetService.HandleTranscodeCompletion(ctx, payload)
 }

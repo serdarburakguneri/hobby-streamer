@@ -67,7 +67,7 @@ export default function VideoUpload({ assetId, videoType, onUploadComplete, onCa
       const key = fileName;
       const url = `${API_CONFIG.LOCALSTACK_BASE_URL}/${bucket}/${key}`;
       
-      await addVideo(assetId, videoType, bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);
+      await addVideo(assetId, videoType, 'raw', bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);
       
       setUploadProgress(100);
       Alert.alert('Success', 'Video uploaded successfully');

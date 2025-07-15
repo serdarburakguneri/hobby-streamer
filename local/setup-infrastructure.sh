@@ -45,6 +45,9 @@ if [ $attempt -eq $max_attempts ]; then
   exit 1
 fi
 
+echo "[INFO] Setting up Kibana dashboard..."
+./setup-kibana-dashboard.sh
+
 echo "[INFO] Starting Fluentd..."
 docker-compose up -d fluentd
 

@@ -21,7 +21,7 @@ import (
 
 type TranscodeRequest struct {
 	AssetID        string `json:"assetId"`
-	VideoType      string `json:"videoType"`
+	VideoID        string `json:"videoId"`
 	Format         string `json:"format"`
 	Input          string `json:"input,omitempty"`
 	SourceFileName string `json:"sourceFileName,omitempty"`
@@ -37,7 +37,7 @@ type ErrorResponse struct {
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// Extract tracking ID from headers
+
 	trackingID := ""
 	if trackingHeader, exists := event.Headers["X-Tracking-ID"]; exists {
 		trackingID = trackingHeader
@@ -45,7 +45,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		trackingID = trackingHeader
 	}
 
-	// Create logger with tracking ID
 	log := logger.WithService("trigger-transcode-job")
 	if trackingID != "" {
 		log = log.WithTrackingID(trackingID)
@@ -74,9 +73,9 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request body"})
 	}
 
-	if strings.TrimSpace(req.AssetID) == "" || strings.TrimSpace(req.VideoType) == "" || strings.TrimSpace(req.Format) == "" {
-		log.Error("Missing required fields", "asset_id", req.AssetID, "video_type", req.VideoType, "format", req.Format)
-		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "assetId, videoType, and format are required"})
+	if strings.TrimSpace(req.AssetID) == "" || strings.TrimSpace(req.VideoID) == "" || strings.TrimSpace(req.Format) == "" {
+		log.Error("Missing required fields", "asset_id", req.AssetID, "video_id", req.VideoID, "format", req.Format)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "assetId, videoId, and format are required"})
 	}
 
 	if req.Format != "hls" && req.Format != "dash" {
@@ -141,11 +140,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		}
 	}
 
-	outputKey := fmt.Sprintf("%s/%s/%s", req.AssetID, req.VideoType, outputFilename)
+	outputKey := fmt.Sprintf("%s/%s/%s", req.AssetID, req.VideoID, outputFilename)
 
 	payload := messages.TranscodePayload{
 		AssetID:        req.AssetID,
-		VideoType:      req.VideoType,
+		VideoID:        req.VideoID,
 		Format:         req.Format,
 		Input:          req.Input,
 		OutputBucket:   outputBucketName,
@@ -196,7 +195,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		return response, err
 	}
 
-	// Add tracking ID to response headers
 	if trackingID != "" {
 		response.Headers["X-Tracking-ID"] = trackingID
 	}

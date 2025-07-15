@@ -31,15 +31,13 @@ type AssetService interface {
 	DeleteAsset(ctx context.Context, id string) error
 	AddImage(ctx context.Context, id string, img *Image) error
 	DeleteImage(ctx context.Context, id string, filename string) error
-	AddVideo(ctx context.Context, id string, videoType VideoType, video *Video) error
-	DeleteVideo(ctx context.Context, id string, videoType VideoType) error
-	AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
-	UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error
-	DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error
-	UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error
-	UpdateVideoCDN(ctx context.Context, id string, videoType VideoType, format string, cdnPrefix string) error
+	AddVideo(ctx context.Context, id string, video *Video) error
+	UpdateVideo(ctx context.Context, assetID string, videoID string, video *Video) error
+	DeleteVideo(ctx context.Context, assetID string, videoID string) error
+	UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) error
+	UpdateVideoCDN(ctx context.Context, assetID string, videoID string, cdnPrefix string) error
 	HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error
-	HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}, variant string) error
+	HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
 	GetParent(ctx context.Context, childID string) (*Asset, error)
 	GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error)
@@ -186,24 +184,10 @@ func (s *Service) DeleteAsset(ctx context.Context, id string) error {
 	var filesToDelete []S3File
 
 	for _, video := range asset.Videos {
-		if video.Raw != nil {
-			filesToDelete = append(filesToDelete, S3File{
-				Bucket: video.Raw.StorageLocation.Bucket,
-				Key:    video.Raw.StorageLocation.Key,
-			})
-		}
-		if video.HLS != nil {
-			filesToDelete = append(filesToDelete, S3File{
-				Bucket: video.HLS.StorageLocation.Bucket,
-				Key:    video.HLS.StorageLocation.Key,
-			})
-		}
-		if video.DASH != nil {
-			filesToDelete = append(filesToDelete, S3File{
-				Bucket: video.DASH.StorageLocation.Bucket,
-				Key:    video.DASH.StorageLocation.Key,
-			})
-		}
+		filesToDelete = append(filesToDelete, S3File{
+			Bucket: video.StorageLocation.Bucket,
+			Key:    video.StorageLocation.Key,
+		})
 		if video.Thumbnail != nil && video.Thumbnail.StorageLocation != nil {
 			filesToDelete = append(filesToDelete, S3File{
 				Bucket: video.Thumbnail.StorageLocation.Bucket,
@@ -297,7 +281,7 @@ func (s *Service) DeleteImage(ctx context.Context, id string, filename string) e
 	return s.Repo.SaveAsset(ctx, asset)
 }
 
-func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, video *Video) error {
+func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
 		return err
@@ -307,68 +291,56 @@ func (s *Service) AddVideo(ctx context.Context, id string, videoType VideoType, 
 		asset.Videos = make([]Video, 0)
 	}
 
-	for i, existingVideo := range asset.Videos {
-		if existingVideo.Type == videoType {
-			video.Type = videoType
-			if video.Raw != nil && video.Raw.Status == "" {
-				video.Raw.Status = VideoStatusPending
-			}
-			asset.Videos[i] = *video
-			err = s.Repo.SaveAsset(ctx, asset)
-			if err != nil {
-				return err
-			}
-
-			if s.SQSProducer != nil && video.Raw != nil {
-				s.sendAnalyzeJob(ctx, asset.ID, videoType, video.Raw.StorageLocation)
-			}
-			return nil
-		}
+	if video.ID == "" {
+		video.ID = generateID()
 	}
 
-	video.Type = videoType
-	if video.Raw != nil && video.Raw.Status == "" {
-		video.Raw.Status = VideoStatusPending
+	if video.Status == "" {
+		video.Status = VideoStatusPending
 	}
+
+	video.CreatedAt = time.Now()
+	video.UpdatedAt = time.Now()
+
 	asset.Videos = append(asset.Videos, *video)
 	err = s.Repo.SaveAsset(ctx, asset)
 	if err != nil {
 		return err
 	}
 
-	if s.SQSProducer != nil && video.Raw != nil {
-		s.sendAnalyzeJob(ctx, asset.ID, videoType, video.Raw.StorageLocation)
+	if s.SQSProducer != nil && video.Format == VideoFormatRaw {
+		s.sendAnalyzeJob(ctx, asset.ID, video.ID, video.StorageLocation)
 	}
 	return nil
 }
 
-func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoType VideoType, storageLocation S3Object) {
+func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object) {
 	log := logger.Get().WithService("asset-service")
 
 	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
 	payload := messages.AnalyzePayload{
-		Input:     input,
-		AssetID:   assetID,
-		VideoType: string(videoType),
+		Input:   input,
+		AssetID: assetID,
+		VideoID: videoID,
 	}
 
 	err := s.SQSProducer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
 	if err != nil {
-		log.WithError(err).Error("Failed to send analyze job", "asset_id", assetID, "input", input)
+		log.WithError(err).Error("Failed to send analyze job", "asset_id", assetID, "video_id", videoID, "input", input)
 	} else {
-		log.Info("Analyze job sent successfully", "asset_id", assetID, "input", input)
+		log.Info("Analyze job sent successfully", "asset_id", assetID, "video_id", videoID, "input", input)
 	}
 }
 
-func (s *Service) DeleteVideo(ctx context.Context, id string, videoType VideoType) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
+func (s *Service) DeleteVideo(ctx context.Context, assetID string, videoID string) error {
+	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return err
 	}
 
 	filtered := make([]Video, 0, len(asset.Videos))
 	for _, video := range asset.Videos {
-		if video.Type != videoType {
+		if video.ID != videoID {
 			filtered = append(filtered, video)
 		}
 	}
@@ -389,127 +361,88 @@ func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre 
 	return s.Repo.GetAssetsByTypeAndGenre(ctx, assetType, genre)
 }
 
-// --- Helper Types and Functions ---
+// --- Helper Functions ---
 
-type videoVariantPtr struct {
-	get func(v *Video) **VideoVariant
-	set func(v *Video, vv *VideoVariant)
-}
-
-var variantAccessors = map[string]videoVariantPtr{
-	VideoVariantRaw: {
-		get: func(v *Video) **VideoVariant { return &v.Raw },
-		set: func(v *Video, vv *VideoVariant) { v.Raw = vv },
-	},
-	VideoVariantHLS: {
-		get: func(v *Video) **VideoVariant { return &v.HLS },
-		set: func(v *Video, vv *VideoVariant) { v.HLS = vv },
-	},
-	VideoVariantDASH: {
-		get: func(v *Video) **VideoVariant { return &v.DASH },
-		set: func(v *Video, vv *VideoVariant) { v.DASH = vv },
-	},
-}
-
-func getVideoIndex(asset *Asset, videoType VideoType) int {
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			return i
+func getVideoByID(asset *Asset, videoID string) *Video {
+	for i := range asset.Videos {
+		if asset.Videos[i].ID == videoID {
+			return &asset.Videos[i]
 		}
 	}
-	return -1
+	return nil
 }
 
-func (s *Service) setCDNPrefixIfAvailable(variant *VideoVariant, bucket string) {
+func (s *Service) setCDNPrefixIfAvailable(video *Video, bucket string) {
 	cdnPrefix := s.getCDNPrefixForBucket(bucket)
 	if cdnPrefix != "" {
-		if variant.StreamInfo == nil {
-			variant.StreamInfo = &StreamInfo{}
+		if video.StreamInfo == nil {
+			video.StreamInfo = &StreamInfo{}
 		}
-		variant.StreamInfo.CdnPrefix = &cdnPrefix
+		video.StreamInfo.CdnPrefix = &cdnPrefix
+		playURL := cdnPrefix + "/" + video.StorageLocation.Key
+		video.StreamInfo.PlayURL = &playURL
 	}
 }
 
 // --- AssetService Methods ---
 
-func (s *Service) AddVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
+func (s *Service) UpdateVideo(ctx context.Context, assetID string, videoID string, video *Video) error {
+	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return err
 	}
-	idx := getVideoIndex(asset, videoType)
-	if idx == -1 {
+
+	existingVideo := getVideoByID(asset, videoID)
+	if existingVideo == nil {
 		return errors.New("video not found")
 	}
-	if acc, ok := variantAccessors[variant]; ok {
-		acc.set(&asset.Videos[idx], videoVariant)
-		return s.Repo.SaveAsset(ctx, asset)
-	}
-	return errors.New("invalid variant")
+
+	video.UpdatedAt = time.Now()
+	*existingVideo = *video
+	existingVideo.ID = videoID
+
+	return s.Repo.SaveAsset(ctx, asset)
 }
 
-func (s *Service) UpdateVideoVariant(ctx context.Context, id string, videoType VideoType, variant string, videoVariant *VideoVariant) error {
-	return s.AddVideoVariant(ctx, id, videoType, variant, videoVariant)
-}
-
-func (s *Service) DeleteVideoVariant(ctx context.Context, id string, videoType VideoType, variant string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
+func (s *Service) UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) error {
+	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return err
 	}
-	idx := getVideoIndex(asset, videoType)
-	if idx == -1 {
+
+	video := getVideoByID(asset, videoID)
+	if video == nil {
 		return errors.New("video not found")
 	}
-	if acc, ok := variantAccessors[variant]; ok {
-		acc.set(&asset.Videos[idx], nil)
-		return s.Repo.SaveAsset(ctx, asset)
+
+	video.Status = status
+	video.UpdatedAt = time.Now()
+
+	if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
+		s.setCDNPrefixIfAvailable(video, video.StorageLocation.Bucket)
 	}
-	return errors.New("invalid variant")
+
+	return s.Repo.SaveAsset(ctx, asset)
 }
 
-func (s *Service) UpdateVideoVariantStatus(ctx context.Context, id string, videoType VideoType, variant string, status string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
+func (s *Service) UpdateVideoCDN(ctx context.Context, assetID string, videoID string, cdnPrefix string) error {
+	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return err
 	}
-	idx := getVideoIndex(asset, videoType)
-	if idx == -1 {
-		return errors.New("video not found")
-	}
-	if acc, ok := variantAccessors[variant]; ok {
-		vv := *acc.get(&asset.Videos[idx])
-		if vv != nil {
-			vv.Status = status
-			if variant == VideoVariantHLS || variant == VideoVariantDASH {
-				s.setCDNPrefixIfAvailable(vv, vv.StorageLocation.Bucket)
-			}
-			return s.Repo.SaveAsset(ctx, asset)
-		}
-	}
-	return errors.New("invalid variant or variant not found")
-}
 
-func (s *Service) UpdateVideoCDN(ctx context.Context, id string, videoType VideoType, format string, cdnPrefix string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	idx := getVideoIndex(asset, videoType)
-	if idx == -1 {
+	video := getVideoByID(asset, videoID)
+	if video == nil {
 		return errors.New("video not found")
 	}
-	if acc, ok := variantAccessors[format]; ok {
-		vv := *acc.get(&asset.Videos[idx])
-		if vv != nil {
-			if vv.StreamInfo == nil {
-				vv.StreamInfo = &StreamInfo{}
-			}
-			vv.StreamInfo.CdnPrefix = &cdnPrefix
-			return s.Repo.SaveAsset(ctx, asset)
-		}
+
+	if video.StreamInfo == nil {
+		video.StreamInfo = &StreamInfo{}
 	}
-	return errors.New("invalid format or variant not found")
+	video.StreamInfo.CdnPrefix = &cdnPrefix
+	video.UpdatedAt = time.Now()
+
+	return s.Repo.SaveAsset(ctx, asset)
 }
 
 func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
@@ -527,21 +460,6 @@ func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[strin
 		return err
 	}
 
-	var videoType VideoType
-	switch analyzePayload.VideoType {
-	case "main":
-		videoType = VideoTypeMain
-	case "trailer":
-		videoType = VideoTypeTrailer
-	case "behind_the_scenes":
-		videoType = VideoTypeBehind
-	case "interview":
-		videoType = VideoTypeInterview
-	default:
-		log.Error("Unknown video type in analyze completion message", "video_type", analyzePayload.VideoType)
-		return errors.New("unknown video type")
-	}
-
 	var status string
 	if analyzePayload.Success {
 		status = VideoStatusReady
@@ -549,19 +467,19 @@ func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[strin
 		status = VideoStatusFailed
 	}
 
-	log.Info("Processing analyze completion", "asset_id", analyzePayload.AssetID, "video_type", videoType, "success", analyzePayload.Success, "status", status)
+	log.Info("Processing analyze completion", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "success", analyzePayload.Success, "status", status)
 
-	err = s.UpdateVideoVariantStatus(ctx, analyzePayload.AssetID, videoType, VideoVariantRaw, status)
+	err = s.UpdateVideoStatus(ctx, analyzePayload.AssetID, analyzePayload.VideoID, status)
 	if err != nil {
-		log.WithError(err).Error("Failed to update video variant status after analyze completion", "asset_id", analyzePayload.AssetID, "video_type", videoType, "status", status)
+		log.WithError(err).Error("Failed to update video status after analyze completion", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "status", status)
 		return err
 	}
 
-	log.Info("Analyze completion processed successfully", "asset_id", analyzePayload.AssetID, "video_type", videoType, "success", analyzePayload.Success, "status", status)
+	log.Info("Analyze completion processed successfully", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "success", analyzePayload.Success, "status", status)
 	return nil
 }
 
-func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}, variant string) error {
+func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}) error {
 	log := logger.Get().WithService("asset-service")
 
 	var transcodePayload messages.TranscodeCompletionPayload
@@ -576,21 +494,6 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 		return err
 	}
 
-	var videoType VideoType
-	switch transcodePayload.VideoType {
-	case "main":
-		videoType = VideoTypeMain
-	case "trailer":
-		videoType = VideoTypeTrailer
-	case "behind_the_scenes":
-		videoType = VideoTypeBehind
-	case "interview":
-		videoType = VideoTypeInterview
-	default:
-		log.Error("Unknown video type in transcode completion message", "video_type", transcodePayload.VideoType)
-		return errors.New("unknown video type")
-	}
-
 	var status string
 	if transcodePayload.Success {
 		status = VideoStatusReady
@@ -598,89 +501,55 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 		status = VideoStatusFailed
 	}
 
-	log.Info("Processing transcode completion", "asset_id", transcodePayload.AssetID, "video_type", videoType, "format", transcodePayload.Format, "variant", variant, "success", transcodePayload.Success, "status", status)
+	log.Info("Processing transcode completion", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "format", transcodePayload.Format, "success", transcodePayload.Success, "status", status)
 
-	asset, err := s.Repo.GetAssetByID(ctx, transcodePayload.AssetID)
-	if err != nil {
-		log.WithError(err).Error("Failed to get asset for transcode completion", "asset_id", transcodePayload.AssetID)
-		return err
-	}
-
-	var videoIndex = -1
-	for i, video := range asset.Videos {
-		if video.Type == videoType {
-			videoIndex = i
-			break
-		}
-	}
-
-	if videoIndex == -1 {
-		log.Error("Video not found for transcode completion", "asset_id", transcodePayload.AssetID, "video_type", videoType)
-		return errors.New("video not found")
-	}
-
-	var variantExists bool
-	switch variant {
-	case VideoVariantHLS:
-		variantExists = asset.Videos[videoIndex].HLS != nil
-	case VideoVariantDASH:
-		variantExists = asset.Videos[videoIndex].DASH != nil
-	default:
-		log.Error("Invalid variant in transcode completion", "variant", variant)
-		return errors.New("invalid variant")
-	}
-
-	if !variantExists && transcodePayload.Success {
+	if transcodePayload.Success {
 		s3Object := S3Object{
 			Bucket: transcodePayload.Bucket,
 			Key:    transcodePayload.Key,
 			URL:    transcodePayload.URL,
 		}
 
-		videoVariant := &VideoVariant{
+		video := &Video{
+			ID:              generateID(),
+			Type:            VideoTypeMain,
+			Format:          VideoFormat(transcodePayload.Format),
 			StorageLocation: s3Object,
 			Status:          status,
 			ContentType:     "application/x-mpegURL",
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
 		}
 
-		if variant == VideoVariantDASH {
-			videoVariant.ContentType = "application/dash+xml"
+		if transcodePayload.Format == "dash" {
+			video.ContentType = "application/dash+xml"
 		}
 
 		cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
 		log.Debug("CDN prefix lookup", "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix)
 		if cdnPrefix != "" {
-			videoVariant.StreamInfo = &StreamInfo{
+			playURL := cdnPrefix + "/" + transcodePayload.Key
+			video.StreamInfo = &StreamInfo{
 				CdnPrefix: &cdnPrefix,
+				PlayURL:   &playURL,
 			}
-			log.Debug("Set CDN prefix for video variant", "asset_id", transcodePayload.AssetID, "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix)
+			log.Debug("Set CDN prefix and play URL for video", "asset_id", transcodePayload.AssetID, "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix, "play_url", playURL)
 		} else {
 			log.Warn("No CDN prefix found for bucket", "bucket", transcodePayload.Bucket)
 		}
 
-		switch variant {
-		case VideoVariantHLS:
-			asset.Videos[videoIndex].HLS = videoVariant
-		case VideoVariantDASH:
-			asset.Videos[videoIndex].DASH = videoVariant
-		}
-
-		log.Info("Created new video variant", "asset_id", transcodePayload.AssetID, "video_type", videoType, "variant", variant, "s3_location", s3Object)
-
-		err = s.Repo.SaveAsset(ctx, asset)
+		err = s.AddVideo(ctx, transcodePayload.AssetID, video)
 		if err != nil {
-			log.WithError(err).Error("Failed to save asset after creating video variant", "asset_id", transcodePayload.AssetID)
+			log.WithError(err).Error("Failed to add transcoded video", "asset_id", transcodePayload.AssetID, "video_id", video.ID)
 			return err
 		}
+
+		log.Info("Created new transcoded video", "asset_id", transcodePayload.AssetID, "video_id", video.ID, "format", transcodePayload.Format, "s3_location", s3Object)
 	} else {
-		err = s.UpdateVideoVariantStatus(ctx, transcodePayload.AssetID, videoType, variant, status)
-		if err != nil {
-			log.WithError(err).Error("Failed to update video variant status after transcode completion", "asset_id", transcodePayload.AssetID, "video_type", videoType, "variant", variant, "status", status)
-			return err
-		}
+		log.Error("Transcode failed", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "error", transcodePayload.Error)
 	}
 
-	log.Info("Transcode completion processed successfully", "asset_id", transcodePayload.AssetID, "video_type", videoType, "format", transcodePayload.Format, "variant", variant, "success", transcodePayload.Success, "status", status)
+	log.Info("Transcode completion processed successfully", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "format", transcodePayload.Format, "success", transcodePayload.Success, "status", status)
 	return nil
 }
 

@@ -118,12 +118,12 @@ export function useAssetList(refreshTrigger?: number) {
     }
   };
 
-  const handleDeleteVideo = async (videoType: string, videoName: string) => {
+  const handleDeleteVideo = async (videoId: string) => {
     if (!selectedAsset) return;
     
     try {
       setDeletingVideo(true);
-      const updatedAsset = await assetService.deleteVideo(selectedAsset.id, videoType);
+      const updatedAsset = await assetService.deleteVideo(selectedAsset.id, videoId);
       setSelectedAsset(updatedAsset);
       await loadAssets();
       setShowSuccessMessage(true);

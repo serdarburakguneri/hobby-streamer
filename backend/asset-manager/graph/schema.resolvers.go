@@ -308,26 +308,14 @@ func (r *mutationResolver) PatchPublishRule(ctx context.Context, id string, patc
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
-// UpdateVideoVariantStatus is the resolver for the updateVideoVariantStatus field.
-func (r *mutationResolver) UpdateVideoVariantStatus(ctx context.Context, id string, typeArg model.VideoType, variant string, status string) (*model.Asset, error) {
-	var assetVideoType asset.VideoType
-	switch typeArg {
-	case model.VideoTypeMain:
-		assetVideoType = asset.VideoTypeMain
-	case model.VideoTypeTrailer:
-		assetVideoType = asset.VideoTypeTrailer
-	case model.VideoTypeBehindTheScenes:
-		assetVideoType = asset.VideoTypeBehind
-	case model.VideoTypeInterview:
-		assetVideoType = asset.VideoTypeInterview
-	}
-
-	err := r.Resolver.AssetService.UpdateVideoVariantStatus(ctx, id, assetVideoType, variant, status)
+// UpdateVideoStatus is the resolver for the updateVideoStatus field.
+func (r *mutationResolver) UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) (*model.Asset, error) {
+	err := r.Resolver.AssetService.UpdateVideoStatus(ctx, assetID, videoID, status)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update video variant status: %w", err)
+		return nil, fmt.Errorf("failed to update video status: %w", err)
 	}
 
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated asset: %w", err)
 	}
@@ -335,26 +323,14 @@ func (r *mutationResolver) UpdateVideoVariantStatus(ctx context.Context, id stri
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
-// UpdateVideoCDN is the resolver for the updateVideoCDN field.
-func (r *mutationResolver) UpdateVideoCDN(ctx context.Context, id string, videoType model.VideoType, format string, cdnPrefix string) (*model.Asset, error) {
-	var assetVideoType asset.VideoType
-	switch videoType {
-	case model.VideoTypeMain:
-		assetVideoType = asset.VideoTypeMain
-	case model.VideoTypeTrailer:
-		assetVideoType = asset.VideoTypeTrailer
-	case model.VideoTypeBehindTheScenes:
-		assetVideoType = asset.VideoTypeBehind
-	case model.VideoTypeInterview:
-		assetVideoType = asset.VideoTypeInterview
-	}
-
-	err := r.Resolver.AssetService.UpdateVideoCDN(ctx, id, assetVideoType, format, cdnPrefix)
+// UpdateVideoCdn is the resolver for the updateVideoCDN field.
+func (r *mutationResolver) UpdateVideoCdn(ctx context.Context, assetID string, videoID string, cdnPrefix string) (*model.Asset, error) {
+	err := r.Resolver.AssetService.UpdateVideoCDN(ctx, assetID, videoID, cdnPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update video CDN: %w", err)
 	}
 
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated asset: %w", err)
 	}
@@ -363,7 +339,7 @@ func (r *mutationResolver) UpdateVideoCDN(ctx context.Context, id string, videoT
 }
 
 // AddVideo is the resolver for the addVideo field.
-func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg model.VideoType, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
+func (r *mutationResolver) AddVideo(ctx context.Context, assetID string, typeArg model.VideoType, format string, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
 	var assetVideoType asset.VideoType
 	switch typeArg {
 	case model.VideoTypeMain:
@@ -382,24 +358,21 @@ func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg mode
 		URL:    url,
 	}
 
-	videoVariant := &asset.VideoVariant{
+	video := &asset.Video{
+		Type:            assetVideoType,
+		Format:          asset.VideoFormat(format),
 		StorageLocation: s3Object,
 		ContentType:     contentType,
 		Size:            int64(size),
 		Status:          "pending",
 	}
 
-	video := &asset.Video{
-		Type: assetVideoType,
-		Raw:  videoVariant,
-	}
-
-	err := r.Resolver.AssetService.AddVideo(ctx, id, assetVideoType, video)
+	err := r.Resolver.AssetService.AddVideo(ctx, assetID, video)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add video: %w", err)
 	}
 
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated asset: %w", err)
 	}
@@ -408,20 +381,8 @@ func (r *mutationResolver) AddVideo(ctx context.Context, id string, typeArg mode
 }
 
 // DeleteVideo is the resolver for the deleteVideo field.
-func (r *mutationResolver) DeleteVideo(ctx context.Context, id string, typeArg model.VideoType) (*model.Asset, error) {
-	var assetVideoType asset.VideoType
-	switch typeArg {
-	case model.VideoTypeMain:
-		assetVideoType = asset.VideoTypeMain
-	case model.VideoTypeTrailer:
-		assetVideoType = asset.VideoTypeTrailer
-	case model.VideoTypeBehindTheScenes:
-		assetVideoType = asset.VideoTypeBehind
-	case model.VideoTypeInterview:
-		assetVideoType = asset.VideoTypeInterview
-	}
-
-	assetObj, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+func (r *mutationResolver) DeleteVideo(ctx context.Context, assetID string, videoID string) (*model.Asset, error) {
+	assetObj, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -431,34 +392,14 @@ func (r *mutationResolver) DeleteVideo(ctx context.Context, id string, typeArg m
 		Key    string `json:"key"`
 	}
 	for _, video := range assetObj.Videos {
-		if video.Type == assetVideoType {
-			if video.Raw != nil {
-				filesToDelete = append(filesToDelete, struct {
-					Bucket string `json:"bucket"`
-					Key    string `json:"key"`
-				}{
-					Bucket: video.Raw.StorageLocation.Bucket,
-					Key:    video.Raw.StorageLocation.Key,
-				})
-			}
-			if video.HLS != nil {
-				filesToDelete = append(filesToDelete, struct {
-					Bucket string `json:"bucket"`
-					Key    string `json:"key"`
-				}{
-					Bucket: video.HLS.StorageLocation.Bucket,
-					Key:    video.HLS.StorageLocation.Key,
-				})
-			}
-			if video.DASH != nil {
-				filesToDelete = append(filesToDelete, struct {
-					Bucket string `json:"bucket"`
-					Key    string `json:"key"`
-				}{
-					Bucket: video.DASH.StorageLocation.Bucket,
-					Key:    video.DASH.StorageLocation.Key,
-				})
-			}
+		if video.ID == videoID {
+			filesToDelete = append(filesToDelete, struct {
+				Bucket string `json:"bucket"`
+				Key    string `json:"key"`
+			}{
+				Bucket: video.StorageLocation.Bucket,
+				Key:    video.StorageLocation.Key,
+			})
 			if video.Thumbnail != nil && video.Thumbnail.StorageLocation != nil {
 				filesToDelete = append(filesToDelete, struct {
 					Bucket string `json:"bucket"`
@@ -472,7 +413,7 @@ func (r *mutationResolver) DeleteVideo(ctx context.Context, id string, typeArg m
 		}
 	}
 
-	err = r.Resolver.AssetService.DeleteVideo(ctx, id, assetVideoType)
+	err = r.Resolver.AssetService.DeleteVideo(ctx, assetID, videoID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete video: %w", err)
 	}
@@ -480,11 +421,11 @@ func (r *mutationResolver) DeleteVideo(ctx context.Context, id string, typeArg m
 	if len(filesToDelete) > 0 {
 		go func() {
 			bgCtx := context.Background()
-			_ = r.deleteAssetFiles(bgCtx, id, filesToDelete)
+			_ = r.deleteAssetFiles(bgCtx, assetID, filesToDelete)
 		}()
 	}
 
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, id)
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated asset: %w", err)
 	}
@@ -726,26 +667,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 type bucketResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *Resolver) __InputValue() __InputValueResolver { return &__inputValueResolver{r} }
-func (r *Resolver) __Type() __TypeResolver { return &__typeResolver{r} }
-type __inputValueResolver struct{ *Resolver }
-type __typeResolver struct{ *Resolver }
-func (r *__inputValueResolver) IsDeprecated(ctx context.Context, obj *introspection.InputValue) (bool, error) {
-	return obj.IsDeprecated(), nil
-}
-func (r *__inputValueResolver) DeprecationReason(ctx context.Context, obj *introspection.InputValue) (*string, error) {
-	return obj.DeprecationReason(), nil
-}
-func (r *__typeResolver) IsOneOf(ctx context.Context, obj *introspection.Type) (*bool, error) {
-	result := obj.IsOneOf()
-	return &result, nil
-}
-*/

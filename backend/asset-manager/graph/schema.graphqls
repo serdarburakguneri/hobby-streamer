@@ -30,14 +30,9 @@ type Asset {
 }
 
 type Video {
+  id: ID!
   type: VideoType!
-  raw: VideoVariant
-  hls: VideoVariant
-  dash: VideoVariant
-  thumbnail: Image
-}
-
-type VideoVariant {
+  format: String!
   storageLocation: S3Object!
   width: Int
   height: Int
@@ -49,6 +44,9 @@ type VideoVariant {
   streamInfo: StreamInfo
   metadata: String
   status: String
+  thumbnail: Image
+  createdAt: Time!
+  updatedAt: Time!
 }
 
 type Image {
@@ -71,6 +69,7 @@ type S3Object {
 type StreamInfo {
   downloadUrl: String
   cdnPrefix: String
+  playUrl: String
 }
 
 enum VideoType {
@@ -198,10 +197,10 @@ type Mutation {
   deleteAsset(id: ID!): Boolean!
   patchPublishRule(id: ID!, patches: [JSONPatch!]!): Asset!
 
-  updateVideoVariantStatus(id: ID!, type: VideoType!, variant: String!, status: String!): Asset!
-  updateVideoCDN(id: ID!, videoType: VideoType!, format: String!, cdnPrefix: String!): Asset!
-  addVideo(id: ID!, type: VideoType!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
-  deleteVideo(id: ID!, type: VideoType!): Asset!
+  updateVideoStatus(assetId: ID!, videoId: ID!, status: String!): Asset!
+  updateVideoCDN(assetId: ID!, videoId: ID!, cdnPrefix: String!): Asset!
+  addVideo(assetId: ID!, type: VideoType!, format: String!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
+  deleteVideo(assetId: ID!, videoId: ID!): Asset!
 
   createBucket(input: BucketInput!): Bucket!
   updateBucket(id: ID!, input: UpdateBucketInput!): Bucket!

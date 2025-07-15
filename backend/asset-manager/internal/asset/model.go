@@ -28,15 +28,12 @@ type Asset struct {
 
 type VideoType string
 
-type Video struct {
-	Type      VideoType     `json:"type"`
-	Raw       *VideoVariant `json:"raw,omitempty"`
-	HLS       *VideoVariant `json:"hls,omitempty"`
-	DASH      *VideoVariant `json:"dash,omitempty"`
-	Thumbnail *Image        `json:"thumbnail,omitempty"`
-}
+type VideoFormat string
 
-type VideoVariant struct {
+type Video struct {
+	ID              string            `json:"id"`
+	Type            VideoType         `json:"type"`
+	Format          VideoFormat       `json:"format"`
 	StorageLocation S3Object          `json:"storageLocation"`
 	Width           int               `json:"width,omitempty"`
 	Height          int               `json:"height,omitempty"`
@@ -48,6 +45,9 @@ type VideoVariant struct {
 	StreamInfo      *StreamInfo       `json:"streamInfo,omitempty"`
 	Metadata        map[string]string `json:"metadata,omitempty"`
 	Status          string            `json:"status,omitempty"`
+	Thumbnail       *Image            `json:"thumbnail,omitempty"`
+	CreatedAt       time.Time         `json:"createdAt"`
+	UpdatedAt       time.Time         `json:"updatedAt"`
 }
 
 type Image struct {
@@ -70,6 +70,7 @@ type S3Object struct {
 type StreamInfo struct {
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	CdnPrefix   *string `json:"cdnPrefix,omitempty"`
+	PlayURL     *string `json:"playUrl,omitempty"`
 }
 
 type Credit struct {

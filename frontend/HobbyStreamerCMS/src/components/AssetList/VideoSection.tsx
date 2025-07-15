@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import VideoUpload from './VideoUpload';
 import { triggerTranscodeJob } from '../../services/api';
-import { VideoType } from '../../types/asset';
+import { VideoType, VideoFormat } from '../../types/asset';
 
 interface VideoSectionProps {
   videos: any[] | undefined;
-  onDeleteVideo: (videoType: string, videoName: string) => void;
+  onDeleteVideo: (videoId: string) => void;
   onUpdate: (field: string, value: any) => void;
   assetId: string;
   onUploadComplete: () => void;
@@ -19,27 +19,27 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
   const [showTrailerUpload, setShowTrailerUpload] = useState(false);
   const [triggeringJobs, setTriggeringJobs] = useState<{[key: string]: boolean}>({});
 
-  const handleTriggerTranscode = async (videoType: string, format: 'hls' | 'dash') => {
-    const jobKey = `${videoType}-${format}`;
+  const handleTriggerTranscode = async (videoId: string, format: 'hls' | 'dash') => {
+    const jobKey = `${videoId}-${format}`;
     setTriggeringJobs(prev => ({ ...prev, [jobKey]: true }));
     
     try {
-      const video = videos?.find(v => v.type === videoType);
-      if (!video?.raw?.storageLocation) {
-        throw new Error('Raw video not found for this video type');
+      const video = videos?.find(v => v.id === videoId);
+      if (!video?.storageLocation) {
+        throw new Error('Video storage location not found');
       }
 
-      const rawVideo = video.raw.storageLocation;
-      const keyParts = rawVideo.key.split('/');
+      const storageLocation = video.storageLocation;
+      const keyParts = storageLocation.key.split('/');
       const sourceFileName = keyParts[keyParts.length - 1];
       
       if (!sourceFileName) {
         throw new Error('Invalid video file path - missing filename');
       }
       
-      await triggerTranscodeJob(assetId, videoType.toLowerCase(), format, {
-        bucket: rawVideo.bucket,
-        key: rawVideo.key,
+      await triggerTranscodeJob(assetId, videoId, format, {
+        bucket: storageLocation.bucket,
+        key: storageLocation.key,
         sourceFileName
       });
       Alert.alert('Success', `${format.toUpperCase()} transcoding job triggered successfully`);
@@ -52,16 +52,14 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     }
   };
 
-  const getVideoIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+  const getVideoIcon = (format: string) => {
+    switch (format.toLowerCase()) {
       case 'hls':
         return 'play-circle';
       case 'dash':
         return 'play';
       case 'raw':
         return 'videocam';
-      case 'thumbnail':
-        return 'image';
       default:
         return 'videocam';
     }
@@ -71,7 +69,9 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     switch (status?.toLowerCase()) {
       case 'ready':
         return 'checkmark-circle';
-      case 'processing':
+      case 'pending':
+      case 'analyzing':
+      case 'transcoding':
         return 'sync';
       case 'failed':
         return 'close-circle';
@@ -84,7 +84,9 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     switch (status?.toLowerCase()) {
       case 'ready':
         return '#4CAF50';
-      case 'processing':
+      case 'pending':
+      case 'analyzing':
+      case 'transcoding':
         return '#2196F3';
       case 'failed':
         return '#F44336';
@@ -93,54 +95,108 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     }
   };
 
-  const renderVideoFormat = (format: string, videoData: any, icon: string, videoType: string) => {
-    const hasData = videoData && videoData.storageLocation;
-    const status = hasData ? videoData.status : 'not_available';
-    const canTrigger = format === 'hls' || format === 'dash';
-    const jobKey = `${videoType}-${format}`;
+  const getVideoTypeLabel = (type: string) => {
+    switch (type) {
+      case 'MAIN':
+        return 'Main Video';
+      case 'TRAILER':
+        return 'Trailer';
+      case 'BEHIND_THE_SCENES':
+        return 'Behind the Scenes';
+      case 'INTERVIEW':
+        return 'Interview';
+      default:
+        return type;
+    }
+  };
+
+  const renderVideoItem = (video: any) => {
+    const jobKey = `${video.id}-${video.format}`;
     const isTriggering = triggeringJobs[jobKey] || false;
+    const canTrigger = video.format === 'raw' && (video.type === 'MAIN' || video.type === 'TRAILER');
     
     return (
-      <View style={styles.formatSection}>
-        <View style={styles.formatHeader}>
-          <View style={styles.formatInfo}>
-            <Ionicons name={icon as any} size={18} color="#007AFF" />
-            <Text style={styles.formatLabel}>{format.toUpperCase()}</Text>
+      <View key={video.id} style={styles.videoItem}>
+        <View style={styles.videoHeader}>
+          <View style={styles.videoInfo}>
+            <Ionicons name={getVideoIcon(video.format) as any} size={18} color="#007AFF" />
+            <Text style={styles.videoFormat}>{video.format.toUpperCase()}</Text>
+            <Text style={styles.videoType}>({getVideoTypeLabel(video.type)})</Text>
           </View>
-          {canTrigger && (
+          <View style={styles.videoActions}>
+            {canTrigger && (
+              <View style={styles.transcodeButtons}>
+                <TouchableOpacity 
+                  style={[styles.transcodeButton, isTriggering && styles.transcodeButtonDisabled]}
+                  onPress={() => handleTriggerTranscode(video.id, 'hls')}
+                  disabled={isTriggering}
+                >
+                  <Ionicons 
+                    name={isTriggering ? 'sync' : 'play'} 
+                    size={12} 
+                    color={isTriggering ? '#999' : '#fff'} 
+                  />
+                  <Text style={[styles.transcodeButtonText, isTriggering && styles.transcodeButtonTextDisabled]}>
+                    HLS
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.transcodeButton, isTriggering && styles.transcodeButtonDisabled]}
+                  onPress={() => handleTriggerTranscode(video.id, 'dash')}
+                  disabled={isTriggering}
+                >
+                  <Ionicons 
+                    name={isTriggering ? 'sync' : 'play'} 
+                    size={12} 
+                    color={isTriggering ? '#999' : '#fff'} 
+                  />
+                  <Text style={[styles.transcodeButtonText, isTriggering && styles.transcodeButtonTextDisabled]}>
+                    DASH
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <TouchableOpacity 
-              style={[styles.triggerButton, isTriggering && styles.triggerButtonDisabled]}
-              onPress={() => handleTriggerTranscode(videoType, format as 'hls' | 'dash')}
-              disabled={isTriggering}
+              style={styles.deleteButton}
+              onPress={() => onDeleteVideo(video.id)}
             >
-              <Ionicons 
-                name={isTriggering ? 'sync' : 'play'} 
-                size={14} 
-                color={isTriggering ? '#999' : '#fff'} 
-              />
-              <Text style={[styles.triggerButtonText, isTriggering && styles.triggerButtonTextDisabled]}>
-                {isTriggering ? 'Converting...' : 'Convert'}
-              </Text>
+              <Ionicons name="trash" size={16} color="#ff3b30" />
             </TouchableOpacity>
-          )}
+          </View>
         </View>
         
         <View style={styles.videoStatus}>
           <Ionicons 
-            name={getStatusIcon(status) as any} 
+            name={getStatusIcon(video.status) as any} 
             size={14} 
-            color={getStatusColor(status)} 
+            color={getStatusColor(video.status)} 
           />
           <Text style={styles.videoStatusText}>
-            Status: {hasData ? status : 'No ' + format.toUpperCase() + ' format available'}
+            Status: {video.status || 'unknown'}
           </Text>
         </View>
         
-        {hasData && (
+        <View style={styles.videoDetail}>
+          <Ionicons name="link" size={12} color="#666" />
+          <Text style={styles.videoDetailText}>
+            {video.storageLocation?.url || 'No URL available'}
+          </Text>
+        </View>
+
+        {video.size && (
           <View style={styles.videoDetail}>
-            <Ionicons name="link" size={12} color="#666" />
+            <Ionicons name="information-circle" size={12} color="#666" />
             <Text style={styles.videoDetailText}>
-              {videoData.storageLocation.url}
+              Size: {Math.round(video.size / 1024 / 1024)} MB
+            </Text>
+          </View>
+        )}
+
+        {video.duration && (
+          <View style={styles.videoDetail}>
+            <Ionicons name="time" size={12} color="#666" />
+            <Text style={styles.videoDetailText}>
+              Duration: {Math.round(video.duration)}s
             </Text>
           </View>
         )}
@@ -148,9 +204,9 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     );
   };
 
-  const renderVideoContent = (videoType: VideoType, title: string, icon: string) => {
-    const video = videos?.find(v => v.type === videoType);
-    const hasVideo = video && (video.raw || video.hls || video.dash || video.thumbnail);
+  const renderVideoTypeSection = (videoType: VideoType, title: string, icon: string) => {
+    const typeVideos = videos?.filter(v => v.type === videoType) || [];
+    const hasVideos = typeVideos.length > 0;
 
     return (
       <View style={styles.videoTypeContainer}>
@@ -158,58 +214,31 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
           <View style={styles.videoTypeInfo}>
             <Ionicons name={icon as any} size={20} color="#333" />
             <Text style={styles.videoTypeTitle}>{title}</Text>
+            <Text style={styles.videoCount}>({typeVideos.length} videos)</Text>
           </View>
-          <View style={styles.headerActions}>
-            {hasVideo && (
-              <TouchableOpacity 
-                style={styles.deleteVideoButton}
-                onPress={() => onDeleteVideo(videoType, videoType)}
-              >
-                <Ionicons name="trash" size={16} color="#ff3b30" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => {
-                if (videoType === VideoType.MAIN) {
-                  setShowMainUpload(!showMainUpload);
-                  setShowTrailerUpload(false);
-                } else {
-                  setShowTrailerUpload(!showTrailerUpload);
-                  setShowMainUpload(false);
-                }
-              }}
-            >
-              <Ionicons 
-                name={((videoType === VideoType.MAIN && showMainUpload) || (videoType === VideoType.TRAILER && showTrailerUpload)) ? 'remove' : 'add'} 
-                size={16} 
-                color="#fff" 
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => {
+              if (videoType === VideoType.MAIN) {
+                setShowMainUpload(!showMainUpload);
+                setShowTrailerUpload(false);
+              } else {
+                setShowTrailerUpload(!showTrailerUpload);
+                setShowMainUpload(false);
+              }
+            }}
+          >
+            <Ionicons 
+              name={((videoType === VideoType.MAIN && showMainUpload) || (videoType === VideoType.TRAILER && showTrailerUpload)) ? 'remove' : 'add'} 
+              size={16} 
+              color="#fff" 
+            />
+          </TouchableOpacity>
         </View>
         
-        {hasVideo ? (
-          <View style={styles.formatsContainer}>
-            {renderVideoFormat('raw', video.raw, 'videocam', videoType)}
-            {renderVideoFormat('hls', video.hls, 'play-circle', videoType)}
-            {renderVideoFormat('dash', video.dash, 'play', videoType)}
-            {video.thumbnail && (
-              <View style={styles.formatSection}>
-                <View style={styles.formatHeader}>
-                  <View style={styles.formatInfo}>
-                    <Ionicons name="image" size={18} color="#007AFF" />
-                    <Text style={styles.formatLabel}>THUMBNAIL</Text>
-                  </View>
-                </View>
-                <View style={styles.videoDetail}>
-                  <Ionicons name="image" size={12} color="#666" />
-                  <Text style={styles.videoDetailText}>
-                    {video.thumbnail.url}
-                  </Text>
-                </View>
-              </View>
-            )}
+        {hasVideos ? (
+          <View style={styles.videosList}>
+            {typeVideos.map(renderVideoItem)}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -253,10 +282,10 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
         </View>
       </View>
       
-      <View style={styles.videosContainer}>
-        {renderVideoContent(VideoType.MAIN, 'Main Video', 'videocam')}
-        {renderVideoContent(VideoType.TRAILER, 'Trailer', 'play-circle')}
-      </View>
+      <ScrollView style={styles.videosContainer}>
+        {renderVideoTypeSection(VideoType.MAIN, 'Main Video', 'videocam')}
+        {renderVideoTypeSection(VideoType.TRAILER, 'Trailer', 'play-circle')}
+      </ScrollView>
     </View>
   );
 }
@@ -287,12 +316,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   videosContainer: {
-    gap: 20,
+    maxHeight: 600,
   },
   videoTypeContainer: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
     padding: 16,
+    marginBottom: 16,
   },
   videoTypeHeader: {
     flexDirection: 'row',
@@ -310,13 +340,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  deleteVideoButton: {
-    padding: 4,
+  videoCount: {
+    fontSize: 14,
+    color: '#666',
   },
   addButton: {
     backgroundColor: '#007AFF',
@@ -326,51 +352,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  formatsContainer: {
+  videosList: {
     gap: 12,
   },
-  formatSection: {
+  videoItem: {
     backgroundColor: '#fff',
     borderRadius: 6,
     padding: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  formatHeader: {
+  videoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  formatInfo: {
+  videoInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  formatLabel: {
+  videoFormat: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
   },
-  triggerButton: {
+  videoType: {
+    fontSize: 12,
+    color: '#666',
+  },
+  videoActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  transcodeButtons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  transcodeButton: {
     backgroundColor: '#28a745',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 3,
+    gap: 2,
   },
-  triggerButtonDisabled: {
+  transcodeButtonDisabled: {
     backgroundColor: '#e9ecef',
   },
-  triggerButtonText: {
-    fontSize: 12,
+  transcodeButtonText: {
+    fontSize: 10,
     color: '#fff',
     fontWeight: '600',
   },
-  triggerButtonTextDisabled: {
+  transcodeButtonTextDisabled: {
     color: '#999',
+  },
+  deleteButton: {
+    padding: 4,
   },
   videoStatus: {
     flexDirection: 'row',

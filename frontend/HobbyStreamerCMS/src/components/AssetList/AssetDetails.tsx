@@ -8,7 +8,7 @@ import ChildrenSection from './ChildrenSection';
 interface AssetDetailsProps {
   asset: Asset | null;
   onUpdate: (field: string, value: any) => Promise<void>;
-  onDeleteVideo: (videoType: string, videoName: string) => void;
+  onDeleteVideo: (videoId: string) => void;
   onSelectChild: (child: Asset) => void;
   children: Asset[];
   childrenLoading: boolean;

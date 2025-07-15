@@ -5,7 +5,7 @@ COPY . .
 
 # Install dependencies and build
 RUN cd asset-manager && go env -w GOPRIVATE=*
-RUN cd asset-manager && go mod download
+#RUN cd asset-manager && go mod download
 RUN cd asset-manager && go mod tidy
 # RUN cd asset-manager && go test ./... -v
 

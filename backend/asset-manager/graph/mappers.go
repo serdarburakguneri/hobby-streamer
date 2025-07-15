@@ -319,45 +319,35 @@ func mapVideosToGraphQL(videos []asset.Video) []*model.Video {
 		}
 
 		graphQLVideo := &model.Video{
-			Type:      videoType,
-			Raw:       mapVideoVariantToGraphQL(video.Raw),
-			Hls:       mapVideoVariantToGraphQL(video.HLS),
-			Dash:      mapVideoVariantToGraphQL(video.DASH),
-			Thumbnail: mapImageToGraphQL(video.Thumbnail),
+			ID:              video.ID,
+			Type:            videoType,
+			Format:          string(video.Format),
+			StorageLocation: mapS3ObjectToGraphQL(&video.StorageLocation),
+			Width:           &video.Width,
+			Height:          &video.Height,
+			Duration:        &video.Duration,
+			Bitrate:         &video.Bitrate,
+			Codec:           &video.Codec,
+			Size:            &[]int{int(video.Size)}[0],
+			ContentType:     &video.ContentType,
+			StreamInfo:      mapStreamInfoToGraphQL(video.StreamInfo),
+			Status:          &video.Status,
+			Thumbnail:       mapImageToGraphQL(video.Thumbnail),
+			CreatedAt:       video.CreatedAt,
+			UpdatedAt:       video.UpdatedAt,
+		}
+
+		if video.Metadata != nil {
+			metadataJSON, err := json.Marshal(video.Metadata)
+			if err == nil {
+				metadataStr := string(metadataJSON)
+				graphQLVideo.Metadata = &metadataStr
+			}
 		}
 
 		result = append(result, graphQLVideo)
 	}
 	return result
-}
-
-func mapVideoVariantToGraphQL(variant *asset.VideoVariant) *model.VideoVariant {
-	if variant == nil {
-		return nil
-	}
-
-	graphQLVariant := &model.VideoVariant{
-		StorageLocation: mapS3ObjectToGraphQL(&variant.StorageLocation),
-		Width:           &variant.Width,
-		Height:          &variant.Height,
-		Duration:        &variant.Duration,
-		Bitrate:         &variant.Bitrate,
-		Codec:           &variant.Codec,
-		Size:            &[]int{int(variant.Size)}[0],
-		ContentType:     &variant.ContentType,
-		StreamInfo:      mapStreamInfoToGraphQL(variant.StreamInfo),
-		Status:          &variant.Status,
-	}
-
-	if variant.Metadata != nil {
-		metadataJSON, err := json.Marshal(variant.Metadata)
-		if err == nil {
-			metadataStr := string(metadataJSON)
-			graphQLVariant.Metadata = &metadataStr
-		}
-	}
-
-	return graphQLVariant
 }
 
 func mapImageToGraphQL(img *asset.Image) *model.Image {
@@ -409,5 +399,6 @@ func mapStreamInfoToGraphQL(info *asset.StreamInfo) *model.StreamInfo {
 	return &model.StreamInfo{
 		DownloadURL: info.DownloadURL,
 		CdnPrefix:   info.CdnPrefix,
+		PlayURL:     info.PlayURL,
 	}
 }

@@ -21,5 +21,5 @@ func NewDASHCompletionConsumer(assetService asset.AssetService) *DASHCompletionC
 
 func (d *DASHCompletionConsumer) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
 	d.logger.Info("Processing DASH transcoding completion message", "message_type", msgType)
-	return d.assetService.HandleTranscodeCompletion(ctx, payload, asset.VideoVariantDASH)
+	return d.assetService.HandleTranscodeCompletion(ctx, payload)
 }

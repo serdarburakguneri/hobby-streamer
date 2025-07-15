@@ -1,0 +1,7 @@
+{
+  "assetId": "test-asset-123",
+  "videoId": "test-video-456",
+  "format": "hls",
+  "input": "s3://raw-storage/test-asset-123/test-video-456/sample.mp4",
+  "sourceFileName": "sample.mp4"
+} 
