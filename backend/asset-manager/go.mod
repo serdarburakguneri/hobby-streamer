@@ -12,6 +12,7 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs v0.0.0
 	github.com/vektah/gqlparser/v2 v2.5.30
 )
@@ -52,5 +53,6 @@ replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth => ../pkg/auth
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../pkg/messages
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs => ../pkg/sqs
 )

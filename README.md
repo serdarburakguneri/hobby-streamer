@@ -49,10 +49,15 @@ The project consists of several microservices working together to provide video 
 - [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
 
 ### Shared Libraries
+See [Shared Libraries Documentation](backend/pkg/README.md) for detailed information about the shared library architecture and available packages.
+
+**Available Libraries:**
 - [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
+- [Constants Package](backend/pkg/constants/README.md): Common constants for HTTP status codes, roles, and other shared values
 - [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
-- [SQS Package](backend/pkg/sqs/README.md): AWS SQS client library with producer, consumer, and consumer registry functionality
+- [Messages Package](backend/pkg/messages/README.md): Common SQS message payload structures and type constants for inter-service communication
 - [S3 Package](backend/pkg/s3/README.md): S3 client library for file upload, download, and directory operations with LocalStack support
+- [SQS Package](backend/pkg/sqs/README.md): AWS SQS client library with producer, consumer, and consumer registry functionality
 
 ## Getting Started
 

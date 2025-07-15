@@ -9,19 +9,10 @@ import (
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
-
-type DASHPayload struct {
-	Input          string `json:"input"`
-	AssetID        string `json:"assetId"`
-	VideoType      string `json:"videoType"`
-	Format         string `json:"format"`
-	OutputBucket   string `json:"outputBucket"`
-	OutputKey      string `json:"outputKey"`
-	OutputFileName string `json:"outputFileName"`
-}
 
 type TranscodeDASHRunner struct {
 	logger          *logger.Logger
@@ -52,7 +43,7 @@ func NewTranscodeDASHRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *T
 func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) error {
 	log := d.logger.WithContext(ctx)
 
-	var p DASHPayload
+	var p messages.TranscodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal DASH payload")
 		if d.analyzeProducer != nil {
@@ -60,11 +51,13 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		}
 		return err
 	}
+
 	d.outputBucket = p.OutputBucket
 	d.outputKey = p.OutputKey
 	d.outputFileName = p.OutputFileName
 
 	var localInputPath string
+	var localOutputPath string
 	var err error
 
 	if strings.HasPrefix(p.Input, "s3://") {
@@ -82,60 +75,32 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	}
 
 	tempDir := os.TempDir()
-	outputDir := filepath.Join(tempDir, "dash_output")
-	os.MkdirAll(outputDir, 0755)
+	localOutputPath = filepath.Join(tempDir, d.outputFileName)
 
-	manifestPath := filepath.Join(outputDir, d.outputFileName)
-	segmentPattern := filepath.Join(outputDir, "segment_%03d.m4s")
-
-	log.Info("Running FFmpeg DASH transcoding", "input", localInputPath, "manifest", manifestPath, "segment_pattern", segmentPattern)
-	cmd := exec.CommandContext(ctx, "ffmpeg",
-		"-i", localInputPath,
-		"-c:v", "libx264",
-		"-c:a", "aac",
-		"-f", "dash",
-		"-init_seg_name", "init_$RepresentationID$.m4s",
-		"-media_seg_name", "segment_$RepresentationID$_$Number%03d$.m4s",
-		manifestPath)
+	log.Info("Running FFmpeg DASH transcoding", "input", localInputPath, "output", localOutputPath)
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localInputPath, "-c:v", "libx264", "-c:a", "aac", "-f", "dash", localOutputPath)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.WithError(err).Error("FFmpeg DASH transcoding failed", "input", localInputPath, "manifest", manifestPath, "ffmpeg_output", string(out))
+		log.WithError(err).Error("FFmpeg DASH transcoding failed", "input", localInputPath, "output", localOutputPath, "ffmpeg_output", string(out))
 		if d.analyzeProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
 		}
 		return err
 	}
 
-	log.Info("DASH transcoding completed successfully", "input", localInputPath, "manifest", manifestPath, "output_length", len(out))
+	log.Info("DASH transcoding completed successfully", "input", localInputPath, "output", localOutputPath, "output_length", len(out))
 	log.Debug("FFmpeg DASH output", "output", string(out))
 
-	err = d.s3Client.Upload(ctx, manifestPath, d.outputBucket, d.outputKey)
+	err = d.s3Client.Upload(ctx, localOutputPath, d.outputBucket, d.outputKey)
 	if err != nil {
-		log.WithError(err).Error("Failed to upload DASH manifest to S3", "bucket", d.outputBucket, "key", d.outputKey)
+		log.WithError(err).Error("Failed to upload output to S3", "bucket", d.outputBucket, "key", d.outputKey)
 		if d.analyzeProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, false, err.Error())
 		}
 		return err
 	}
-
-	segmentFiles, err := filepath.Glob(filepath.Join(outputDir, "*.m4s"))
-	if err != nil {
-		log.WithError(err).Error("Failed to find DASH segment files")
-	} else {
-		for _, segmentFile := range segmentFiles {
-			segmentName := filepath.Base(segmentFile)
-			segmentKey := strings.TrimSuffix(d.outputKey, ".mpd") + "/" + segmentName
-			err = d.s3Client.Upload(ctx, segmentFile, d.outputBucket, segmentKey)
-			if err != nil {
-				log.WithError(err).Error("Failed to upload DASH segment to S3", "bucket", d.outputBucket, "key", segmentKey, "file", segmentFile)
-			} else {
-				log.Info("Successfully uploaded DASH segment", "bucket", d.outputBucket, "key", segmentKey)
-			}
-		}
-	}
-	
-	defer os.RemoveAll(outputDir)
+	defer os.Remove(localOutputPath)
 
 	if d.analyzeProducer != nil {
 		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoType, p.Format, true, "")
@@ -147,25 +112,35 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoType, format string, success bool, errorMessage string) {
 	log := d.logger.WithContext(ctx)
 
-	payload := map[string]interface{}{
-		"assetId":   assetID,
-		"videoType": videoType,
-		"format":    format,
-		"success":   success,
+	payload := messages.TranscodeCompletionPayload{
+		AssetID:   assetID,
+		VideoType: videoType,
+		Format:    format,
+		Success:   success,
 	}
 
 	if success {
-		payload["bucket"] = d.outputBucket
-		payload["key"] = d.outputKey
-		payload["fileName"] = d.outputFileName
-		payload["url"] = "s3://" + d.outputBucket + "/" + d.outputKey
+		payload.Bucket = d.outputBucket
+		payload.Key = d.outputKey
+		payload.FileName = d.outputFileName
+		payload.URL = "s3://" + d.outputBucket + "/" + d.outputKey
 	}
 
 	if !success && errorMessage != "" {
-		payload["error"] = errorMessage
+		payload.Error = errorMessage
 	}
 
-	messageType := "transcode-" + format + "-completed"
+	var messageType string
+	switch format {
+	case "hls":
+		messageType = messages.MessageTypeTranscodeHLSCompleted
+	case "dash":
+		messageType = messages.MessageTypeTranscodeDASHCompleted
+	default:
+		log.Error("Unknown format for transcode completion", "format", format)
+		return
+	}
+
 	err := d.analyzeProducer.SendMessage(ctx, messageType, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send transcode completed message", "asset_id", assetID, "format", format, "success", success)

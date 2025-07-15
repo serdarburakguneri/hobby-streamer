@@ -8,15 +8,10 @@ import (
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
-
-type AnalyzePayload struct {
-	Input     string `json:"input"`
-	AssetID   string `json:"assetId"`
-	VideoType string `json:"videoType"`
-}
 
 type AnalyzeRunner struct {
 	logger          *logger.Logger
@@ -44,7 +39,7 @@ func NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *Analyze
 func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error {
 	log := a.logger.WithContext(ctx)
 
-	var p AnalyzePayload
+	var p messages.AnalyzePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal analyze payload")
 		return err
@@ -93,17 +88,17 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, videoType string, success bool, errorMessage string) {
 	log := a.logger.WithContext(ctx)
 
-	payload := map[string]interface{}{
-		"assetId":   assetID,
-		"videoType": videoType,
-		"success":   success,
+	payload := messages.AnalyzeCompletionPayload{
+		AssetID:   assetID,
+		VideoType: videoType,
+		Success:   success,
 	}
 
 	if !success && errorMessage != "" {
-		payload["error"] = errorMessage
+		payload.Error = errorMessage
 	}
 
-	err := a.analyzeProducer.SendMessage(ctx, "analyze-completed", payload)
+	err := a.analyzeProducer.SendMessage(ctx, messages.MessageTypeAnalyzeCompleted, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send analyze completed message", "asset_id", assetID, "success", success)
 	} else {

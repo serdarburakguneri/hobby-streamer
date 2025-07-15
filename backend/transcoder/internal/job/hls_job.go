@@ -9,19 +9,10 @@ import (
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
-
-type HLSPayload struct {
-	Input          string `json:"input"`
-	AssetID        string `json:"assetId"`
-	VideoType      string `json:"videoType"`
-	Format         string `json:"format"`
-	OutputBucket   string `json:"outputBucket"`
-	OutputKey      string `json:"outputKey"`
-	OutputFileName string `json:"outputFileName"`
-}
 
 type TranscodeHLSRunner struct {
 	logger          *logger.Logger
@@ -52,7 +43,7 @@ func NewTranscodeHLSRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *Tr
 func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) error {
 	log := h.logger.WithContext(ctx)
 
-	var p HLSPayload
+	var p messages.TranscodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal HLS payload")
 		if h.analyzeProducer != nil {
@@ -121,25 +112,35 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID, videoType, format string, success bool, errorMessage string) {
 	log := h.logger.WithContext(ctx)
 
-	payload := map[string]interface{}{
-		"assetId":   assetID,
-		"videoType": videoType,
-		"format":    format,
-		"success":   success,
+	payload := messages.TranscodeCompletionPayload{
+		AssetID:   assetID,
+		VideoType: videoType,
+		Format:    format,
+		Success:   success,
 	}
 
 	if success {
-		payload["bucket"] = h.outputBucket
-		payload["key"] = h.outputKey
-		payload["fileName"] = h.outputFileName
-		payload["url"] = "s3://" + h.outputBucket + "/" + h.outputKey
+		payload.Bucket = h.outputBucket
+		payload.Key = h.outputKey
+		payload.FileName = h.outputFileName
+		payload.URL = "s3://" + h.outputBucket + "/" + h.outputKey
 	}
 
 	if !success && errorMessage != "" {
-		payload["error"] = errorMessage
+		payload.Error = errorMessage
 	}
 
-	messageType := "transcode-" + format + "-completed"
+	var messageType string
+	switch format {
+	case "hls":
+		messageType = messages.MessageTypeTranscodeHLSCompleted
+	case "dash":
+		messageType = messages.MessageTypeTranscodeDASHCompleted
+	default:
+		log.Error("Unknown format for transcode completion", "format", format)
+		return
+	}
+
 	err := h.analyzeProducer.SendMessage(ctx, messageType, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send transcode completed message", "asset_id", assetID, "format", format, "success", success)

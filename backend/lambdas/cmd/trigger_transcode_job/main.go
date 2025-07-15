@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 )
 
 type TranscodeRequest struct {
@@ -91,8 +92,6 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	svc := sqs.New(sess)
 
-	jobType := "transcode-" + req.Format
-
 	var outputBucketName string
 	switch req.Format {
 	case "hls":
@@ -125,21 +124,30 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	}
 
 	outputKey := fmt.Sprintf("%s/%s/%s", req.AssetID, req.VideoType, outputFilename)
-	outputPath := fmt.Sprintf("s3://%s/%s", outputBucketName, outputKey)
 
-	payload := map[string]interface{}{
-		"assetId":        req.AssetID,
-		"videoType":      req.VideoType,
-		"format":         req.Format,
-		"input":          req.Input,
-		"output":         outputPath,
-		"outputBucket":   outputBucketName,
-		"outputKey":      outputKey,
-		"outputFileName": outputFilename,
+	payload := messages.TranscodePayload{
+		AssetID:        req.AssetID,
+		VideoType:      req.VideoType,
+		Format:         req.Format,
+		Input:          req.Input,
+		OutputBucket:   outputBucketName,
+		OutputKey:      outputKey,
+		OutputFileName: outputFilename,
+	}
+
+	var messageType string
+	switch req.Format {
+	case "hls":
+		messageType = messages.MessageTypeTranscodeHLS
+	case "dash":
+		messageType = messages.MessageTypeTranscodeDASH
+	default:
+		log.Printf("Unknown format: %s", req.Format)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid format"})
 	}
 
 	messageBody, err := json.Marshal(map[string]interface{}{
-		"type":    jobType,
+		"type":    messageType,
 		"payload": payload,
 	})
 	if err != nil {
@@ -147,7 +155,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create job message"})
 	}
 
-	log.Printf("Sending SQS message for %s: %s", jobType, string(messageBody))
+	log.Printf("Sending SQS message for %s: %s", messageType, string(messageBody))
 
 	input := &sqs.SendMessageInput{
 		QueueUrl:    aws.String(queueURL),
@@ -160,11 +168,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to trigger transcoding job"})
 	}
 
-	log.Printf("Transcoding job triggered successfully: %s for asset %s", jobType, req.AssetID)
+	log.Printf("Transcoding job triggered successfully: %s for asset %s", messageType, req.AssetID)
 
 	return respondJSON(http.StatusOK, TranscodeResponse{
 		Message: "Transcoding job triggered successfully",
-		JobType: jobType,
+		JobType: messageType,
 	})
 }
 

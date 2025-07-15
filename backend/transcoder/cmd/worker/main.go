@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/job"
 )
@@ -53,18 +54,18 @@ func main() {
 			return err
 		}
 		switch msgType {
-		case "analyze":
+		case messages.MessageTypeAnalyze:
 			return analyzeRunner.Run(ctx, payloadBytes)
-		case "transcode-hls":
+		case messages.MessageTypeTranscodeHLS:
 			return transcodeHLSRunner.Run(ctx, payloadBytes)
-		case "transcode-dash":
+		case messages.MessageTypeTranscodeDASH:
 			return transcodeDASHRunner.Run(ctx, payloadBytes)
 		default:
 			return nil
 		}
 	})
 
-	log.Info("Job registry initialized", "job_types", []string{"analyze", "transcode-hls", "transcode-dash"})
+	log.Info("Job registry initialized", "job_types", []string{messages.MessageTypeAnalyze, messages.MessageTypeTranscodeHLS, messages.MessageTypeTranscodeDASH})
 
 	log.Info("Starting SQS consumer")
 	if err := registry.Start(ctx); err != nil {

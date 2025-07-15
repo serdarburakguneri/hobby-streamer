@@ -5,6 +5,7 @@ import (
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 )
 
 type MessageRouter struct {
@@ -27,11 +28,11 @@ func (r *MessageRouter) HandleMessage(ctx context.Context, msgType string, paylo
 	r.logger.Info("Routing message", "message_type", msgType)
 
 	switch msgType {
-	case "analyze-completed":
+	case messages.MessageTypeAnalyzeCompleted:
 		return r.analyzeConsumer.HandleMessage(ctx, msgType, payload)
-	case "transcode-hls-completed":
+	case messages.MessageTypeTranscodeHLSCompleted:
 		return r.hlsConsumer.HandleMessage(ctx, msgType, payload)
-	case "transcode-dash-completed":
+	case messages.MessageTypeTranscodeDASHCompleted:
 		return r.dashConsumer.HandleMessage(ctx, msgType, payload)
 	default:
 		r.logger.Info("Unknown message type, ignoring", "message_type", msgType)
