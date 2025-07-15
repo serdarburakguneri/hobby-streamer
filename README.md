@@ -2,16 +2,6 @@
 
 A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities.
 
-## Overview
-
-The project consists of several microservices working together to provide video streaming functionality:
-
-- **Asset Manager**: GraphQL service for managing video assets and metadata
-- **Auth Service**: Authentication and authorization using Keycloak
-- **Transcoder**: Video processing and format conversion
-- **Storage**: S3-based file storage with presigned URLs
-- **Frontend**: React Native CMS for content management
-- **Logging**: Centralized logging system with Fluentd, Elasticsearch, and Kibana
 
 ## Tech Stack
 
@@ -31,7 +21,6 @@ The project consists of several microservices working together to provide video 
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
-- Expo – Development platform for React Native applications
 
 ## Architecture
 
@@ -89,14 +78,6 @@ To set up the development environment with all services, simply run:
 ./local/build.sh
 ```
 
-This script will:
-- Start all infrastructure services (LocalStack, Neo4j, Keycloak, Elasticsearch, Kibana, Fluentd)
-- Create required S3 buckets and SQS queues
-- Build and start all backend services
-- Install dependencies and start the Admin UI development server
-- Set up centralized logging system
-- Verify all services are running correctly
-
 ### Service Ports
 - Auth Service: http://localhost:8080
 - Asset Manager GraphQL: http://localhost:8082/query
@@ -106,79 +87,4 @@ This script will:
 - CMS UI Web: http://localhost:8081
 - Kibana (Logs): http://localhost:5601
 - Elasticsearch: http://localhost:9200
-
-### Keycloak Setup
-
-Keycloak is used for authentication. Default credentials:
-
-- Admin User: `admin` / `admin`
-- Regular User: `user` / `user`
-
-### Running the CMS UI
-
-After running `./local/build.sh`, the CMS UI will be available at:
-
-```
-http://localhost:8081
-```
-
-Login with the Keycloak credentials above to start managing assets.
-
-### GraphQL Playground
-
-The Asset Manager GraphQL API can be explored at:
-
-```
-http://localhost:8082/graphql
-```
-
-### Neo4j Browser
-
-The graph database relationships can be explored at:
-
-```
-http://localhost:7474
-```
-
-Default credentials: `neo4j` / `password`
-
-## Development Workflow
-
-### Restarting Services
-
-```bash
-# Rebuild and restart specific services
-docker-compose up --build -d asset-manager
-docker-compose up --build -d auth-service
-docker-compose up --build -d transcoder
-
-# Rebuild everything
-./local/build.sh
-```
-
-### Viewing Container Logs
-
-The project includes a centralized logging system that collects logs from all services and makes them searchable through Kibana.
-
-#### Kibana UI (Recommended)
-- Access logs at: http://localhost:5601
-- Go to "Discover" for advanced log searching
-- Use "Dashboard" for predefined views
-- Search by service, log level, HTTP details, user context, etc.
-
-
-### Health Checks
-
-```bash
-# Service health checks
-curl -s http://localhost:8080/health
-curl -s http://localhost:8082/health
-curl -s http://localhost:9090/health
-curl -s http://localhost:4566/health
-
-# GraphQL introspection
-curl -s -X POST http://localhost:8082/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query":"{ __schema { types { name } } }"}'
-```
 
