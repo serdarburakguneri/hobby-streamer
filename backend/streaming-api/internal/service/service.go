@@ -10,6 +10,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/cache"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/model"
@@ -27,14 +28,27 @@ type Service struct {
 	cacheService    *cache.Service
 	logger          *logger.Logger
 	assetManagerURL string
+	serviceClient   *auth.ServiceClient
 }
 
 func NewService(cacheService *cache.Service) *Service {
 	assetManagerURL := getEnv("ASSET_MANAGER_URL", "http://localhost:8081")
+	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
+	realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
+	clientID := getEnv("STREAMING_API_CLIENT_ID", "streaming-api")
+	clientSecret := getEnv("STREAMING_API_CLIENT_SECRET", "")
+
+	log := logger.Get().WithService("streaming-service")
+	log.Info("Initializing streaming service", "asset_manager_url", assetManagerURL, "keycloak_url", keycloakURL, "realm", realm, "client_id", clientID)
+
+	serviceClient := auth.NewServiceClient(keycloakURL, realm, clientID, clientSecret)
+	log.Info("Service client created successfully")
+
 	return &Service{
 		cacheService:    cacheService,
-		logger:          logger.Get().WithService("streaming-service"),
+		logger:          log,
 		assetManagerURL: assetManagerURL,
+		serviceClient:   serviceClient,
 	}
 }
 
@@ -233,7 +247,26 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
 	}
 
-	return response.Data.Buckets.Items, nil
+	buckets := response.Data.Buckets.Items
+
+	for i := range buckets {
+		if len(buckets[i].AssetIDs) > 0 {
+			var assets []model.Asset
+			for _, assetID := range buckets[i].AssetIDs {
+				asset, err := s.fetchAssetByIDFromAssetManager(ctx, assetID)
+				if err != nil {
+					s.logger.WithError(err).Warn("Failed to fetch asset for bucket", "asset_id", assetID, "bucket_key", buckets[i].Key)
+					continue
+				}
+				if asset != nil {
+					assets = append(assets, *asset)
+				}
+			}
+			buckets[i].Assets = assets
+		}
+	}
+
+	return buckets, nil
 }
 
 func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (*model.Asset, error) {
@@ -329,6 +362,16 @@ func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, res
 
 	req.Header.Set("Content-Type", "application/json")
 
+	s.logger.Info("Getting service token for request", "url", url)
+	authHeader, err := s.serviceClient.GetAuthorizationHeader(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to get service token")
+		return fmt.Errorf("failed to get service token: %w", err)
+	}
+
+	s.logger.Info("Service token obtained successfully", "auth_header_length", len(authHeader))
+	req.Header.Set("Authorization", authHeader)
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -337,6 +380,7 @@ func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, res
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("GraphQL request failed", "status_code", resp.StatusCode, "url", url)
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 

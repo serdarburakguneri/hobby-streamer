@@ -217,12 +217,17 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - ASSET_MANAGER_URL=http://asset-manager:8080
+      - KEYCLOAK_URL=https://keycloak:8443
+      - KEYCLOAK_REALM=hobby
+      - STREAMING_API_CLIENT_ID=streaming-api
+      - STREAMING_API_CLIENT_SECRET=streaming-api-secret
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:
       - fluentd
       - redis
       - asset-manager
+      - keycloak
     logging:
       driver: fluentd
       options:

@@ -14,12 +14,23 @@
       "enabled": true,
       "publicClient": true,
       "redirectUris": ["*"]
+    },
+    {
+      "clientId": "streaming-api",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "streaming-api-secret",
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "redirectUris": ["*"]
     }
   ],
   "roles": {
     "realm": [
       { "name": "admin" },
-      { "name": "user" }
+      { "name": "user" },
+      { "name": "service" }
     ]
   },
   "users": [
@@ -46,6 +57,12 @@
         }
       ],
       "realmRoles": ["admin"]
+    },
+    {
+      "username": "service-account-streaming-api",
+      "enabled": true,
+      "serviceAccountClientId": "streaming-api",
+      "realmRoles": ["service"]
     }
   ]
 } 

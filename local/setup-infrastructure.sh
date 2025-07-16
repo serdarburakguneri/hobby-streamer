@@ -5,22 +5,6 @@ cd "$(dirname "$0")"
 
 source ./setup-environment.sh
 
-echo "[INFO] Stopping any existing CMS UI processes..."
-if [ -d "../frontend/HobbyStreamerCMS" ]; then
-  cd ../frontend/HobbyStreamerCMS
-  
-  pkill -f "npm run web" || true
-  pkill -f "expo start" || true
-  
-  lsof -ti:8081 | xargs kill -9 2>/dev/null || true
-  
-  cd ../../local
-fi
-
-echo "[INFO] Stopping any existing Expo processes..."
-pkill -f "expo start" || true
-sleep 2
-
 echo "[INFO] Stopping all running containers for fresh start..."
 docker-compose down
 

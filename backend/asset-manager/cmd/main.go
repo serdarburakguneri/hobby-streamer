@@ -139,8 +139,25 @@ func main() {
 			validator := auth.NewKeycloakValidator(keycloakURL, realm, clientID)
 			user, err := validator.ValidateToken(r.Context(), token)
 			if err != nil {
-				log.WithError(err).Error("Token validation failed")
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				log.WithError(err).Debug("Regular token validation failed, trying service token")
+
+				serviceValidator := auth.NewServiceTokenValidator(keycloakURL, realm, clientID)
+				serviceUser, serviceErr := serviceValidator.ValidateServiceToken(r.Context(), token)
+				if serviceErr != nil {
+					log.WithError(serviceErr).Error("Service token validation also failed")
+					http.Error(w, "Invalid token", http.StatusUnauthorized)
+					return
+				}
+
+				if !serviceValidator.IsServiceToken(serviceUser) {
+					log.Error("Service token is not from streaming-api service")
+					http.Error(w, "Invalid service token", http.StatusUnauthorized)
+					return
+				}
+
+				log.Debug("Service token validated successfully", "service", serviceUser.ClientID, "roles", serviceUser.Roles)
+				ctx := context.WithValue(r.Context(), "service_user", serviceUser)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
