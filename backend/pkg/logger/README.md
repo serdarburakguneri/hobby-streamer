@@ -1,6 +1,6 @@
 # Structured Logging Package
 
-This package provides a centralized, structured logging solution for all backend services in the hobby-streamer project.
+Centralized, structured logging solution for all backend services.
 
 ## Features
 

@@ -1,6 +1,6 @@
 # S3 Package
 
-A shared Go package for S3 operations in the hobby-streamer project. Provides a simple interface for uploading and downloading files to/from S3.
+Shared Go package for S3 operations. Provides a simple interface for uploading and downloading files to/from S3.
 
 ## Features
 - Download files from S3 URLs to local temporary files

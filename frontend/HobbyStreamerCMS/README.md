@@ -1,6 +1,6 @@
 # Hobby Streamer CMS - React Native Web App
 
-A React Native CMS interface for managing assets in the Hobby Streamer platform, built with Expo and running on the web.
+React Native CMS interface for managing assets, built with Expo and running on the web.
 
 ## Features
 

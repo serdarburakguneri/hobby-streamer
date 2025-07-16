@@ -1,10 +1,9 @@
 # Auth Service
 
-A Go-based authentication service that handles JWT flows with Keycloak for the hobby-streamer project.
+Go-based authentication service that handles JWT flows with Keycloak.
 
-## Overview
+## Features
 
-The auth-service provides endpoints for:
 - User authentication (login)
 - JWT token validation
 - Token refresh
@@ -117,12 +116,3 @@ go run cmd/main.go
 docker build -t auth-service .
 docker run -p 8080:8080 auth-service
 ```
-
-## Integration with Other Services
-
-Other services (asset-manager, storage) can use this auth-service to:
-1. Validate JWT tokens from clients
-2. Extract user information and roles
-3. Enforce role-based access control
-
-The auth-service acts as a bridge between your microservices and Keycloak, providing a clean API for authentication and authorization. 

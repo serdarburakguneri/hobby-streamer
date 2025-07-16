@@ -1,6 +1,6 @@
 # Shared Libraries
 
-This directory contains shared libraries used across all backend services in the hobby-streamer project. These libraries ensure consistency, reduce code duplication, and provide type-safe interfaces for common functionality.
+Shared libraries used across all backend services. Ensures consistency, reduces code duplication, and provides type-safe interfaces for common functionality.
 
 ## Architecture
 

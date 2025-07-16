@@ -1,13 +1,12 @@
 # Delete Files Lambda
 
-This Lambda function handles deletion of files from S3 buckets. It is designed to work with the hobby-streamer project's storage buckets.
+Lambda function that handles deletion of files from S3 buckets. Used to clean up S3 files when assets are deleted.
 
-## Purpose
+## Features
 
-This function can be used to clean up any S3 files. In the hobby-streamer project, it's primarily used when an asset is deleted from the asset-manager to clean up all associated S3 files including:
-- Raw video files
-- Transcoded video files (HLS/DASH)
-- Thumbnail images
+- Deletes files from multiple S3 buckets
+- Handles raw video files, transcoded files (HLS/DASH), and thumbnails
+- Returns detailed response with success/error information
 
 ## API
 
@@ -76,7 +75,3 @@ awslocal lambda invoke \
   --payload '{"assetId":"test123","files":[{"bucket":"raw-storage","key":"test123/test.mp4"}]}' \
   response.json
 ```
-
-## Integration
-
-This function should be called by the asset-manager service when an asset is deleted, after the database record is removed but before the response is sent to the client. 

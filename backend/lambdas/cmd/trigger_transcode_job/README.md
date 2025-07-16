@@ -1,13 +1,12 @@
 # Trigger Transcode Job Lambda
 
-This Lambda function triggers transcoding jobs by sending SQS messages to the transcoder queue.
+Lambda function that triggers transcoding jobs by sending SQS messages to the transcoder queue.
 
-## Purpose
+## Features
 
-When a user wants to transcode a video to HLS or DASH format, this Lambda function:
-1. Receives a POST request with assetId, videoType, and format
-2. Sends an SQS message to the transcoder queue
-3. Returns success/failure response
+- Receives POST requests with assetId, videoType, and format
+- Sends SQS messages to the transcoder queue
+- Returns success/failure response
 
 ## Request Format
 
@@ -42,7 +41,3 @@ go mod tidy
 GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
 ```
-
-## API Gateway Integration
-
-This Lambda should be integrated with API Gateway to provide HTTP endpoints for triggering transcoding jobs. 

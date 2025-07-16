@@ -1,6 +1,6 @@
 # Messages Package
 
-This package provides common SQS message payload structures used across the hobby-streamer project to ensure consistency between services.
+Common SQS message payload structures used across services to ensure consistency.
 
 ## Message Types
 

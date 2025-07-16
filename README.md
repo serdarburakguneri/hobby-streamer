@@ -2,6 +2,13 @@
 
 A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities.
 
+## Architecture
+
+![Architecture Diagram](docs/arch.png)
+
+### Video Upload and Transcoding Flow
+
+For a detailed view of how video uploading and transcoding works in the system, see the [Video Upload and Transcoding Sequence Diagram](docs/video-upload-transcode-sequence.md). This diagram shows the complete flow from user upload through analysis and transcoding to HLS/DASH formats.
 
 ## Tech Stack
 
@@ -22,14 +29,6 @@ A personal playground for experimenting with video streaming and content managem
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
-
-## Architecture
-
-![Architecture Diagram](docs/arch.png)
-
-### Video Upload and Transcoding Flow
-
-For a detailed view of how video uploading and transcoding works in the system, see the [Video Upload and Transcoding Sequence Diagram](docs/video-upload-transcode-sequence.md). This diagram shows the complete flow from user upload through analysis and transcoding to HLS/DASH formats.
 
 ## Service Documentation
 

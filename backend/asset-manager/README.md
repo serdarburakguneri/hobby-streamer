@@ -1,8 +1,8 @@
 # Asset Manager Service
 
-A simple GraphQL API service for managing media assets and buckets in the hobby streaming project. Uses Neo4j for data storage and supports hierarchical asset relationships.
+GraphQL API service for managing media assets and buckets. Uses Neo4j for data storage and supports hierarchical asset relationships.
 
-## What it does
+## Features
 
 - GraphQL API for assets and buckets
 - Asset status management (draft/published)
@@ -58,7 +58,6 @@ docker run -p 8080:8080 asset-manager
 - Documentary, Music, Podcast
 - Trailer, BehindTheScenes, Interview
 
-
 ### Asset Status
 - `draft` - Default status for assets without publish rules
 - `scheduled` - Assets scheduled for future publication
@@ -91,71 +90,6 @@ query {
 }
 ```
 
-### Create Asset
-```graphql
-mutation {
-  createAsset(input: {
-    title: "Sample Movie"
-    shape: VIDEO
-    type: MOVIE
-    genre: "action"
-  }) {
-    id
-    title
-    status
-  }
-}
-```
-
-### Update Asset with JSON Patch
-```graphql
-mutation {
-  patchAsset(id: "123", patches: [
-    { op: "replace", path: "/title", value: "Updated Title" }
-  ]) {
-    id
-    title
-  }
-}
-```
-
-### Update Video Status
-```graphql
-mutation {
-  updateVideoStatus(id: "123", label: "main", status: "transcoding") {
-    id
-    videos {
-      label
-      status
-    }
-  }
-}
-```
-
-## Architecture
-
-### SQS Integration
-- **Transcoder Jobs**: Publishes video processing jobs to SQS queue for transcoder service
-- **Analyze Completion**: Consumes analyze completion messages from transcoder service via SQS consumer registry
-- **Shared Package**: Uses `pkg/sqs` for both producer and consumer operations
-
-### Analyze Completion Consumer
-- Automatically updates video variant statuses based on analyze completion messages
-- Handles analyze completion from transcoder service (success/failure)
-- Runs as part of the consumer registry alongside the GraphQL server
-
-## Project Structure
-
-```
-cmd/main.go          # Application entry point
-internal/
-├── asset/           # Asset domain logic
-├── bucket/          # Bucket domain logic
-├── consumer/        # SQS consumer handlers
-graph/
-├── schema.graphqls  # GraphQL schema
-└── schema.resolvers.go # Resolvers
-```
 
 ## Development
 

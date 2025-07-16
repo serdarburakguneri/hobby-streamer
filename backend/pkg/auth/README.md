@@ -1,10 +1,9 @@
 # Shared Auth Package
 
-A shared authentication package that provides token validation and role-based authorization for microservices.
+Shared authentication package that provides token validation and role-based authorization for microservices.
 
-## Overview
+## Features
 
-This package provides:
 - TokenValidator interface for consistent token validation across services
 - KeycloakValidator implementation for JWT validation with Keycloak
 - HTTP middleware for easy integration into services

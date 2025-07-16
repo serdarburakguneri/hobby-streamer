@@ -1,10 +1,9 @@
 # SQS Package
 
-This package provides AWS SQS client functionality including producers, consumers, and a consumer registry system for managing multiple message consumers.
+AWS SQS client functionality including producers, consumers, and a consumer registry system for managing multiple message consumers.
 
-## Overview
+## Features
 
-The SQS package provides:
 - **Producer**: Send messages to SQS queues
 - **Consumer**: Receive and process messages from SQS queues
 - **Consumer Registry**: Manage multiple consumers with a unified interface
