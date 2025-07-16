@@ -18,6 +18,7 @@ A personal playground for experimenting with video streaming and content managem
 - Fluentd – Log collection and forwarding
 - Elasticsearch – Log storage and search
 - Kibana – Log visualization and analysis
+- Nginx (To replace cloudfront locally)
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
@@ -82,6 +83,12 @@ To set up the development environment with all services, simply run:
 ./local/build.sh
 ```
 
+If you get a 'Permission denied' error for any setup script, you can make all setup scripts executable at once with:
+
+```sh
+chmod +x local/setup-*
+```
+
 ### Service Ports
 - Auth Service: http://localhost:8080
 - Asset Manager GraphQL: http://localhost:8082/query
@@ -91,4 +98,5 @@ To set up the development environment with all services, simply run:
 - CMS UI Web: http://localhost:8081
 - Kibana (Logs): http://localhost:5601
 - Elasticsearch: http://localhost:9200
+- Nginx HLS Proxy: http://localhost:8083
 

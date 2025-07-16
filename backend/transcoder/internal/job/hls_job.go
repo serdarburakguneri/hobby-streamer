@@ -75,10 +75,33 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	}
 
 	tempDir := os.TempDir()
-	localOutputPath = filepath.Join(tempDir, h.outputFileName)
+	hlsDir := filepath.Join(tempDir, "hls_output")
+	if err := os.MkdirAll(hlsDir, 0755); err != nil {
+		log.WithError(err).Error("Failed to create HLS output directory", "dir", hlsDir)
+		if h.analyzeProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
+		}
+		return err
+	}
+	defer os.RemoveAll(hlsDir)
 
-	log.Info("Running FFmpeg HLS transcoding", "input", localInputPath, "output", localOutputPath)
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localInputPath, "-c:v", "libx264", "-c:a", "aac", "-f", "hls", localOutputPath)
+	baseFileName := strings.TrimSuffix(h.outputFileName, ".m3u8")
+	segmentDir := filepath.Join(hlsDir, baseFileName)
+	if err := os.MkdirAll(segmentDir, 0755); err != nil {
+		log.WithError(err).Error("Failed to create HLS segment directory", "dir", segmentDir)
+		if h.analyzeProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
+		}
+		return err
+	}
+
+	// Write both manifest and segments to the same directory
+	segmentPattern := filepath.Join(hlsDir, baseFileName+"%d.ts")
+	localOutputPath = filepath.Join(hlsDir, h.outputFileName)
+
+	log.Info("Running FFmpeg HLS transcoding", "input", localInputPath, "output", localOutputPath, "segment_pattern", segmentPattern)
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localInputPath, "-c:v", "libx264", "-c:a", "aac", "-f", "hls", "-hls_segment_filename", segmentPattern, localOutputPath)
+	cmd.Dir = hlsDir
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -92,15 +115,32 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	log.Info("HLS transcoding completed successfully", "input", localInputPath, "output", localOutputPath, "output_length", len(out))
 	log.Debug("FFmpeg HLS output", "output", string(out))
 
-	err = h.s3Client.Upload(ctx, localOutputPath, h.outputBucket, h.outputKey)
+	// Upload all .m3u8 and .ts files from hlsDir to S3
+	entries, err := os.ReadDir(hlsDir)
 	if err != nil {
-		log.WithError(err).Error("Failed to upload output to S3", "bucket", h.outputBucket, "key", h.outputKey)
+		log.WithError(err).Error("Failed to read HLS output directory", "dir", hlsDir)
 		if h.analyzeProducer != nil {
 			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
-	defer os.Remove(localOutputPath)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".m3u8") || strings.HasSuffix(name, ".ts") {
+			localPath := filepath.Join(hlsDir, name)
+			s3Key := filepath.Join(p.AssetID, p.VideoID, name)
+			if upErr := h.s3Client.Upload(ctx, localPath, h.outputBucket, s3Key); upErr != nil {
+				log.WithError(upErr).Error("Failed to upload file to S3", "bucket", h.outputBucket, "key", s3Key)
+				if h.analyzeProducer != nil {
+					h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, upErr.Error())
+				}
+				return upErr
+			}
+		}
+	}
 
 	if h.analyzeProducer != nil {
 		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")

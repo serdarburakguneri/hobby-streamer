@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import VideoUpload from './VideoUpload';
+import VideoPreview from './VideoPreview';
 import { triggerTranscodeJob } from '../../services/api';
 import { VideoType, VideoFormat } from '../../types/asset';
 
@@ -18,6 +19,8 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
   const [showMainUpload, setShowMainUpload] = useState(false);
   const [showTrailerUpload, setShowTrailerUpload] = useState(false);
   const [triggeringJobs, setTriggeringJobs] = useState<{[key: string]: boolean}>({});
+  const [previewVideo, setPreviewVideo] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleTriggerTranscode = async (videoId: string, format: 'hls' | 'dash') => {
     const jobKey = `${videoId}-${format}`;
@@ -110,6 +113,19 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
     }
   };
 
+  const handlePreviewVideo = (video: any) => {
+    console.log('Preview video object:', video);
+    console.log('Video streamInfo:', video.streamInfo);
+    console.log('Video storageLocation:', video.storageLocation);
+    setPreviewVideo(video);
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setPreviewVideo(null);
+  };
+
   const renderVideoItem = (video: any) => {
     const jobKey = `${video.id}-${video.format}`;
     const isTriggering = triggeringJobs[jobKey] || false;
@@ -155,6 +171,14 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
                   </Text>
                 </TouchableOpacity>
               </View>
+            )}
+            {(video.format === 'hls' || video.format === 'dash') && video.status === 'ready' && (
+              <TouchableOpacity 
+                style={styles.previewButton}
+                onPress={() => handlePreviewVideo(video)}
+              >
+                <Ionicons name="eye" size={16} color="#007AFF" />
+              </TouchableOpacity>
             )}
             <TouchableOpacity 
               style={styles.deleteButton}
@@ -286,6 +310,14 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
         {renderVideoTypeSection(VideoType.MAIN, 'Main Video', 'videocam')}
         {renderVideoTypeSection(VideoType.TRAILER, 'Trailer', 'play-circle')}
       </ScrollView>
+      
+      {previewVideo && (
+        <VideoPreview
+          video={previewVideo}
+          visible={showPreview}
+          onClose={handleClosePreview}
+        />
+      )}
     </View>
   );
 }
@@ -410,6 +442,9 @@ const styles = StyleSheet.create({
   },
   transcodeButtonTextDisabled: {
     color: '#999',
+  },
+  previewButton: {
+    padding: 4,
   },
   deleteButton: {
     padding: 4,

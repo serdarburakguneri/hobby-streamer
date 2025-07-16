@@ -75,10 +75,21 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	}
 
 	tempDir := os.TempDir()
-	localOutputPath = filepath.Join(tempDir, d.outputFileName)
+	dashDir := filepath.Join(tempDir, "dash_output")
+	if err := os.MkdirAll(dashDir, 0755); err != nil {
+		log.WithError(err).Error("Failed to create DASH output directory", "dir", dashDir)
+		if d.analyzeProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
+		}
+		return err
+	}
+	defer os.RemoveAll(dashDir)
+
+	localOutputPath = filepath.Join(dashDir, d.outputFileName)
 
 	log.Info("Running FFmpeg DASH transcoding", "input", localInputPath, "output", localOutputPath)
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localInputPath, "-c:v", "libx264", "-c:a", "aac", "-f", "dash", localOutputPath)
+	cmd.Dir = dashDir
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -92,15 +103,32 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	log.Info("DASH transcoding completed successfully", "input", localInputPath, "output", localOutputPath, "output_length", len(out))
 	log.Debug("FFmpeg DASH output", "output", string(out))
 
-	err = d.s3Client.Upload(ctx, localOutputPath, d.outputBucket, d.outputKey)
+	// Upload all .mpd and .m4s files from dashDir to S3
+	entries, err := os.ReadDir(dashDir)
 	if err != nil {
-		log.WithError(err).Error("Failed to upload output to S3", "bucket", d.outputBucket, "key", d.outputKey)
+		log.WithError(err).Error("Failed to read DASH output directory", "dir", dashDir)
 		if d.analyzeProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, err.Error())
 		}
 		return err
 	}
-	defer os.Remove(localOutputPath)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".mpd") || strings.HasSuffix(name, ".m4s") {
+			localPath := filepath.Join(dashDir, name)
+			s3Key := filepath.Join(p.AssetID, p.VideoID, name)
+			if upErr := d.s3Client.Upload(ctx, localPath, d.outputBucket, s3Key); upErr != nil {
+				log.WithError(upErr).Error("Failed to upload file to S3", "bucket", d.outputBucket, "key", s3Key)
+				if d.analyzeProducer != nil {
+					d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, upErr.Error())
+				}
+				return upErr
+			}
+		}
+	}
 
 	if d.analyzeProducer != nil {
 		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")

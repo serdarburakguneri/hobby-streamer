@@ -14,8 +14,8 @@ echo "[INFO] Phase 2: Setting up infrastructure..."
 echo "[INFO] Phase 3: Setting up AWS resources..."
 ./setup-aws-resources.sh
 
-echo "[INFO] Phase 4: Setting up CloudFront distributions..."
-./setup-cloudfront.sh
+#echo "[INFO] Phase 4: Setting up CloudFront distributions..."
+#./setup-cloudfront.sh
 
 echo "[INFO] Phase 5: Setting up Lambda functions..."
 ./setup-lambdas.sh
@@ -26,7 +26,10 @@ echo "[INFO] Phase 6: Setting up API Gateway..."
 echo "[INFO] Phase 7: Setting up backend services..."
 ./setup-backend-services.sh
 
-echo "[INFO] Phase 8: Setting up frontend..."
+echo "[INFO] Phase 8: Setting up nginx proxy..."
+./setup-nginx.sh
+
+echo "[INFO] Phase 9: Setting up frontend..."
 ./setup-frontend.sh
 
 echo ""

@@ -5,8 +5,8 @@ cd "$(dirname "$0")"
 
 source ./setup-environment.sh
 
-echo "[INFO] Starting backend services (auth-service, asset-manager, transcoder)..."
-docker-compose up -d auth-service asset-manager transcoder
+echo "[INFO] Starting backend services (auth-service, asset-manager, transcoder, nginx)..."
+docker-compose up -d auth-service asset-manager transcoder nginx
 
 echo "[INFO] All services are running successfully!"
 echo "[INFO] You can view logs using: docker-compose logs <service-name>"
@@ -25,6 +25,7 @@ echo "[INFO] Asset Manager GraphQL endpoint is ready."
 echo "[INFO] All services are up to date and running."
 echo "[INFO] - Auth Service: http://localhost:8080"
 echo "[INFO] - Asset Manager GraphQL: http://localhost:8082/query"
+echo "[INFO] - Nginx (HLS/DASH Proxy): http://localhost:8083"
 echo "[INFO] - Neo4j Browser: http://localhost:7474"
 echo "[INFO] - Keycloak: http://localhost:9090"
 echo "[INFO] - LocalStack: http://localhost:4566"

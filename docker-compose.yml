@@ -154,9 +154,9 @@ services:
       - ANALYZE_QUEUE_URL=${ANALYZE_QUEUE_URL}
       - AWS_ENDPOINT=${LOCALSTACK_ENDPOINT}
       - DELETE_ASSET_FILES_LAMBDA_ENDPOINT=${DELETE_FILES_LAMBDA_ENDPOINT}
-      - HLS_CDN_PREFIX=${HLS_CDN_PREFIX:-https://hls-streaming.localhost}
-      - DASH_CDN_PREFIX=${DASH_CDN_PREFIX:-https://dash-streaming.localhost}
-      - THUMBNAILS_CDN_PREFIX=${THUMBNAILS_CDN_PREFIX:-https://thumbnails.localhost}
+      - HLS_CDN_PREFIX=${HLS_CDN_PREFIX:-http://localhost:8083/hls-storage}
+      - DASH_CDN_PREFIX=${DASH_CDN_PREFIX:-http://localhost:8083/dash-storage}
+      - THUMBNAILS_CDN_PREFIX=${THUMBNAILS_CDN_PREFIX:-http://localhost:4566/thumbnails-storage}
       - LOG_LEVEL=info
       - LOG_FORMAT=json
     depends_on:
@@ -194,6 +194,18 @@ services:
        fluentd-address: 172.30.0.10:24224
     networks:
       - hobby-streamer
+
+  nginx:
+    build:
+      context: ./local/nginx
+    ports:
+      - "8083:8083"
+    depends_on:
+      - localstack
+    restart: unless-stopped
+    networks:
+      - hobby-streamer
+
 
 volumes:
   esdata:

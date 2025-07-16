@@ -265,6 +265,7 @@ const GET_ASSETS = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
+            playUrl
           }
           metadata
           status
@@ -337,6 +338,7 @@ const GET_BUCKETS = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
             status
@@ -408,6 +410,7 @@ const GET_BUCKET = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -427,6 +430,7 @@ const GET_BUCKET = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -446,6 +450,7 @@ const GET_BUCKET = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -517,6 +522,7 @@ const GET_ASSETS_BY_PARENT = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -536,6 +542,7 @@ const GET_ASSETS_BY_PARENT = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -555,6 +562,7 @@ const GET_ASSETS_BY_PARENT = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
+              playUrl
             }
             metadata
           }
@@ -626,6 +634,7 @@ const GET_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
+          playUrl
         }
         metadata
         status
@@ -711,6 +720,7 @@ const CREATE_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
+          playUrl
         }
         metadata
         status
@@ -782,6 +792,7 @@ const PATCH_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
+          playUrl
         }
         metadata
         status
@@ -851,6 +862,7 @@ const PATCH_PUBLISH_RULE = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
+            playUrl
           }
           metadata
           status
@@ -871,6 +883,7 @@ const PATCH_PUBLISH_RULE = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
+            playUrl
           }
           metadata
           status
@@ -891,6 +904,7 @@ const PATCH_PUBLISH_RULE = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
+            playUrl
           }
           metadata
           status
@@ -954,6 +968,7 @@ const DELETE_VIDEO = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
+          playUrl
         }
         metadata
         status
@@ -1014,6 +1029,7 @@ const ADD_VIDEO = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
+          playUrl
         }
         metadata
         status
