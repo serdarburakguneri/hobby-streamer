@@ -18,6 +18,7 @@ For a detailed view of how video uploading and transcoding works in the system, 
 - Neo4j – Graph database for asset relationships and metadata
 - Keycloak – Identity and access management
 - FFMPEG – Video processing and transcoding
+- Redis - User request caching
 
 ### Infrastructure & DevOps
 - Docker Compose – Containerized development environment
