@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/model"
 )
@@ -26,7 +27,7 @@ func NewRedisClient() (*Client, error) {
 
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse Redis URL: %w", err)
+		return nil, errors.NewInternalError("failed to parse Redis URL", err)
 	}
 
 	client := redis.NewClient(opt)
@@ -35,7 +36,7 @@ func NewRedisClient() (*Client, error) {
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+		return nil, errors.NewTransientError("failed to connect to Redis", err)
 	}
 
 	return &Client{
@@ -60,12 +61,12 @@ func (s *Service) GetBucket(ctx context.Context, key string) (*model.Bucket, err
 		if err == redis.Nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get bucket from cache: %w", err)
+		return nil, errors.NewTransientError("failed to get bucket from cache", err)
 	}
 
 	var bucket model.Bucket
 	if err := json.Unmarshal(data, &bucket); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal bucket: %w", err)
+		return nil, errors.NewInternalError("failed to unmarshal bucket", err)
 	}
 
 	return &bucket, nil
@@ -76,43 +77,47 @@ func (s *Service) SetBucket(ctx context.Context, bucket *model.Bucket) error {
 
 	data, err := json.Marshal(bucket)
 	if err != nil {
-		return fmt.Errorf("failed to marshal bucket: %w", err)
+		return errors.NewInternalError("failed to marshal bucket", err)
 	}
 
 	ttl := 30 * time.Minute
 	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to set bucket in cache: %w", err)
+		return errors.NewTransientError("failed to set bucket in cache", err)
 	}
 
 	return nil
 }
 
 func (s *Service) GetBuckets(ctx context.Context) ([]model.Bucket, error) {
-	data, err := s.client.client.Get(ctx, "buckets:list").Bytes()
+	cacheKey := "buckets:list"
+
+	data, err := s.client.client.Get(ctx, cacheKey).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get buckets from cache: %w", err)
+		return nil, errors.NewTransientError("failed to get buckets from cache", err)
 	}
 
 	var buckets []model.Bucket
 	if err := json.Unmarshal(data, &buckets); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal buckets: %w", err)
+		return nil, errors.NewInternalError("failed to unmarshal buckets", err)
 	}
 
 	return buckets, nil
 }
 
 func (s *Service) SetBuckets(ctx context.Context, buckets []model.Bucket) error {
+	cacheKey := "buckets:list"
+
 	data, err := json.Marshal(buckets)
 	if err != nil {
-		return fmt.Errorf("failed to marshal buckets: %w", err)
+		return errors.NewInternalError("failed to marshal buckets", err)
 	}
 
-	ttl := 15 * time.Minute
-	if err := s.client.client.Set(ctx, "buckets:list", data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to set buckets in cache: %w", err)
+	ttl := 30 * time.Minute
+	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+		return errors.NewTransientError("failed to set buckets in cache", err)
 	}
 
 	return nil
@@ -126,12 +131,12 @@ func (s *Service) GetAsset(ctx context.Context, slug string) (*model.Asset, erro
 		if err == redis.Nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get asset from cache: %w", err)
+		return nil, errors.NewTransientError("failed to get asset from cache", err)
 	}
 
 	var asset model.Asset
 	if err := json.Unmarshal(data, &asset); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal asset: %w", err)
+		return nil, errors.NewInternalError("failed to unmarshal asset", err)
 	}
 
 	return &asset, nil
@@ -142,93 +147,87 @@ func (s *Service) SetAsset(ctx context.Context, asset *model.Asset) error {
 
 	data, err := json.Marshal(asset)
 	if err != nil {
-		return fmt.Errorf("failed to marshal asset: %w", err)
+		return errors.NewInternalError("failed to marshal asset", err)
 	}
 
 	ttl := 30 * time.Minute
 	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to set asset in cache: %w", err)
+		return errors.NewTransientError("failed to set asset in cache", err)
 	}
 
 	return nil
 }
 
 func (s *Service) GetAssets(ctx context.Context) ([]model.Asset, error) {
-	data, err := s.client.client.Get(ctx, "assets:list").Bytes()
+	cacheKey := "assets:list"
+
+	data, err := s.client.client.Get(ctx, cacheKey).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get assets from cache: %w", err)
+		return nil, errors.NewTransientError("failed to get assets from cache", err)
 	}
 
 	var assets []model.Asset
 	if err := json.Unmarshal(data, &assets); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal assets: %w", err)
+		return nil, errors.NewInternalError("failed to unmarshal assets", err)
 	}
 
 	return assets, nil
 }
 
 func (s *Service) SetAssets(ctx context.Context, assets []model.Asset) error {
+	cacheKey := "assets:list"
+
 	data, err := json.Marshal(assets)
 	if err != nil {
-		return fmt.Errorf("failed to marshal assets: %w", err)
+		return errors.NewInternalError("failed to marshal assets", err)
 	}
 
-	ttl := 15 * time.Minute
-	if err := s.client.client.Set(ctx, "assets:list", data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to set assets in cache: %w", err)
+	ttl := 30 * time.Minute
+	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+		return errors.NewTransientError("failed to set assets in cache", err)
 	}
 
 	return nil
 }
 
-func (s *Service) InvalidateBucket(ctx context.Context, key string) error {
+func (s *Service) InvalidateBucketCache(ctx context.Context, key string) error {
 	cacheKey := fmt.Sprintf("bucket:%s", key)
 	if err := s.client.client.Del(ctx, cacheKey).Err(); err != nil {
-		return fmt.Errorf("failed to invalidate bucket cache: %w", err)
+		return errors.NewTransientError("failed to invalidate bucket cache", err)
 	}
-
-	if err := s.client.client.Del(ctx, "buckets:list").Err(); err != nil {
-		return fmt.Errorf("failed to invalidate buckets list cache: %w", err)
-	}
-
 	return nil
 }
 
-func (s *Service) InvalidateAsset(ctx context.Context, slug string) error {
+func (s *Service) InvalidateBucketsListCache(ctx context.Context) error {
+	cacheKey := "buckets:list"
+	if err := s.client.client.Del(ctx, cacheKey).Err(); err != nil {
+		return errors.NewTransientError("failed to invalidate buckets list cache", err)
+	}
+	return nil
+}
+
+func (s *Service) InvalidateAssetCache(ctx context.Context, slug string) error {
 	cacheKey := fmt.Sprintf("asset:%s", slug)
 	if err := s.client.client.Del(ctx, cacheKey).Err(); err != nil {
-		return fmt.Errorf("failed to invalidate asset cache: %w", err)
+		return errors.NewTransientError("failed to invalidate asset cache", err)
 	}
+	return nil
+}
 
-	if err := s.client.client.Del(ctx, "assets:list").Err(); err != nil {
-		return fmt.Errorf("failed to invalidate assets list cache: %w", err)
+func (s *Service) InvalidateAssetsListCache(ctx context.Context) error {
+	cacheKey := "assets:list"
+	if err := s.client.client.Del(ctx, cacheKey).Err(); err != nil {
+		return errors.NewTransientError("failed to invalidate assets list cache", err)
 	}
-
 	return nil
 }
 
 func getRedisURL() string {
-	if url := getEnv("REDIS_URL", ""); url != "" {
+	if url := os.Getenv("REDIS_URL"); url != "" {
 		return url
 	}
-
-	host := getEnv("REDIS_HOST", "localhost")
-	port := getEnv("REDIS_PORT", "6379")
-	password := getEnv("REDIS_PASSWORD", "")
-
-	if password != "" {
-		return fmt.Sprintf("redis://:%s@%s:%s", password, host, port)
-	}
-
-	return fmt.Sprintf("redis://%s:%s", host, port)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	return "redis://localhost:6379/0"
 }

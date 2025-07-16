@@ -13,7 +13,7 @@ For a detailed view of how video uploading and transcoding works in the system, 
 ## Tech Stack
 
 ### Backend Services
-- Go – Backend services
+- Go – Backend services with comprehensive error handling and resilience patterns
 - GraphQL – API layer for asset management
 - Neo4j – Graph database for asset relationships and metadata
 - Keycloak – Identity and access management
@@ -57,6 +57,7 @@ See [Shared Libraries Documentation](backend/pkg/README.md) for detailed informa
 **Available Libraries:**
 - [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
 - [Constants Package](backend/pkg/constants/README.md): Common constants for HTTP status codes, roles, and other shared values
+- [Errors Package](backend/pkg/errors/README.md): Error handling library with typed errors, retry mechanisms, circuit breakers, and graceful degradation patterns
 - [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
 - [Messages Package](backend/pkg/messages/README.md): Common SQS message payload structures and type constants for inter-service communication
 - [S3 Package](backend/pkg/s3/README.md): S3 client library for file upload, download, and directory operations with LocalStack support

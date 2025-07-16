@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/asset"
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 )
@@ -25,17 +26,47 @@ func NewMessageRouter(assetService asset.AssetService) *MessageRouter {
 }
 
 func (r *MessageRouter) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
-	r.logger.Info("Routing message", "message_type", msgType)
+	log := r.logger.WithContext(ctx)
 
+	log.Info("Routing message", "message_type", msgType)
+
+	if msgType == "" {
+		log.Error("Received message with empty message type")
+		return apperrors.NewValidationError("message type cannot be empty", nil)
+	}
+
+	var err error
 	switch msgType {
 	case messages.MessageTypeAnalyzeCompleted:
-		return r.analyzeConsumer.HandleMessage(ctx, msgType, payload)
+		log.Info("Routing to analyze completion consumer", "message_type", msgType)
+		err = r.analyzeConsumer.HandleMessage(ctx, msgType, payload)
 	case messages.MessageTypeTranscodeHLSCompleted:
-		return r.hlsConsumer.HandleMessage(ctx, msgType, payload)
+		log.Info("Routing to HLS completion consumer", "message_type", msgType)
+		err = r.hlsConsumer.HandleMessage(ctx, msgType, payload)
 	case messages.MessageTypeTranscodeDASHCompleted:
-		return r.dashConsumer.HandleMessage(ctx, msgType, payload)
+		log.Info("Routing to DASH completion consumer", "message_type", msgType)
+		err = r.dashConsumer.HandleMessage(ctx, msgType, payload)
 	default:
-		r.logger.Info("Unknown message type, ignoring", "message_type", msgType)
+		log.Warn("Unknown message type, ignoring", "message_type", msgType)
 		return nil
 	}
+
+	if err != nil {
+		log.WithError(err).Error("Failed to handle message", "message_type", msgType)
+
+		errorType := apperrors.GetErrorType(err)
+		switch errorType {
+		case apperrors.ErrorTypeValidation:
+			return apperrors.NewValidationError("invalid message payload", err)
+		case apperrors.ErrorTypeNotFound:
+			return apperrors.NewNotFoundError("resource not found for message processing", err)
+		case apperrors.ErrorTypeTransient:
+			return apperrors.NewTransientError("temporary failure processing message", err)
+		default:
+			return apperrors.NewInternalError("failed to process message", err)
+		}
+	}
+
+	log.Info("Successfully routed and processed message", "message_type", msgType)
+	return nil
 }

@@ -1,11 +1,11 @@
 # Transcoder Service
 
-Background worker that processes video jobs from an SQS queue, including analysis and transcoding to HLS and DASH formats.
+Background worker that processes video jobs from an SQS queue, including analysis and transcoding to HLS and DASH formats with comprehensive error handling and resilience patterns.
 
 ## Features
 - Consumes jobs from an SQS queue using the shared SQS package
 - Runs ffmpeg-based analysis and transcoding jobs (HLS, DASH)
-- Direct job handler registration without dispatcher abstraction
+- Error handling with typed errors and retry mechanisms
 
 ## Requirements
 - Go 1.22+

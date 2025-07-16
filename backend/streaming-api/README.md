@@ -1,11 +1,18 @@
 # Streaming API
 
-REST API for streaming UI with Redis caching.
+REST API for streaming UI with Redis caching and comprehensive error handling.
 
 ## Overview
 
-The streaming-api service provides fast, cached access to bucket and asset data for streaming applications. It uses Redis for caching and fetches data from the asset-manager GraphQL service when needed.
+The streaming-api service provides fast, cached access to bucket and asset data for streaming applications. It uses Redis for caching and fetches data from the asset-manager GraphQL service when needed. The service implements robust error handling with circuit breakers, retry mechanisms, and graceful degradation for improved reliability.
 
+## Features
+
+- Fast REST API for streaming applications
+- Redis caching with configurable TTL
+- Circuit breaker patterns for external service calls
+- Retry mechanisms with exponential backoff
+- Error handling with typed errors
 
 ## API Endpoints
 

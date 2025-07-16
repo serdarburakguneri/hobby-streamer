@@ -1,6 +1,6 @@
 # Asset Manager Service
 
-GraphQL API service for managing media assets and buckets. Uses Neo4j for data storage and supports hierarchical asset relationships.
+GraphQL API service for managing media assets and buckets. Uses Neo4j for data storage and supports hierarchical asset relationships with comprehensive error handling and resilience patterns.
 
 ## Features
 
@@ -11,6 +11,8 @@ GraphQL API service for managing media assets and buckets. Uses Neo4j for data s
 - Neo4j graph database backend
 - JWT authentication via Keycloak
 - SQS integration for transcoder job publishing and status updates
+- Error handling with typed errors
+
 
 ## Quick Start
 
@@ -89,7 +91,6 @@ query {
   }
 }
 ```
-
 
 ## Development
 

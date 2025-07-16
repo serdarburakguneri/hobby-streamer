@@ -54,9 +54,7 @@ export default function VideoUpload({ assetId, videoType, onUploadComplete, onCa
     setUploadProgress(0);
 
     try {
-      const fileName = `${assetId}/${videoType.toLowerCase()}/${Date.now()}_${file.name}`;
-      
-      const { url: uploadUrl } = await getUploadUrl(fileName);
+      const { url: uploadUrl } = await getUploadUrl(file.name, assetId, videoType);
       
       const response = await fetch(file.uri);
       const blob = await response.blob();
@@ -64,7 +62,7 @@ export default function VideoUpload({ assetId, videoType, onUploadComplete, onCa
       await uploadFile(uploadUrl, blob);
       
       const bucket = 'raw-storage';
-      const key = fileName;
+      const key = `${assetId}/${videoType.toLowerCase()}/${file.name}`;
       const url = `${API_CONFIG.LOCALSTACK_BASE_URL}/${bucket}/${key}`;
       
       await addVideo(assetId, videoType, 'raw', bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);

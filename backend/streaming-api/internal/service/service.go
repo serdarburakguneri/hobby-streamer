@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/cache"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/model"
@@ -29,6 +30,7 @@ type Service struct {
 	logger          *logger.Logger
 	assetManagerURL string
 	serviceClient   *auth.ServiceClient
+	circuitBreaker  *errors.CircuitBreaker
 }
 
 func NewService(cacheService *cache.Service) *Service {
@@ -44,11 +46,21 @@ func NewService(cacheService *cache.Service) *Service {
 	serviceClient := auth.NewServiceClient(keycloakURL, realm, clientID, clientSecret)
 	log.Info("Service client created successfully")
 
+	circuitBreaker := errors.NewCircuitBreaker(errors.CircuitBreakerConfig{
+		Name:      "asset-manager",
+		Threshold: 5,
+		Timeout:   30 * time.Second,
+		OnStateChange: func(name string, from, to errors.CircuitState) {
+			log.Info("Circuit breaker state changed", "name", name, "from", from, "to", to)
+		},
+	})
+
 	return &Service{
 		cacheService:    cacheService,
 		logger:          log,
 		assetManagerURL: assetManagerURL,
 		serviceClient:   serviceClient,
+		circuitBreaker:  circuitBreaker,
 	}
 }
 
@@ -56,7 +68,7 @@ func (s *Service) GetBucket(ctx context.Context, key string) (*model.Bucket, err
 	bucket, err := s.cacheService.GetBucket(ctx, key)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get bucket from cache", "key", key)
-		return nil, fmt.Errorf("cache error: %w", err)
+		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if bucket != nil {
@@ -68,7 +80,10 @@ func (s *Service) GetBucket(ctx context.Context, key string) (*model.Bucket, err
 
 	bucket, err = s.fetchBucketFromAssetManager(ctx, key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch bucket from asset-manager: %w", err)
+		return nil, errors.WithContext(err, map[string]interface{}{
+			"operation": "fetch_bucket",
+			"key":       key,
+		})
 	}
 
 	if bucket != nil {
@@ -84,7 +99,7 @@ func (s *Service) GetBuckets(ctx context.Context) ([]model.Bucket, error) {
 	buckets, err := s.cacheService.GetBuckets(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get buckets from cache")
-		return nil, fmt.Errorf("cache error: %w", err)
+		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if buckets != nil {
@@ -96,7 +111,9 @@ func (s *Service) GetBuckets(ctx context.Context) ([]model.Bucket, error) {
 
 	buckets, err = s.fetchBucketsFromAssetManager(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch buckets from asset-manager: %w", err)
+		return nil, errors.WithContext(err, map[string]interface{}{
+			"operation": "fetch_buckets",
+		})
 	}
 
 	if buckets != nil {
@@ -112,7 +129,7 @@ func (s *Service) GetAsset(ctx context.Context, slug string) (*model.Asset, erro
 	asset, err := s.cacheService.GetAsset(ctx, slug)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get asset from cache", "slug", slug)
-		return nil, fmt.Errorf("cache error: %w", err)
+		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if asset != nil {
@@ -124,7 +141,10 @@ func (s *Service) GetAsset(ctx context.Context, slug string) (*model.Asset, erro
 
 	asset, err = s.fetchAssetFromAssetManager(ctx, slug)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch asset from asset-manager: %w", err)
+		return nil, errors.WithContext(err, map[string]interface{}{
+			"operation": "fetch_asset",
+			"slug":      slug,
+		})
 	}
 
 	if asset != nil {
@@ -140,7 +160,7 @@ func (s *Service) GetAssets(ctx context.Context) ([]model.Asset, error) {
 	assets, err := s.cacheService.GetAssets(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get assets from cache")
-		return nil, fmt.Errorf("cache error: %w", err)
+		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if assets != nil {
@@ -152,7 +172,9 @@ func (s *Service) GetAssets(ctx context.Context) ([]model.Asset, error) {
 
 	assets, err = s.fetchAssetsFromAssetManager(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch assets from asset-manager: %w", err)
+		return nil, errors.WithContext(err, map[string]interface{}{
+			"operation": "fetch_assets",
+		})
 	}
 
 	if assets != nil {
@@ -167,11 +189,11 @@ func (s *Service) GetAssets(ctx context.Context) ([]model.Asset, error) {
 func (s *Service) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]model.Asset, error) {
 	bucket, err := s.GetBucket(ctx, bucketKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bucket: %w", err)
+		return nil, errors.NewNotFoundError("failed to get bucket", err)
 	}
 
 	if bucket == nil {
-		return nil, fmt.Errorf("bucket not found: %s", bucketKey)
+		return nil, errors.NewNotFoundError(fmt.Sprintf("bucket not found: %s", bucketKey), nil)
 	}
 
 	if len(bucket.AssetIDs) == 0 {
@@ -194,116 +216,115 @@ func (s *Service) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]mo
 }
 
 func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (*model.Bucket, error) {
-	url := fmt.Sprintf("%s/graphql", s.assetManagerURL)
-
-	query := `{
-		"query": "query GetBucket($key: String!) { bucketByKey(key: $key) { id key name description type status assetIds createdAt updatedAt } }",
-		"variables": {"key": "` + key + `"}
-	}`
+	query := fmt.Sprintf(`
+		query {
+			bucket(key: "%s") {
+				key
+				name
+				description
+				createdAt
+				updatedAt
+			}
+		}
+	`, key)
 
 	var response struct {
 		Data struct {
-			BucketByKey *model.Bucket `json:"bucketByKey"`
+			Bucket *model.Bucket `json:"bucket"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
 		} `json:"errors,omitempty"`
 	}
 
-	if err := s.makeGraphQLRequest(ctx, url, query, &response); err != nil {
-		return nil, err
+	err := s.circuitBreaker.Execute(ctx, func() error {
+		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
+	})
+
+	if err != nil {
+		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
+			return nil, errors.NewExternalError("asset-manager service unavailable", err)
+		}
+		return nil, errors.NewExternalError("failed to fetch bucket from asset-manager", err)
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
+		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
-	return response.Data.BucketByKey, nil
+	return response.Data.Bucket, nil
 }
 
 func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Bucket, error) {
-	url := fmt.Sprintf("%s/graphql", s.assetManagerURL)
-
-	query := `{
-		"query": "query GetBuckets { buckets { items { id key name description type status assetIds createdAt updatedAt } } }"
-	}`
+	query := `
+		query {
+			buckets {
+				key
+				name
+				description
+				createdAt
+				updatedAt
+			}
+		}
+	`
 
 	var response struct {
 		Data struct {
-			Buckets struct {
-				Items []model.Bucket `json:"items"`
-			} `json:"buckets"`
+			Buckets []model.Bucket `json:"buckets"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
 		} `json:"errors,omitempty"`
 	}
 
-	if err := s.makeGraphQLRequest(ctx, url, query, &response); err != nil {
-		return nil, err
+	err := s.circuitBreaker.Execute(ctx, func() error {
+		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
+	})
+
+	if err != nil {
+		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
+			return nil, errors.NewExternalError("asset-manager service unavailable", err)
+		}
+		return nil, errors.NewExternalError("failed to fetch buckets from asset-manager", err)
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
+		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
-	buckets := response.Data.Buckets.Items
-
-	for i := range buckets {
-		if len(buckets[i].AssetIDs) > 0 {
-			var assets []model.Asset
-			for _, assetID := range buckets[i].AssetIDs {
-				asset, err := s.fetchAssetByIDFromAssetManager(ctx, assetID)
-				if err != nil {
-					s.logger.WithError(err).Warn("Failed to fetch asset for bucket", "asset_id", assetID, "bucket_key", buckets[i].Key)
-					continue
-				}
-				if asset != nil {
-					assets = append(assets, *asset)
-				}
-			}
-			buckets[i].Assets = assets
-		}
-	}
-
-	return buckets, nil
+	return response.Data.Buckets, nil
 }
 
 func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (*model.Asset, error) {
-	url := fmt.Sprintf("%s/graphql", s.assetManagerURL)
-
-	query := `{
-		"query": "query GetAsset($slug: String!) { assetBySlug(slug: $slug) { id slug title description type genre genres tags status createdAt updatedAt metadata ownerId videos { id type format storageLocation { bucket key url } width height duration bitrate codec size contentType streamInfo { downloadUrl cdnPrefix playUrl } metadata status thumbnail { fileName url storageLocation { bucket key url } width height size contentType metadata } createdAt updatedAt } publishRule { isPublic publishAt unpublishAt regions ageRating } } }",
-		"variables": {"slug": "` + slug + `"}
-	}`
-
-	var response struct {
-		Data struct {
-			AssetBySlug *model.Asset `json:"assetBySlug"`
-		} `json:"data"`
-		Errors []struct {
-			Message string `json:"message"`
-		} `json:"errors,omitempty"`
-	}
-
-	if err := s.makeGraphQLRequest(ctx, url, query, &response); err != nil {
-		return nil, err
-	}
-
-	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
-	}
-
-	return response.Data.AssetBySlug, nil
-}
-
-func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string) (*model.Asset, error) {
-	url := fmt.Sprintf("%s/graphql", s.assetManagerURL)
-
-	query := `{
-		"query": "query GetAsset($id: ID!) { asset(id: $id) { id slug title description type genre genres tags status createdAt updatedAt metadata ownerId videos { id type format storageLocation { bucket key url } width height duration bitrate codec size contentType streamInfo { downloadUrl cdnPrefix playUrl } metadata status thumbnail { fileName url storageLocation { bucket key url } width height size contentType metadata } createdAt updatedAt } publishRule { isPublic publishAt unpublishAt regions ageRating } } }",
-		"variables": {"id": "` + id + `"}
-	}`
+	query := fmt.Sprintf(`
+		query {
+			asset(slug: "%s") {
+				id
+				slug
+				title
+				description
+				type
+				genre
+				status
+				bucketKey
+				createdAt
+				updatedAt
+				videos {
+					id
+					filename
+					status
+					format
+					url
+					thumbnailUrl
+					duration
+					width
+					height
+					bitrate
+					filesize
+				}
+			}
+		}
+	`, slug)
 
 	var response struct {
 		Data struct {
@@ -314,50 +335,143 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 		} `json:"errors,omitempty"`
 	}
 
-	if err := s.makeGraphQLRequest(ctx, url, query, &response); err != nil {
-		return nil, err
+	err := s.circuitBreaker.Execute(ctx, func() error {
+		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
+	})
+
+	if err != nil {
+		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
+			return nil, errors.NewExternalError("asset-manager service unavailable", err)
+		}
+		return nil, errors.NewExternalError("failed to fetch asset from asset-manager", err)
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
+		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
 	return response.Data.Asset, nil
 }
 
 func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asset, error) {
-	url := fmt.Sprintf("%s/graphql", s.assetManagerURL)
-
-	query := `{
-		"query": "query GetAssets { assets { items { id slug title description type genre genres tags status createdAt updatedAt metadata ownerId videos { id type format storageLocation { bucket key url } width height duration bitrate codec size contentType streamInfo { downloadUrl cdnPrefix playUrl } metadata status thumbnail { fileName url storageLocation { bucket key url } width height size contentType metadata } createdAt updatedAt } publishRule { isPublic publishAt unpublishAt regions ageRating } } } }"
-	}`
+	query := `
+		query {
+			assets {
+				id
+				slug
+				title
+				description
+				type
+				genre
+				status
+				bucketKey
+				createdAt
+				updatedAt
+				videos {
+					id
+					filename
+					status
+					format
+					url
+					thumbnailUrl
+					duration
+					width
+					height
+					bitrate
+					filesize
+				}
+			}
+		}
+	`
 
 	var response struct {
 		Data struct {
-			Assets struct {
-				Items []model.Asset `json:"items"`
-			} `json:"assets"`
+			Assets []model.Asset `json:"assets"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
 		} `json:"errors,omitempty"`
 	}
 
-	if err := s.makeGraphQLRequest(ctx, url, query, &response); err != nil {
-		return nil, err
+	err := s.circuitBreaker.Execute(ctx, func() error {
+		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
+	})
+
+	if err != nil {
+		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
+			return nil, errors.NewExternalError("asset-manager service unavailable", err)
+		}
+		return nil, errors.NewExternalError("failed to fetch assets from asset-manager", err)
 	}
 
 	if len(response.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL errors: %v", response.Errors)
+		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
-	return response.Data.Assets.Items, nil
+	return response.Data.Assets, nil
+}
+
+func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string) (*model.Asset, error) {
+	query := fmt.Sprintf(`
+		query {
+			asset(id: "%s") {
+				id
+				slug
+				title
+				description
+				type
+				genre
+				status
+				createdAt
+				updatedAt
+				videos {
+					id
+					filename
+					status
+					format
+					url
+					thumbnailUrl
+					duration
+					width
+					height
+					bitrate
+					filesize
+				}
+			}
+		}
+	`, id)
+
+	var response struct {
+		Data struct {
+			Asset *model.Asset `json:"asset"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors,omitempty"`
+	}
+
+	err := s.circuitBreaker.Execute(ctx, func() error {
+		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
+	})
+
+	if err != nil {
+		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
+			return nil, errors.NewExternalError("asset-manager service unavailable", err)
+		}
+		return nil, errors.NewExternalError("failed to fetch asset from asset-manager", err)
+	}
+
+	if len(response.Errors) > 0 {
+		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	}
+
+	return response.Data.Asset, nil
 }
 
 func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, response interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(query))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return errors.NewInternalError("failed to create request", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -366,7 +480,7 @@ func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, res
 	authHeader, err := s.serviceClient.GetAuthorizationHeader(ctx)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get service token")
-		return fmt.Errorf("failed to get service token: %w", err)
+		return errors.NewExternalError("failed to get service token", err)
 	}
 
 	s.logger.Info("Service token obtained successfully", "auth_header_length", len(authHeader))
@@ -375,17 +489,17 @@ func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, res
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to make request: %w", err)
+		return errors.NewTransientError("failed to make request", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		s.logger.Error("GraphQL request failed", "status_code", resp.StatusCode, "url", url)
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return errors.NewExternalError(fmt.Sprintf("unexpected status code: %d", resp.StatusCode), nil)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
-		return fmt.Errorf("failed to decode response: %w", err)
+		return errors.NewInternalError("failed to decode response", err)
 	}
 
 	return nil

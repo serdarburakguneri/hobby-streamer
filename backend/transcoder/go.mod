@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3 v0.0.0-00010101000000-000000000000
@@ -13,6 +14,7 @@ require (
 
 replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../pkg/messages
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3 => ../pkg/s3

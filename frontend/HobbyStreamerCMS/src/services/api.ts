@@ -1453,10 +1453,12 @@ export const useAssetService = () => {
     },
 
 
-    getUploadUrl: async (fileName: string): Promise<{ url: string }> => {
+    getUploadUrl: async (fileName: string, assetId: string, videoType: string): Promise<{ url: string }> => {
       try {
         const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/upload`, {
-          fileName: fileName
+          fileName: fileName,
+          assetId: assetId,
+          videoType: videoType
         }, {
           headers: {
             'Content-Type': 'application/json',

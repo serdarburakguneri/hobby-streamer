@@ -11,6 +11,7 @@ require (
 	github.com/neo4j/neo4j-go-driver/v5 v5.17.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs v0.0.0
@@ -52,6 +53,7 @@ require (
 replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth => ../pkg/auth
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../pkg/messages
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs => ../pkg/sqs

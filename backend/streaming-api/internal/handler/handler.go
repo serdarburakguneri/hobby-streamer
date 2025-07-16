@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/service"
 )
@@ -46,8 +47,7 @@ func (h *Handler) GetBuckets(w http.ResponseWriter, r *http.Request) {
 
 	buckets, err := h.service.GetBuckets(ctx)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get buckets")
-		h.writeError(w, http.StatusInternalServerError, "Failed to get buckets")
+		h.handleError(w, err, "Failed to get buckets")
 		return
 	}
 
@@ -64,8 +64,7 @@ func (h *Handler) GetBucket(w http.ResponseWriter, r *http.Request) {
 
 	bucket, err := h.service.GetBucket(ctx, key)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get bucket", "key", key)
-		h.writeError(w, http.StatusInternalServerError, "Failed to get bucket")
+		h.handleError(w, err, "Failed to get bucket")
 		return
 	}
 
@@ -84,8 +83,7 @@ func (h *Handler) GetAssetsInBucket(w http.ResponseWriter, r *http.Request) {
 
 	assets, err := h.service.GetAssetsInBucket(ctx, key)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get assets in bucket", "key", key)
-		h.writeError(w, http.StatusInternalServerError, "Failed to get assets in bucket")
+		h.handleError(w, err, "Failed to get assets in bucket")
 		return
 	}
 
@@ -100,8 +98,7 @@ func (h *Handler) GetAssets(w http.ResponseWriter, r *http.Request) {
 
 	assets, err := h.service.GetAssets(ctx)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get assets")
-		h.writeError(w, http.StatusInternalServerError, "Failed to get assets")
+		h.handleError(w, err, "Failed to get assets")
 		return
 	}
 
@@ -118,8 +115,7 @@ func (h *Handler) GetAsset(w http.ResponseWriter, r *http.Request) {
 
 	asset, err := h.service.GetAsset(ctx, slug)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get asset", "slug", slug)
-		h.writeError(w, http.StatusInternalServerError, "Failed to get asset")
+		h.handleError(w, err, "Failed to get asset")
 		return
 	}
 
@@ -136,6 +132,49 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		"status":  "healthy",
 		"service": "streaming-api",
 	})
+}
+
+func (h *Handler) handleError(w http.ResponseWriter, err error, defaultMessage string) {
+	if errors.IsAppError(err) {
+		appErr := err.(*errors.AppError)
+		h.logger.WithError(err).Error("Application error", "error_type", appErr.Type, "context", appErr.Context)
+
+		switch appErr.Type {
+		case errors.ErrorTypeNotFound:
+			h.writeError(w, http.StatusNotFound, appErr.Message)
+			return
+		case errors.ErrorTypeValidation:
+			h.writeError(w, http.StatusBadRequest, appErr.Message)
+			return
+		case errors.ErrorTypeUnauthorized:
+			h.writeError(w, http.StatusUnauthorized, appErr.Message)
+			return
+		case errors.ErrorTypeForbidden:
+			h.writeError(w, http.StatusForbidden, appErr.Message)
+			return
+		case errors.ErrorTypeConflict:
+			h.writeError(w, http.StatusConflict, appErr.Message)
+			return
+		case errors.ErrorTypeTransient:
+			h.writeError(w, http.StatusServiceUnavailable, appErr.Message)
+			return
+		case errors.ErrorTypeTimeout:
+			h.writeError(w, http.StatusGatewayTimeout, appErr.Message)
+			return
+		case errors.ErrorTypeCircuitBreaker:
+			h.writeError(w, http.StatusServiceUnavailable, "Service temporarily unavailable")
+			return
+		case errors.ErrorTypeExternal:
+			h.writeError(w, http.StatusBadGateway, appErr.Message)
+			return
+		default:
+			h.writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+
+	h.logger.WithError(err).Error("Unexpected error")
+	h.writeError(w, http.StatusInternalServerError, defaultMessage)
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, data interface{}) {

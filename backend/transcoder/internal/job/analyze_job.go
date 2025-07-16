@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
@@ -39,10 +40,33 @@ func NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *Analyze
 func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error {
 	log := a.logger.WithContext(ctx)
 
+	if payload == nil {
+		log.Error("Received nil payload for analyze job")
+		return apperrors.NewValidationError("payload cannot be nil", nil)
+	}
+
 	var p messages.AnalyzePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal analyze payload")
-		return err
+		if a.analyzeProducer != nil {
+			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "invalid payload format")
+		}
+		return apperrors.NewValidationError("invalid payload format", err)
+	}
+
+	if p.AssetID == "" {
+		log.Error("Missing assetId in analyze payload")
+		return apperrors.NewValidationError("assetId is required", nil)
+	}
+
+	if p.VideoID == "" {
+		log.Error("Missing videoId in analyze payload")
+		return apperrors.NewValidationError("videoId is required", nil)
+	}
+
+	if p.Input == "" {
+		log.Error("Missing input in analyze payload")
+		return apperrors.NewValidationError("input is required", nil)
 	}
 
 	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
@@ -53,29 +77,36 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	if strings.HasPrefix(p.Input, "s3://") {
 		localPath, err = a.s3Client.Download(ctx, p.Input)
 		if err != nil {
-			log.WithError(err).Error("Failed to download from S3", "input", p.Input)
+			log.WithError(err).Error("Failed to download from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
 			if a.analyzeProducer != nil {
-				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, err.Error())
+				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "failed to download input file")
 			}
-			return err
+			return apperrors.NewExternalError("failed to download input file from S3", err)
 		}
 		defer os.Remove(localPath)
 	} else {
 		localPath = p.Input
+		if _, err := os.Stat(localPath); os.IsNotExist(err) {
+			log.Error("Input file does not exist", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID)
+			if a.analyzeProducer != nil {
+				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "input file not found")
+			}
+			return apperrors.NewNotFoundError("input file not found", err)
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localPath, "-f", "null", "-")
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "output", string(out))
+		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
 		if a.analyzeProducer != nil {
-			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, err.Error())
+			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "ffmpeg analysis failed")
 		}
-		return err
+		return apperrors.NewInternalError("ffmpeg analysis failed", err)
 	}
 
-	log.Info("Video analysis completed successfully", "input", localPath, "output_length", len(out))
+	log.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out))
 	log.Debug("FFmpeg analysis output", "output", string(out))
 
 	if a.analyzeProducer != nil {
@@ -100,8 +131,8 @@ func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, video
 
 	err := a.analyzeProducer.SendMessage(ctx, messages.MessageTypeAnalyzeCompleted, payload)
 	if err != nil {
-		log.WithError(err).Error("Failed to send analyze completed message", "asset_id", assetID, "success", success)
+		log.WithError(err).Error("Failed to send analyze completed message", "asset_id", assetID, "video_id", videoID, "success", success)
 	} else {
-		log.Info("Analyze completed message sent successfully", "asset_id", assetID, "success", success)
+		log.Info("Analyze completed message sent successfully", "asset_id", assetID, "video_id", videoID, "success", success)
 	}
 }

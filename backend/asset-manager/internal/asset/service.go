@@ -1,10 +1,8 @@
 package asset
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -14,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -122,7 +121,7 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 
 	if a.ID != "" {
 		log.Error("Asset ID should not be set during creation", "provided_id", a.ID)
-		return nil, errors.New(ErrIDShouldNotBeSet)
+		return nil, apperrors.NewValidationError("asset ID should not be set during creation", nil)
 	}
 
 	if err := s.validateAsset(a); err != nil {
@@ -143,12 +142,12 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 	existingAsset, err := s.Repo.GetAssetBySlug(ctx, a.Slug)
 	if err == nil && existingAsset != nil {
 		log.Error("Slug already exists", "slug", a.Slug, "existing_asset_id", existingAsset.ID)
-		return nil, errors.New("slug already exists")
+		return nil, apperrors.NewConflictError("slug already exists", nil)
 	}
 
 	if err := s.Repo.SaveAsset(ctx, a); err != nil {
 		log.WithError(err).Error("Failed to save asset to repository", "asset_id", a.ID)
-		return nil, err
+		return nil, apperrors.NewInternalError("failed to save asset to repository", err)
 	}
 
 	return a, nil
@@ -156,7 +155,7 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 
 func (s *Service) UpdateAsset(ctx context.Context, id string, a *Asset) error {
 	if a.ID != id {
-		return errors.New(ErrIDMismatch)
+		return apperrors.NewValidationError("asset ID mismatch", nil)
 	}
 
 	if err := s.validateAsset(a); err != nil {
@@ -168,7 +167,7 @@ func (s *Service) UpdateAsset(ctx context.Context, id string, a *Asset) error {
 
 func (s *Service) PatchAsset(ctx context.Context, id string, patch map[string]interface{}) error {
 	if _, exists := patch["slug"]; exists {
-		return errors.New("slug cannot be updated after creation")
+		return apperrors.NewValidationError("slug cannot be updated after creation", nil)
 	}
 	return s.Repo.PatchAsset(ctx, id, patch)
 }
@@ -178,7 +177,7 @@ func (s *Service) DeleteAsset(ctx context.Context, id string) error {
 
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	var filesToDelete []S3File
@@ -203,7 +202,7 @@ func (s *Service) DeleteAsset(ctx context.Context, id string) error {
 	if len(filesToDelete) > 0 {
 		go func() {
 			bgCtx := context.Background()
-			if err := s.deleteAssetFiles(bgCtx, id, filesToDelete); err != nil {
+			if err := s.deleteAssetFiles(bgCtx, asset); err != nil {
 				log.WithError(err).Error("Failed to delete asset files", "asset_id", id)
 			} else {
 				log.Debug("Asset files deleted successfully", "asset_id", id, "file_count", len(filesToDelete))
@@ -214,35 +213,53 @@ func (s *Service) DeleteAsset(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Service) deleteAssetFiles(ctx context.Context, assetID string, files []S3File) error {
-
-	request := DeleteFilesRequest{
-		AssetID: assetID,
-		Files:   files,
+func (s *Service) deleteAssetFiles(ctx context.Context, asset *Asset) error {
+	if len(asset.Videos) == 0 {
+		return nil
 	}
 
-	jsonData, err := json.Marshal(request)
+	deleteRequest := map[string]interface{}{
+		"assetId": asset.ID,
+		"files":   []string{},
+	}
+
+	for _, video := range asset.Videos {
+		if video.StorageLocation.Bucket != "" && video.StorageLocation.Key != "" {
+			filePath := fmt.Sprintf("%s/%s", video.StorageLocation.Bucket, video.StorageLocation.Key)
+			deleteRequest["files"] = append(deleteRequest["files"].([]string), filePath)
+		}
+	}
+
+	if len(deleteRequest["files"].([]string)) == 0 {
+		return nil
+	}
+
+	lambdaURL := getEnv("DELETE_FILES_LAMBDA_URL", "")
+	if lambdaURL == "" {
+		return apperrors.NewInternalError("DELETE_FILES_LAMBDA_URL not configured", nil)
+	}
+
+	requestBody, err := json.Marshal(deleteRequest)
 	if err != nil {
-		return fmt.Errorf("failed to marshal delete request: %w", err)
+		return apperrors.NewInternalError("failed to marshal delete request", err)
 	}
 
-	lambdaEndpoint := os.Getenv("DELETE_FILES_LAMBDA_ENDPOINT")
-	if lambdaEndpoint == "" {
-		lambdaEndpoint = "http://localhost:4566/2015-03-31/functions/delete-files/invocations"
-	}
-
-	resp, err := http.Post(
-		lambdaEndpoint,
-		"application/json",
-		bytes.NewReader(jsonData),
-	)
+	req, err := http.NewRequestWithContext(ctx, "POST", lambdaURL, strings.NewReader(string(requestBody)))
 	if err != nil {
-		return fmt.Errorf("failed to call delete-files function: %w", err)
+		return apperrors.NewInternalError("failed to create delete request", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return apperrors.NewExternalError("failed to call delete-files function", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("delete-files function returned status: %d", resp.StatusCode)
+		return apperrors.NewExternalError(fmt.Sprintf("delete-files function returned status: %d", resp.StatusCode), nil)
 	}
 
 	return nil
@@ -251,12 +268,12 @@ func (s *Service) deleteAssetFiles(ctx context.Context, assetID string, files []
 func (s *Service) AddImage(ctx context.Context, id string, img *Image) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	for _, existing := range asset.Images {
 		if existing.FileName == img.FileName {
-			return errors.New(ErrImageExists)
+			return apperrors.NewConflictError("image already exists for this asset", nil)
 		}
 	}
 
@@ -267,7 +284,7 @@ func (s *Service) AddImage(ctx context.Context, id string, img *Image) error {
 func (s *Service) DeleteImage(ctx context.Context, id string, filename string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	filtered := make([]Image, 0, len(asset.Images))
@@ -284,7 +301,7 @@ func (s *Service) DeleteImage(ctx context.Context, id string, filename string) e
 func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	if asset.Videos == nil {
@@ -335,7 +352,7 @@ func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID st
 func (s *Service) DeleteVideo(ctx context.Context, assetID string, videoID string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	filtered := make([]Video, 0, len(asset.Videos))
@@ -389,12 +406,12 @@ func (s *Service) setCDNPrefixIfAvailable(video *Video, bucket string) {
 func (s *Service) UpdateVideo(ctx context.Context, assetID string, videoID string, video *Video) error {
 	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	existingVideo := getVideoByID(asset, videoID)
 	if existingVideo == nil {
-		return errors.New("video not found")
+		return apperrors.NewNotFoundError("video not found", nil)
 	}
 
 	video.UpdatedAt = time.Now()
@@ -407,12 +424,12 @@ func (s *Service) UpdateVideo(ctx context.Context, assetID string, videoID strin
 func (s *Service) UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	video := getVideoByID(asset, videoID)
 	if video == nil {
-		return errors.New("video not found")
+		return apperrors.NewNotFoundError("video not found", nil)
 	}
 
 	video.Status = status
@@ -428,12 +445,12 @@ func (s *Service) UpdateVideoStatus(ctx context.Context, assetID string, videoID
 func (s *Service) UpdateVideoCDN(ctx context.Context, assetID string, videoID string, cdnPrefix string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, assetID)
 	if err != nil {
-		return err
+		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
 	video := getVideoByID(asset, videoID)
 	if video == nil {
-		return errors.New("video not found")
+		return apperrors.NewNotFoundError("video not found", nil)
 	}
 
 	if video.StreamInfo == nil {
@@ -572,7 +589,7 @@ func (s *Service) validateAsset(a *Asset) error {
 	if a.Slug != "" {
 		if !isValidSlug(a.Slug) {
 			log.Error("Invalid slug format", "slug", a.Slug)
-			return errors.New("invalid slug format")
+			return apperrors.NewValidationError("invalid slug format", nil)
 		}
 	}
 
@@ -584,7 +601,7 @@ func (s *Service) validateAsset(a *Asset) error {
 		}
 		if !contains(validTypes, *a.Type) {
 			log.Error("Invalid asset type", "type", *a.Type, "valid_types", validTypes)
-			return errors.New("invalid type value")
+			return apperrors.NewValidationError("invalid type value", nil)
 		}
 	}
 
@@ -597,7 +614,7 @@ func (s *Service) validateAsset(a *Asset) error {
 		}
 		if !contains(validGenres, *a.Genre) {
 			log.Error("Invalid primary genre", "genre", *a.Genre, "valid_genres", validGenres)
-			return errors.New("invalid genre value")
+			return apperrors.NewValidationError("invalid genre value", nil)
 		}
 	}
 
@@ -611,7 +628,7 @@ func (s *Service) validateAsset(a *Asset) error {
 		for _, genre := range a.Genres {
 			if !contains(validGenres, genre) {
 				log.Error("Invalid additional genre", "genre", genre, "valid_genres", validGenres)
-				return errors.New("invalid genre value in genres array")
+				return apperrors.NewValidationError("invalid genre value in genres array", nil)
 			}
 		}
 	}
@@ -646,4 +663,11 @@ func NewServiceWithSQS(repo AssetRepository, sqsProducer *sqs.Producer) *Service
 		Repo:        repo,
 		SQSProducer: sqsProducer,
 	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

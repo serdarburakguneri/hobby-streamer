@@ -34,10 +34,10 @@ type TranscodeResponse struct {
 
 type ErrorResponse struct {
 	Message string `json:"message"`
+	Type    string `json:"type,omitempty"`
 }
 
 func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
 	trackingID := ""
 	if trackingHeader, exists := event.Headers["X-Tracking-ID"]; exists {
 		trackingID = trackingHeader
@@ -64,29 +64,77 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	}
 
 	if event.HTTPMethod != "POST" {
-		return respondJSON(http.StatusMethodNotAllowed, ErrorResponse{Message: "Only POST method is allowed"})
+		log.Error("Invalid HTTP method", "method", event.HTTPMethod)
+		return respondJSON(http.StatusMethodNotAllowed, ErrorResponse{
+			Message: "Only POST method is allowed",
+			Type:    "validation",
+		})
+	}
+
+	if event.Body == "" {
+		log.Error("Empty request body")
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Request body is required",
+			Type:    "validation",
+		})
 	}
 
 	var req TranscodeRequest
 	if err := json.Unmarshal([]byte(event.Body), &req); err != nil {
 		log.WithError(err).Error("Invalid request body", "raw_body", event.Body)
-		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request body"})
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Invalid request body format",
+			Type:    "validation",
+		})
 	}
 
-	if strings.TrimSpace(req.AssetID) == "" || strings.TrimSpace(req.VideoID) == "" || strings.TrimSpace(req.Format) == "" {
-		log.Error("Missing required fields", "asset_id", req.AssetID, "video_id", req.VideoID, "format", req.Format)
-		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "assetId, videoId, and format are required"})
+	if strings.TrimSpace(req.AssetID) == "" {
+		log.Error("Missing assetId in request")
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "assetId is required",
+			Type:    "validation",
+		})
+	}
+
+	if strings.TrimSpace(req.VideoID) == "" {
+		log.Error("Missing videoId in request")
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "videoId is required",
+			Type:    "validation",
+		})
+	}
+
+	if strings.TrimSpace(req.Format) == "" {
+		log.Error("Missing format in request")
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "format is required",
+			Type:    "validation",
+		})
 	}
 
 	if req.Format != "hls" && req.Format != "dash" {
-		log.Error("Invalid format", "format", req.Format)
-		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "format must be either 'hls' or 'dash'"})
+		log.Error("Invalid format", "format", req.Format, "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "format must be either 'hls' or 'dash'",
+			Type:    "validation",
+		})
+	}
+
+	if strings.TrimSpace(req.Input) == "" {
+		log.Error("Missing input in request", "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "input is required",
+			Type:    "validation",
+		})
 	}
 
 	queueURL := os.Getenv("TRANSCODER_QUEUE_URL")
 	if queueURL == "" {
 		log.Error("Missing TRANSCODER_QUEUE_URL env variable")
-		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Server configuration error: missing queue URL"})
+		return respondJSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Server configuration error: missing queue URL",
+			Type:    "internal",
+		})
 	}
 
 	region := os.Getenv("AWS_REGION")
@@ -103,8 +151,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
-		log.WithError(err).Error("Failed to create AWS session")
-		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to initialize AWS session"})
+		log.WithError(err).Error("Failed to create AWS session", "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Failed to initialize AWS session",
+			Type:    "internal",
+		})
 	}
 
 	svc := sqs.New(sess)
@@ -131,7 +182,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	}
 
 	if outputFilename == "" {
-		log.Warn("SourceFileName is empty, using fallback filename", "asset_id", req.AssetID)
+		log.Warn("SourceFileName is empty, using fallback filename", "asset_id", req.AssetID, "video_id", req.VideoID)
 		switch req.Format {
 		case "hls":
 			outputFilename = "playlist.m3u8"
@@ -159,8 +210,11 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 	case "dash":
 		messageType = messages.MessageTypeTranscodeDASH
 	default:
-		log.Error("Unknown format", "format", req.Format)
-		return respondJSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid format"})
+		log.Error("Unknown format", "format", req.Format, "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Invalid format",
+			Type:    "validation",
+		})
 	}
 
 	messageBody, err := json.Marshal(map[string]interface{}{
@@ -168,11 +222,14 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		"payload": payload,
 	})
 	if err != nil {
-		log.WithError(err).Error("Failed to marshal message")
-		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create job message"})
+		log.WithError(err).Error("Failed to marshal message", "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Failed to create job message",
+			Type:    "internal",
+		})
 	}
 
-	log.Info("Sending SQS message", "message_type", messageType, "asset_id", req.AssetID, "output_bucket", outputBucketName, "output_key", outputKey)
+	log.Info("Sending SQS message", "message_type", messageType, "asset_id", req.AssetID, "video_id", req.VideoID, "output_bucket", outputBucketName, "output_key", outputKey)
 
 	input := &sqs.SendMessageInput{
 		QueueUrl:    aws.String(queueURL),
@@ -181,11 +238,14 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	_, err = svc.SendMessageWithContext(ctx, input)
 	if err != nil {
-		log.WithError(err).Error("Failed to send SQS message", "queue_url", queueURL)
-		return respondJSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to trigger transcoding job"})
+		log.WithError(err).Error("Failed to send SQS message", "queue_url", queueURL, "asset_id", req.AssetID, "video_id", req.VideoID)
+		return respondJSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Failed to trigger transcoding job",
+			Type:    "external",
+		})
 	}
 
-	log.Info("Transcoding job triggered successfully", "message_type", messageType, "asset_id", req.AssetID)
+	log.Info("Transcoding job triggered successfully", "message_type", messageType, "asset_id", req.AssetID, "video_id", req.VideoID)
 
 	response, err := respondJSON(http.StatusOK, TranscodeResponse{
 		Message: "Transcoding job triggered successfully",

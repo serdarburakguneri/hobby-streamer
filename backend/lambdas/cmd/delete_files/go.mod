@@ -8,6 +8,8 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 )
 
+replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../../../pkg/errors
+
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../../../pkg/logger
 
 require github.com/jmespath/go-jmespath v0.4.0 // indirect

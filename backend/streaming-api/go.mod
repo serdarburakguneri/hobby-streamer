@@ -6,6 +6,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 )
 
@@ -19,5 +20,7 @@ require (
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth => ../pkg/auth
 
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
+
+replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger

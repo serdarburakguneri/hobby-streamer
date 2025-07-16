@@ -3,8 +3,8 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -26,27 +26,25 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.WithError(err).Warn("Invalid login request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Username == "" || req.Password == "" || req.ClientID == "" {
 		log.Warn("Missing required login fields", "username_provided", req.Username != "", "password_provided", req.Password != "", "client_id_provided", req.ClientID != "")
-		http.Error(w, "Username, password, and client_id are required", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Username, password, and client_id are required")
 		return
 	}
 
 	log.Debug("Processing login request", "username", req.Username, "client_id", req.ClientID)
 	token, err := h.Service.Login(r.Context(), &req)
 	if err != nil {
-		log.WithError(err).Warn("Login failed", "username", req.Username, "client_id", req.ClientID)
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		h.handleError(w, err, "Login failed")
 		return
 	}
 
 	log.Info("Login successful", "username", req.Username, "client_id", req.ClientID)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(token)
+	h.writeJSON(w, http.StatusOK, token)
 }
 
 func (h *AuthHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
@@ -54,30 +52,25 @@ func (h *AuthHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 
 	var req TokenValidationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.WithError(err).Warn("Invalid token validation request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.WithError(err).Warn("Invalid validate token request body")
+		h.writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.Token == "" {
-		log.Warn("Missing token in validation request")
-		http.Error(w, "Token is required", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Token is required")
 		return
 	}
-
-	tokenString := strings.TrimPrefix(req.Token, "Bearer ")
 
 	log.Debug("Validating token")
-	response, err := h.Service.ValidateToken(r.Context(), tokenString)
+	validation, err := h.Service.ValidateToken(r.Context(), req.Token)
 	if err != nil {
-		log.WithError(err).Warn("Token validation failed")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.handleError(w, err, "Token validation failed")
 		return
 	}
 
-	log.Info("Token validation completed", "valid", response.Valid)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	log.Info("Token validation successful")
+	h.writeJSON(w, http.StatusOK, validation)
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
@@ -85,28 +78,25 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	var req TokenRefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.WithError(err).Warn("Invalid token refresh request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.WithError(err).Warn("Invalid refresh token request body")
+		h.writeError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if req.RefreshToken == "" {
-		log.Warn("Missing refresh token in request")
-		http.Error(w, "Refresh token is required", http.StatusBadRequest)
+		h.writeError(w, http.StatusBadRequest, "Refresh token is required")
 		return
 	}
 
-	log.Debug("Processing token refresh")
+	log.Debug("Refreshing token")
 	token, err := h.Service.RefreshToken(r.Context(), req.RefreshToken)
 	if err != nil {
-		log.WithError(err).Warn("Token refresh failed")
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		h.handleError(w, err, "Token refresh failed")
 		return
 	}
 
 	log.Info("Token refresh successful")
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(token)
+	h.writeJSON(w, http.StatusOK, token)
 }
 
 func (h *AuthHandler) Health(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +105,62 @@ func (h *AuthHandler) Health(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "auth-service"})
+}
+
+func (h *AuthHandler) handleError(w http.ResponseWriter, err error, defaultMessage string) {
+	if apperrors.IsAppError(err) {
+		appErr := err.(*apperrors.AppError)
+		h.logger.WithError(err).Error("Application error", "error_type", appErr.Type, "context", appErr.Context)
+
+		switch appErr.Type {
+		case apperrors.ErrorTypeValidation:
+			h.writeError(w, http.StatusBadRequest, appErr.Message)
+			return
+		case apperrors.ErrorTypeUnauthorized:
+			h.writeError(w, http.StatusUnauthorized, appErr.Message)
+			return
+		case apperrors.ErrorTypeForbidden:
+			h.writeError(w, http.StatusForbidden, appErr.Message)
+			return
+		case apperrors.ErrorTypeNotFound:
+			h.writeError(w, http.StatusNotFound, appErr.Message)
+			return
+		case apperrors.ErrorTypeConflict:
+			h.writeError(w, http.StatusConflict, appErr.Message)
+			return
+		case apperrors.ErrorTypeTransient:
+			h.writeError(w, http.StatusServiceUnavailable, appErr.Message)
+			return
+		case apperrors.ErrorTypeTimeout:
+			h.writeError(w, http.StatusGatewayTimeout, appErr.Message)
+			return
+		case apperrors.ErrorTypeExternal:
+			h.writeError(w, http.StatusBadGateway, appErr.Message)
+			return
+		default:
+			h.writeError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+
+	h.logger.WithError(err).Error("Unexpected error")
+	h.writeError(w, http.StatusInternalServerError, defaultMessage)
+}
+
+func (h *AuthHandler) writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		h.logger.WithError(err).Error("Failed to encode JSON response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (h *AuthHandler) writeError(w http.ResponseWriter, status int, message string) {
+	h.writeJSON(w, status, map[string]string{
+		"error": message,
+	})
 }
 
 // TokenRefreshRequest represents a token refresh request

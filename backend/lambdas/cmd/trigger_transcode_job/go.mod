@@ -9,6 +9,8 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
 )
 
+replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../../../pkg/errors
+
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../../../pkg/logger
 
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../../../pkg/messages
