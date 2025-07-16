@@ -46,6 +46,7 @@ For a detailed view of how video uploading and transcoding works in the system, 
 
 ### Frontend Services
 - [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
+- [Streaming UI](frontend/HobbyStreamerUI/README.md): React Native streaming interface for viewing content
 
 ### Infrastructure & Logging
 - [Logging System](local/LOGGING.md): Centralized logging with Fluentd, Elasticsearch, and Kibana
