@@ -195,6 +195,41 @@ services:
     networks:
       - hobby-streamer
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hobby-streamer
+
+  streaming-api:
+    build:
+      context: ./backend
+      dockerfile: streaming-api/Dockerfile
+    ports:
+      - "8084:8080"
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ASSET_MANAGER_URL=http://asset-manager:8080
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    depends_on:
+      - fluentd
+      - redis
+      - asset-manager
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
   nginx:
     build:
       context: ./local/nginx
@@ -213,6 +248,7 @@ volumes:
   neo4j_logs:
   neo4j_import:
   neo4j_plugins:
+  redis_data:
 
 networks:
   hobby-streamer:

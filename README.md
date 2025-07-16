@@ -36,6 +36,7 @@ For a detailed view of how video uploading and transcoding works in the system, 
 - [Asset Manager Service](backend/asset-manager/README.md): GraphQL API for managing assets and relationships
 - [Auth Service](backend/auth-service/README.md): JWT-based authentication service with Keycloak integration
 - [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs
+- [Streaming API Service](backend/streaming-api/README.md): REST API with Redis caching for streaming applications
 
 ### Lambdas
 - [Generate Presigned Upload URL Lambda](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
@@ -82,15 +83,11 @@ To set up the development environment with all services, simply run:
 ./local/build.sh
 ```
 
-If you get a 'Permission denied' error for any setup script, you can make all setup scripts executable at once with:
-
-```sh
-chmod +x local/setup-*
-```
-
 ### Service Ports
 - Auth Service: http://localhost:8080
 - Asset Manager GraphQL: http://localhost:8082/query
+- Streaming API: http://localhost:8084
+- Redis: redis://localhost:6379
 - Neo4j Browser: http://localhost:7474
 - Keycloak: http://localhost:9090
 - LocalStack: http://localhost:4566
