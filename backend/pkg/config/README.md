@@ -1,21 +1,20 @@
 # Dynamic Configuration System
 
-Configuration management system that allows each service to define its own components dynamically without hardcoded types.
+A flexible configuration loader that supports both static and dynamic service configurations. Allows each service to define its own custom structure without requiring hardcoded types.
 
 ## Key Features
 
-- **Dynamic Components**: No hardcoded service-specific types - each service defines its own component structure
-- **Type Safety for Core Config**: Common types (LogConfig, ServerConfig, etc.) are strongly typed
-- **Flexible Access**: Multiple ways to access component data (string, int, bool, float, map)
-- **Environment Support**: Different configs for development, staging, production
-- **Secrets Management**: Secure handling of sensitive data
-- **Feature Flags**: Runtime feature toggles
-- **Hot Reloading**: Configuration changes without restart
+- **Dynamic Components** – Each service defines its own configuration blocks under `components`
+- **Typed Core Config** – Core fields like server, logging, and feature flags are fully typed
+- **Environment Support** – Separate configurations for development, staging, and production
+- **Secrets Management** – Built-in support for secure values
+- **Feature Flags** – Toggle features at runtime without code changes
+- **Hot Reloading** – Reload configuration without restarting the service
+- **Flexible Access** – Read dynamic config values as strings, ints, bools, maps, etc.
 
-## Architecture
+## Base Configuration (Typed)
 
-### Base Configuration (Statically Typed)
-Common configuration that all services share:
+The common fields shared across all services are defined with strict types:
 
 ```yaml
 environment: development
@@ -51,19 +50,18 @@ cache:
   ttl: "30m"
 ```
 
-### Dynamic Components
-Services can define any structure under `components`:
+## Dynamic Components
+
+Each service can define custom sections under the `components` field:
 
 ```yaml
 components:
-  # AWS configuration - any keys you want
   aws:
     region: "us-east-1"
     endpoint: "http://localstack:4566"
     force_path_style: true
     custom_setting: "value"
 
-  # SQS configuration - service-specific queue names
   sqs:
     transcoder_queue_url: "http://localstack:4566/000000000000/transcoder-jobs"
     analyze_queue_url: "http://localstack:4566/000000000000/analyze-completed"
@@ -71,7 +69,6 @@ components:
     batch_size: 10
     visibility_timeout: 30
 
-  # Database configuration - any database type
   database:
     type: "neo4j"
     uri: "bolt://neo4j:7687"
@@ -80,7 +77,6 @@ components:
     max_connections: 10
     connection_timeout: "5s"
 
-  # Custom service configuration
   my_custom_service:
     url: "http://my-service:8080"
     timeout: "30s"
@@ -90,7 +86,6 @@ components:
       - "feature1"
       - "feature2"
 
-  # External API configuration
   external_api:
     base_url: "https://api.example.com"
     api_key: "your-api-key"
@@ -99,3 +94,24 @@ components:
     retry_on_failure: true
 ```
 
+## Accessing Configuration in Code
+
+Static configuration is mapped to typed structs. Dynamic components can be accessed using helper functions:
+
+```go
+// Get a value as string
+cfg.Components.Get("aws").GetString("region")
+
+// Get a nested value as int
+cfg.Components.Get("sqs").GetInt("batch_size")
+
+// Get a map
+cfg.Components.Get("external_api").AsMap()
+
+// Unmarshal into custom struct
+var dbConfig struct {
+    URI      string `mapstructure:"uri"`
+    Username string `mapstructure:"username"`
+}
+cfg.Components.Unmarshal("database", &dbConfig)
+```

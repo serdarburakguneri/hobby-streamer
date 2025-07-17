@@ -1,17 +1,22 @@
 # S3 Package
 
-Shared Go package for S3 operations. Provides a simple interface for uploading and downloading files to/from S3.
+A shared Go library for working with S3-compatible storage. Simplifies common file operations and supports LocalStack for local development.
 
 ## Features
-- Download files from S3 URLs to local temporary files
+
+- Download S3 objects to local temporary files
 - Upload local files to S3
-- Upload entire directories to S3
-- Automatic AWS session management with LocalStack support
-- Consistent logging and error handling
+- Upload entire directories to S3 with prefix support
+- Context-aware operations with cancellation support
+- Built-in LocalStack compatibility
+- Structured logging and consistent error handling
+
+---
 
 ## Usage
 
-### Creating a Client
+### Create Client
+
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 
@@ -22,16 +27,22 @@ if err != nil {
 }
 ```
 
-### Downloading from S3
+---
+
+### Download a File from S3
+
 ```go
 localPath, err := client.Download(ctx, "s3://bucket-name/path/to/file.mp4")
 if err != nil {
     // handle error
 }
-defer os.Remove(localPath) // Clean up temporary file
+defer os.Remove(localPath) // Clean up after use
 ```
 
-### Uploading to S3
+---
+
+### Upload a File to S3
+
 ```go
 err := client.Upload(ctx, "/local/path/file.mp4", "bucket-name", "path/to/file.mp4")
 if err != nil {
@@ -39,22 +50,32 @@ if err != nil {
 }
 ```
 
-### Uploading a Directory
+---
+
+### Upload a Directory to S3
+
 ```go
-err := client.UploadDirectory(ctx, "/local/directory", "bucket-name", "path/prefix")
+err := client.UploadDirectory(ctx, "/local/dir", "bucket-name", "path/prefix")
 if err != nil {
     // handle error
 }
 ```
 
+---
+
 ## Environment Variables
-- `AWS_ENDPOINT`: Custom endpoint for AWS services (default: `http://localstack:4566` for LocalStack)
-- `AWS_REGION`: AWS region (default: `us-east-1`)
-- `AWS_ACCESS_KEY_ID`: AWS access key (default: `test` for LocalStack)
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key (default: `test` for LocalStack)
+
+| Variable               | Description                            | Default                  |
+|------------------------|----------------------------------------|--------------------------|
+| `AWS_ENDPOINT`         | Custom AWS endpoint (for LocalStack)   | `http://localstack:4566` |
+| `AWS_REGION`           | AWS region                             | `us-east-1`              |
+| `AWS_ACCESS_KEY_ID`    | AWS access key                         | `test`                   |
+| `AWS_SECRET_ACCESS_KEY`| AWS secret key                         | `test`                   |
+
+---
 
 ## Notes
-- Downloaded files are stored in the system's temporary directory
-- The package automatically handles AWS session creation with LocalStack support
-- All operations are context-aware for proper cancellation
-- Consistent error handling and logging throughout 
+
+- Downloaded files are saved to the system’s temporary directory
+- The package handles AWS session creation internally
+- All operations support `context.Context` for cancellation

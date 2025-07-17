@@ -1,12 +1,15 @@
 # Trigger Transcode Job Lambda
 
-Lambda function that triggers transcoding jobs by sending SQS messages to the transcoder queue.
+Lambda function that triggers video transcoding by sending messages to an SQS queue. Accepts input via HTTP POST and pushes jobs to the transcoder.
 
 ## Features
 
-- Receives POST requests with assetId, videoType, and format
-- Sends SQS messages to the transcoder queue
-- Returns success/failure response
+- Accepts requests with `assetId`, `videoType`, and `format`
+- Sends structured SQS messages to the transcoder job queue
+- Supports HLS and DASH job types
+- Returns success or error response
+
+---
 
 ## Request Format
 
@@ -18,6 +21,8 @@ Lambda function that triggers transcoding jobs by sending SQS messages to the tr
 }
 ```
 
+---
+
 ## Response Format
 
 ```json
@@ -27,13 +32,19 @@ Lambda function that triggers transcoding jobs by sending SQS messages to the tr
 }
 ```
 
+---
+
 ## Environment Variables
 
-- `TRANSCODER_QUEUE_URL`: SQS queue URL for transcoder jobs
-- `AWS_REGION`: AWS region (default: us-east-1)
-- `AWS_ENDPOINT`: Custom endpoint for LocalStack (optional)
+| Variable              | Description                            | Default         |
+|-----------------------|----------------------------------------|-----------------|
+| `TRANSCODER_QUEUE_URL`| SQS queue URL for transcoding jobs     | (required)      |
+| `AWS_REGION`          | AWS region                             | `us-east-1`     |
+| `AWS_ENDPOINT`        | Custom AWS endpoint (e.g. LocalStack)  | (optional)      |
 
-## Build and Deploy
+---
+
+## Build and Deploy (Manual)
 
 ```bash
 cd backend/lambdas/cmd/trigger_transcode_job
@@ -41,3 +52,16 @@ go mod tidy
 GOOS=linux GOARCH=amd64 go build -o main main.go
 zip -j function.zip main
 ```
+
+You can then deploy the zipped function to AWS or LocalStack using the CLI:
+
+```bash
+awslocal lambda create-function \
+  --function-name trigger-transcode-job \
+  --runtime go1.x \
+  --handler main \
+  --zip-file fileb://function.zip \
+  --role arn:aws:iam::000000000000:role/lambda-role
+```
+
+---

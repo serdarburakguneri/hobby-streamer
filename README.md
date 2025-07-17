@@ -1,80 +1,89 @@
 # Hobby Streamer
 
-A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities while testing best practices and improving Go knowledge.
+A personal playground for building a lightweight, end-to-end video streaming platform. This project demonstrates practical experience in streaming architecture, asset management, and distributed system design — all while honing Go expertise and infrastructure fluency.
 
-## Architecture
+## What It Does
+
+Hobby Streamer is a modular streaming system designed to handle:
+- Uploading and transcoding user-generated videos
+- Secure and scalable video delivery (HLS/DASH)
+- Asset relationship and metadata management
+- Authenticated access and role-based permissioning
+- Developer-friendly logging, monitoring, and local emulation
+
+## Architecture Overview
 
 ![Architecture Diagram](docs/arch.png)
 
-### Video Upload and Transcoding Flow
-
-For a detailed view of how video uploading and transcoding works in the system, see the [Video Upload and Transcode Sequence Diagram](docs/video-upload-transcode-sequence.md). This diagram shows the complete flow from user upload through analysis and transcoding to HLS/DASH formats.
+For a closer look at the media pipeline, see the [Upload & Transcode Sequence Diagram](docs/video-upload-transcode-sequence.md).
 
 ## Tech Stack
 
-### Backend Services
-- Go – Backend services with comprehensive error handling and resilience patterns
-- GraphQL – API layer for asset management
-- Neo4j – Graph database for asset relationships and metadata
-- Keycloak – Identity and access management
-- FFMPEG – Video processing and transcoding
-- Redis - User request caching
+### Backend
+- Go – All backend services use idiomatic Go with error boundaries and resilience patterns
+- GraphQL – Asset management API
+- Neo4j – Graph-based modeling for video assets and relationships
+- Keycloak – OAuth2-based identity and access control
+- FFmpeg – Transcoding and media probing
+- Redis – Lightweight caching for stream-related queries
 
-### Infrastructure & DevOps
-- Docker Compose – Containerized development environment
-- LocalStack – Local AWS service emulation (S3, SQS, Lambda)
-- Fluentd – Log collection and forwarding
-- Elasticsearch – Log storage and search
-- Kibana – Log visualization and analysis
-- Nginx (To replace cloudfront locally)
-
+### Infrastructure
+- Docker Compose – Local orchestration
+- LocalStack – Emulated AWS (S3, SQS, Lambda)
+- Fluentd + Elasticsearch + Kibana – Full log pipeline
+- Nginx – Local replacement for CloudFront CDN
 
 ### Frontend
-- React Native – Cross-platform mobile and web development
+- React Native – Streaming and CMS frontend (Web support enabled)
 
-## Service Documentation
+## Code Organization
 
-### Backend Services
-- [Asset Manager Service](backend/asset-manager/README.md): GraphQL API for managing assets and relationships
-- [Auth Service](backend/auth-service/README.md): JWT-based authentication service with Keycloak integration
-- [Transcoder Service](backend/transcoder/README.md): Background worker for video analysis and transcoding jobs
-- [Streaming API Service](backend/streaming-api/README.md): REST API with Redis caching for streaming applications
+### Core Backend Services
+
+- [Asset Manager](backend/asset-manager/README.md): GraphQL API for asset CRUD and relationships
+- [Auth Service](backend/auth-service/README.md): JWT auth with Keycloak
+- [Transcoder](backend/transcoder/README.md): Worker for FFmpeg-based transcoding
+- [Streaming API](backend/streaming-api/README.md): REST API with Redis caching
 
 ### Lambdas
-- [Generate Presigned Upload URL Lambda](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Lambda for generating S3 presigned URLs for direct uploads
-- [Delete Files Lambda](backend/lambdas/cmd/delete_files/README.md): Lambda for cleaning up S3 files when assets are deleted
-- [Trigger Transcode Job Lambda](backend/lambdas/cmd/trigger_transcode_job/README.md): Lambda for triggering video transcoding jobs
 
-### Frontend Services
-- [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native CMS interface for managing assets
-- [Streaming UI](frontend/HobbyStreamerUI/README.md): React Native streaming interface for viewing content
+- [Generate Presigned Upload URL](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Generates temporary S3 upload URLs
+- [Delete Files on Asset Deletion](backend/lambdas/cmd/delete_files/README.md): Cleans up S3 when assets are deleted
+- [Trigger Transcode Job](backend/lambdas/cmd/trigger_transcode_job/README.md): Triggers video processing on upload
 
-### Infrastructure & Logging
-- [Logging System](local/LOGGING.md): Centralized logging with Fluentd, Elasticsearch, and Kibana
+### Frontend
+
+- [CMS UI](frontend/HobbyStreamerCMS/README.md): React Native dashboard for asset management
+- [Streaming UI](frontend/HobbyStreamerUI/README.md): React Native client for watching videos
 
 ### Shared Libraries
-See [Shared Libraries Documentation](backend/pkg/README.md) for detailed information about the shared library architecture and available packages.
 
-**Available Libraries:**
-- [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
-- [Config Package](backend/pkg/config/README.md): Dynamic configuration management with service-specific components and feature flags
-- [Constants Package](backend/pkg/constants/README.md): Common constants for HTTP status codes, roles, and other shared values
-- [Errors Package](backend/pkg/errors/README.md): Error handling library with typed errors, retry mechanisms, circuit breakers, and graceful degradation patterns
-- [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
-- [Messages Package](backend/pkg/messages/README.md): Common SQS message payload structures and type constants for inter-service communication
-- [S3 Package](backend/pkg/s3/README.md): S3 client library for file upload, download, and directory operations with LocalStack support
-- [SQS Package](backend/pkg/sqs/README.md): AWS SQS client library with producer, consumer, and consumer registry functionality
+See [Shared Libraries Documentation](backend/pkg/README.md) for details.
+
+- [auth](backend/pkg/auth): JWT validation and RBAC support
+- [config](backend/pkg/config): Dynamic configuration with feature flags
+- [constants](backend/pkg/constants): Shared enums and constants
+- [errors](backend/pkg/errors): Typed error handling, retries, and circuit breakers
+- [logger](backend/pkg/logger): Centralized structured logging
+- [messages](backend/pkg/messages): Shared message structures for SQS
+- [s3](backend/pkg/s3): File management utilities for S3/LocalStack
+- [sqs](backend/pkg/sqs): Client utilities for producing and consuming SQS events
+
+### Observability
+
+See [Logging Setup](local/LOGGING.md) for details on how Fluentd, Elasticsearch, and Kibana are integrated into the stack.
 
 ## Getting Started
 
 ### Prerequisites
+
 - Docker installed
 - Go (version 1.21+) installed
 - FFmpeg installed (required for video transcoding)
-- Python installed (For localstack)
+- Python installed (for LocalStack)
 - pipx installed (for installing Python applications)
-- awscli-local (awslocal) installed:
-  ```sh
+- awscli-local installed:
+  ```
   pipx install awscli-local
   pipx ensurepath
   ```
@@ -82,22 +91,14 @@ See [Shared Libraries Documentation](backend/pkg/README.md) for detailed informa
 
 ### Quick Start
 
-To set up the development environment with all services, simply run:
+To spin up all services and dependencies:
 
-```sh
+```
 ./local/build.sh
 ```
 
-### Service Ports
-- Auth Service: http://localhost:8080
-- Asset Manager GraphQL: http://localhost:8082/query
-- Streaming API: http://localhost:8084
-- Redis: redis://localhost:6379
-- Neo4j Browser: http://localhost:7474
-- Keycloak: http://localhost:9090
-- LocalStack: http://localhost:4566
-- CMS UI Web: http://localhost:8081
-- Kibana (Logs): http://localhost:5601
-- Elasticsearch: http://localhost:9200
-- Nginx Proxy: http://localhost:8083
-
+This will:
+- Start backend services
+- Launch the CMS and streaming UIs
+- Set up Redis, Neo4j, Keycloak, and LocalStack
+- Configure the logging pipeline

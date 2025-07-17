@@ -1,16 +1,17 @@
 # Delete Files Lambda
 
-Lambda function that handles deletion of files from S3 buckets. Used to clean up S3 files when assets are deleted.
+A Go-based AWS Lambda function for deleting S3 files related to an asset. Typically used for cleanup when an asset is removed.
 
 ## Features
 
 - Deletes files from multiple S3 buckets
-- Handles raw video files, transcoded files (HLS/DASH), and thumbnails
-- Returns detailed response with success/error information
+- Handles raw files, transcoded output (HLS/DASH), and thumbnails
+- Returns detailed response including per-file success and failure info
 
-## API
+---
 
-### Request Format
+## Request Format
+
 ```json
 {
   "assetId": "asset123",
@@ -20,7 +21,7 @@ Lambda function that handles deletion of files from S3 buckets. Used to clean up
       "key": "asset123/main_1234567890.mp4"
     },
     {
-      "bucket": "transcoded-storage", 
+      "bucket": "transcoded-storage",
       "key": "asset123/main_1234567890.m3u8"
     },
     {
@@ -31,7 +32,10 @@ Lambda function that handles deletion of files from S3 buckets. Used to clean up
 }
 ```
 
-### Response Format
+---
+
+## Response Format
+
 ```json
 {
   "message": "Deleted 3 files for asset asset123",
@@ -47,9 +51,12 @@ Lambda function that handles deletion of files from S3 buckets. Used to clean up
 }
 ```
 
+---
+
 ## Local Development
 
 ### Build
+
 ```bash
 cd backend/storage/cmd/delete_files
 GOOS=linux GOARCH=amd64 go build -o main main.go
@@ -57,6 +64,7 @@ zip -j function.zip main
 ```
 
 ### Deploy to LocalStack
+
 ```bash
 awslocal lambda create-function \
   --function-name delete-files \
@@ -69,9 +77,12 @@ awslocal lambda create-function \
 ```
 
 ### Test
+
 ```bash
 awslocal lambda invoke \
   --function-name delete-files \
   --payload '{"assetId":"test123","files":[{"bucket":"raw-storage","key":"test123/test.mp4"}]}' \
   response.json
 ```
+
+---

@@ -1,36 +1,20 @@
 # Auth Service
 
-Go-based authentication service that handles JWT flows with Keycloak and comprehensive error handling.
+A small Go service for handling JWT authentication using Keycloak. Provides login, token validation, and refresh functionality, with structured logging and error handling.
 
 ## Features
 
 - User authentication (login)
 - JWT token validation
 - Token refresh
-- Error handling with typed errors
-- Logging with structured error context
-
-
-## Dependencies
-
-- Keycloak: Identity and access management
-- JWT: Token handling and validation
-- Gorilla Mux: HTTP routing
-
-## Configuration
-
-Environment variables:
-- `KEYCLOAK_URL`: Keycloak server URL (default: http://localhost:8080)
-- `KEYCLOAK_REALM`: Keycloak realm name (default: hobby)
-- `KEYCLOAK_CLIENT_ID`: Keycloak client ID (default: asset-manager)
-- `KEYCLOAK_CLIENT_SECRET`: Keycloak client secret (optional for public clients)
 
 ## API Endpoints
 
 ### POST /login
-Authenticates a user and returns a JWT token.
 
-**Request:**
+Authenticates a user and returns access and refresh tokens.
+
+**Request**
 ```json
 {
   "username": "testuser",
@@ -39,7 +23,7 @@ Authenticates a user and returns a JWT token.
 }
 ```
 
-**Response:**
+**Response**
 ```json
 {
   "access_token": "eyJ...",
@@ -50,7 +34,7 @@ Authenticates a user and returns a JWT token.
 }
 ```
 
-**Error Response:**
+**Error**
 ```json
 {
   "error": "invalid_credentials",
@@ -58,17 +42,20 @@ Authenticates a user and returns a JWT token.
 }
 ```
 
-### POST /validate
-Validates a JWT token and returns user information.
+---
 
-**Request:**
+### POST /validate
+
+Validates a JWT token and returns user info.
+
+**Request**
 ```json
 {
   "token": "Bearer eyJ..."
 }
 ```
 
-**Response:**
+**Response**
 ```json
 {
   "valid": true,
@@ -82,7 +69,7 @@ Validates a JWT token and returns user information.
 }
 ```
 
-**Error Response:**
+**Error**
 ```json
 {
   "error": "invalid_token",
@@ -90,17 +77,20 @@ Validates a JWT token and returns user information.
 }
 ```
 
-### POST /refresh
-Refreshes an expired JWT token.
+---
 
-**Request:**
+### POST /refresh
+
+Refreshes an access token using a refresh token.
+
+**Request**
 ```json
 {
   "refresh_token": "eyJ..."
 }
 ```
 
-**Response:**
+**Response**
 ```json
 {
   "access_token": "eyJ...",
@@ -111,7 +101,7 @@ Refreshes an expired JWT token.
 }
 ```
 
-**Error Response:**
+**Error**
 ```json
 {
   "error": "invalid_refresh_token",
@@ -119,10 +109,13 @@ Refreshes an expired JWT token.
 }
 ```
 
-### GET /health
-Returns service health status.
+---
 
-**Response:**
+### GET /health
+
+Returns basic service health status.
+
+**Response**
 ```json
 {
   "status": "ok"
@@ -131,13 +124,15 @@ Returns service health status.
 
 ## Running the Service
 
-### Local Development
+### Local
+
 ```bash
 cd backend/auth-service
 go run cmd/main.go
 ```
 
-### With Docker
+### Docker
+
 ```bash
 docker build -t auth-service .
 docker run -p 8080:8080 auth-service

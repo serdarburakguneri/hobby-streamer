@@ -1,72 +1,54 @@
 # Messages Package
 
-Common SQS message payload structures used across services to ensure consistency.
+Shared message definitions used for SQS communication between backend services. Provides a central place for defining job and completion message types to ensure consistency across services.
 
 ## Message Types
 
-### Job Messages (sent to transcoder)
+### Job Messages (To Transcoder)
 
-#### Analyze Job
-- **Type**: `analyze`
-- **Payload**: `AnalyzePayload`
-- **Purpose**: Triggers video analysis
+| Type               | Payload Type           | Purpose                  |
+|--------------------|------------------------|--------------------------|
+| `analyze`          | `AnalyzePayload`       | Trigger video analysis   |
+| `transcode-hls`    | `TranscodePayload`     | Trigger HLS transcoding  |
+| `transcode-dash`   | `TranscodePayload`     | Trigger DASH transcoding |
 
-#### Transcode HLS Job
-- **Type**: `transcode-hls`
-- **Payload**: `TranscodePayload`
-- **Purpose**: Triggers HLS transcoding
+### Completion Messages (From Transcoder)
 
-#### Transcode DASH Job
-- **Type**: `transcode-dash`
-- **Payload**: `TranscodePayload`
-- **Purpose**: Triggers DASH transcoding
+| Type                      | Payload Type               | Purpose                          |
+|---------------------------|----------------------------|----------------------------------|
+| `analyze-completed`       | `AnalyzeCompletionPayload` | Notify that analysis is complete |
+| `transcode-hls-completed` | `TranscodeCompletionPayload` | Notify HLS transcoding complete |
+| `transcode-dash-completed`| `TranscodeCompletionPayload` | Notify DASH transcoding complete |
 
-### Completion Messages (sent from transcoder)
+---
 
-#### Analyze Completion
-- **Type**: `analyze-completed`
-- **Payload**: `AnalyzeCompletionPayload`
-- **Purpose**: Notifies analyze job completion
-
-#### Transcode HLS Completion
-- **Type**: `transcode-hls-completed`
-- **Payload**: `TranscodeCompletionPayload`
-- **Purpose**: Notifies HLS transcoding completion
-
-#### Transcode DASH Completion
-- **Type**: `transcode-dash-completed`
-- **Payload**: `TranscodeCompletionPayload`
-- **Purpose**: Notifies DASH transcoding completion
-
-## Usage
+## Usage Example
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 
-// Create analyze payload
-analyzePayload := messages.AnalyzePayload{
-    Input:     "s3://bucket/key.mp4",
+// Create an analyze job payload
+payload := messages.AnalyzePayload{
+    Input:     "s3://bucket/video.mp4",
     AssetID:   "asset-123",
     VideoType: "main",
 }
 
-// Send message using SQS producer
-err := producer.SendMessage(ctx, messages.MessageTypeAnalyze, analyzePayload)
+// Send to SQS using a producer
+err := producer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
+```
 
-// Handle completion message
+### Handling Completion
+
+```go
 func handleAnalyzeCompletion(payload messages.AnalyzeCompletionPayload) {
     if payload.Success {
-        // Handle success
+        // Process successful analysis
     } else {
-        // Handle error
+        // Handle failure
         log.Error("Analysis failed", "error", payload.Error)
     }
 }
 ```
 
-## Benefits
-
-- **Type Safety**: Compile-time checking of message structures
-- **Consistency**: Shared structures prevent message format mismatches
-- **Documentation**: Clear definition of all message types and payloads
-- **Maintainability**: Single source of truth for message formats 
+---

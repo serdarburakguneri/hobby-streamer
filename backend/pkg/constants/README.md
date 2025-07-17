@@ -1,12 +1,12 @@
 # Constants Package
 
-Common constants for HTTP status codes, roles, and other shared values used across services.
+Shared constants used across backend services. Includes standard HTTP status codes, user roles, and common application-level values.
 
 ## Features
 
-- HTTP status codes and messages
-- User roles and permissions
-- Common application constants
+- HTTP status codes with descriptive names
+- User roles for access control
+- Application-level constants (pagination, upload limits, etc.)
 
 ## Usage
 
@@ -16,33 +16,43 @@ import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 // HTTP status codes
 w.WriteHeader(constants.StatusOK)
 w.WriteHeader(constants.StatusCreated)
-w.WriteHeader(constants.StatusBadRequest)
 
-// User roles
+// Role check
 if user.HasRole(constants.RoleAdmin) {
-    // Admin functionality
+    // Admin-specific logic
 }
 
-// Common constants
-const maxFileSize = constants.MaxUploadSize
+// Common usage
+if file.Size > constants.MaxUploadSize {
+    // Reject upload
+}
 ```
 
 ## Available Constants
 
 ### HTTP Status Codes
-- `StatusOK`: 200
-- `StatusCreated`: 201
-- `StatusBadRequest`: 400
-- `StatusUnauthorized`: 401
-- `StatusForbidden`: 403
-- `StatusNotFound`: 404
-- `StatusInternalServerError`: 500
+
+| Name                        | Value |
+|----------------------------|-------|
+| `StatusOK`                 | 200   |
+| `StatusCreated`            | 201   |
+| `StatusBadRequest`         | 400   |
+| `StatusUnauthorized`       | 401   |
+| `StatusForbidden`          | 403   |
+| `StatusNotFound`           | 404   |
+| `StatusInternalServerError`| 500   |
 
 ### User Roles
-- `RoleAdmin`: Administrator role
-- `RoleUser`: Standard user role
-- `RoleEditor`: Content editor role
+
+| Constant      | Description          |
+|---------------|----------------------|
+| `RoleAdmin`   | Administrator role   |
+| `RoleUser`    | Standard user role   |
+| `RoleEditor`  | Content editor role  |
 
 ### Application Constants
-- `MaxUploadSize`: Maximum file upload size in bytes
-- `DefaultPageSize`: Default pagination page size 
+
+| Constant            | Description                            |
+|---------------------|----------------------------------------|
+| `MaxUploadSize`     | Maximum allowed file size (in bytes)   |
+| `DefaultPageSize`   | Default number of items per page       |

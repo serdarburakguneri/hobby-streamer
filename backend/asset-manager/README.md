@@ -1,81 +1,69 @@
 # Asset Manager Service
 
-GraphQL API service for managing media assets and buckets. Uses Neo4j for data storage and supports hierarchical asset relationships with comprehensive error handling and resilience patterns.
+A GraphQL API for managing media assets and buckets. Stores asset metadata in Neo4j and supports parent-child relationships between assets. Includes basic integration with video processing workflows and authentication via Keycloak.
 
 ## Features
 
-- GraphQL API for assets and buckets
-- Asset status management (draft/published)
-- Video processing status tracking via SQS status queue
-- Hierarchical asset relationships
-- Neo4j graph database backend
-- JWT authentication via Keycloak
-- SQS integration for transcoder job publishing and status updates
-- Error handling with typed errors
+- GraphQL API for querying and managing assets and buckets
+- Support for hierarchical asset types (e.g. series → season → episode)
+- SQS integration for publishing transcode jobs and receiving status updates
+- JWT authentication using Keycloak
+- Typed error handling for better debugging
 
-
-## Quick Start
-
-### Prerequisites
-- Go 1.23+
-- Neo4j database
-- Keycloak server
-- LocalStack (for local AWS emulation)
-
-### Environment Variables
-```
-PORT=8080
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=password
-KEYCLOAK_URL=http://localhost:8080
-KEYCLOAK_REALM=hobby-realm
-KEYCLOAK_CLIENT_ID=asset-manager
-TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs
-ANALYZE_QUEUE_URL=http://localhost:4566/000000000000/analyze-completed
-ENV=development
-```
 
 ### Run Locally
+
 ```bash
 cd backend/asset-manager
 go run ./cmd/main.go
 ```
 
 ### Run with Docker
+
 ```bash
 docker build -t asset-manager .
 docker run -p 8080:8080 asset-manager
 ```
 
-## API Endpoints
+## API
 
-- `POST /graphql` - GraphQL endpoint
-- `GET /playground` - GraphQL Playground (development only)
+### Endpoints
 
-## GraphQL Schema
+- `POST /graphql` – Main GraphQL endpoint
+- `GET /playground` – GraphQL Playground UI (enabled in development)
+
+## GraphQL Schema Overview
 
 ### Asset Types
-- Movie, Series, Season, Episode
-- Documentary, Music, Podcast
-- Trailer, BehindTheScenes, Interview
+
+- Movie
+- Series / Season / Episode
+- Documentary
+- Music
+- Podcast
+- Trailer
+- BehindTheScenes
+- Interview
 
 ### Asset Status
-- `draft` - Default status for assets without publish rules
-- `scheduled` - Assets scheduled for future publication
-- `published` - Currently published assets
-- `expired` - Assets that have passed their unpublish date
+
+- `draft` – Unpublished content
+- `scheduled` – Scheduled to be published later
+- `published` – Publicly available
+- `expired` – Previously published, now expired
 
 ### Video Status
-- `pending` - Default status for new videos
-- `analyzing` - Video being analyzed
-- `transcoding` - Video being transcoded
-- `ready` - Video processing complete
-- `failed` - Video processing failed
 
-## Example Queries
+- `pending` – Waiting to be processed
+- `analyzing` – Being analyzed for format, resolution, etc.
+- `transcoding` – In the process of being transcoded
+- `ready` – Fully processed and available
+- `failed` – Processing failed
+
+## Example Query
 
 ### List Assets
+
 ```graphql
 query {
   assets(limit: 10) {
@@ -94,17 +82,20 @@ query {
 
 ## Development
 
-Generate GraphQL code:
+### Generate GraphQL Code
+
 ```bash
 go run github.com/99designs/gqlgen generate
 ```
 
-Build:
+### Build
+
 ```bash
 go build ./...
 ```
 
-Run tests:
+### Run Tests
+
 ```bash
 go test ./...
 ```

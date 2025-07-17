@@ -1,36 +1,72 @@
 # Transcoder Service
 
-Background worker that processes video jobs from an SQS queue, including analysis and transcoding to HLS and DASH formats with comprehensive error handling and resilience patterns.
+A background worker that consumes video processing jobs from an SQS queue. Handles video analysis and transcoding using FFmpeg for HLS and DASH outputs.
 
 ## Features
-- Consumes jobs from an SQS queue using the shared SQS package
-- Runs ffmpeg-based analysis and transcoding jobs (HLS, DASH)
+
+- Listens to an SQS queue for job messages
+- Runs FFmpeg commands for:
+  - Video analysis (metadata, duration, streams)
+  - HLS and DASH transcoding
+- Uses the shared SQS package for job consumption
+- Handles failures with retries and logging
 
 ## Requirements
-- Go 1.22+
-- ffmpeg (must be installed and available in PATH)
-- LocalStack (for local AWS emulation)
 
-## Environment Variables
-- `TRANSCODER_QUEUE_URL`: The SQS queue URL to consume jobs from (required)
-- `ANALYZE_QUEUE_URL`: Optional SQS queue URL for analyze completion messages
-- `AWS_ENDPOINT`: Custom endpoint for AWS services (default: `http://localstack:4566` for LocalStack)
-- `AWS_REGION`: AWS region (default: `us-east-1`)
-- `AWS_ACCESS_KEY_ID`: AWS access key (default: `test` for LocalStack)
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key (default: `test` for LocalStack)
-- `LOG_FORMAT`: Log format (default: `text`)
+- Go 1.22+
+- FFmpeg installed and available in PATH
+- LocalStack (for SQS emulation)
+
 
 ## Running Locally
 
-### 1. Start LocalStack and create the SQS queue (see project root `build.sh`)
+### 1. Start LocalStack and ensure required queues exist
 
-### 2. Run the worker:
-```sh
+You can use the project’s `./local/build.sh` script to initialize queues.
+
+### 2. Start the worker
+
+```bash
 cd backend/transcoder
-TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs go run ./cmd/worker/main.go
+TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs \
+go run ./cmd/worker/main.go
 ```
 
-## Job Types
-- analyze: Runs ffmpeg to analyze a video file (input: `{ "input": "path/to/file", "assetId": "asset-id", "videoType": "type" }`)
-- transcode-hls: Transcodes a video to HLS format (input: `{ "input": "path/to/file", "output": "path/to/output.m3u8" }`)
-- transcode-dash: Transcodes a video to DASH format (input: `{ "input": "path/to/file", "output": "path/to/output.mpd" }`)
+## Supported Job Types
+
+### analyze
+
+Runs FFmpeg to extract metadata and stream info.
+
+**Example Payload**
+```json
+{
+  "input": "path/to/video.mp4",
+  "assetId": "asset-id",
+  "videoType": "main"
+}
+```
+
+### transcode-hls
+
+Transcodes a video to HLS format.
+
+**Example Payload**
+```json
+{
+  "input": "path/to/video.mp4",
+  "output": "output/path/playlist.m3u8"
+}
+```
+
+### transcode-dash
+
+Transcodes a video to DASH format.
+
+**Example Payload**
+```json
+{
+  "input": "path/to/video.mp4",
+  "output": "output/path/manifest.mpd"
+}
+```

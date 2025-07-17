@@ -1,28 +1,18 @@
 # SQS Package
 
-AWS SQS client functionality including producers, consumers, and a consumer registry system for managing multiple message consumers.
+A shared library for working with AWS SQS. Includes producer and consumer utilities, along with a registry system for managing multiple consumers in one place.
 
 ## Features
 
-- **Producer**: Send messages to SQS queues
-- **Consumer**: Receive and process messages from SQS queues
-- **Consumer Registry**: Manage multiple consumers with a unified interface
+- **Producer** – Send structured messages to SQS queues
+- **Consumer** – Process messages with handler functions
+- **Consumer Registry** – Register and run multiple consumers centrally
+- **Message Format** – Consistent message schema with `type` and `payload` fields
+- **Context-Aware** – All operations support cancellation and shutdown via `context.Context`
+
+---
 
 ## Components
-
-### Producer
-The `Producer` sends messages to SQS queues with structured payloads.
-
-### Consumer
-The `Consumer` receives messages from SQS queues and processes them.
-
-### Consumer Registry
-The `ConsumerRegistry` manages multiple consumers and provides a unified interface for starting and stopping them.
-
-### MessageHandler
-A function type that processes messages: `func(ctx context.Context, msgType string, payload map[string]interface{}) error`
-
-## Usage
 
 ### Producer
 
@@ -37,42 +27,41 @@ if err != nil {
 err = producer.SendMessage(ctx, "message-type", payload)
 ```
 
+---
+
 ### Consumer
 
 ```go
-import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
-
 consumer, err := sqs.NewConsumer(ctx, "queue-url")
 if err != nil {
     return err
 }
 
 consumer.Start(ctx, func(msg sqs.Message) error {
-    // Process message
+    // Handle the message
     return nil
 })
 ```
 
+---
+
 ### Consumer Registry
 
 ```go
-import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
-
-// Create a registry
 consumerRegistry := sqs.NewConsumerRegistry()
 
-// Register consumers
 consumerRegistry.Register("queue-url-1", handler1)
 consumerRegistry.Register("queue-url-2", handler2)
 
-// Start all consumers
 consumerRegistry.Start(context.Background())
 
-// Stop all consumers (on shutdown)
+// On shutdown
 consumerRegistry.Stop()
 ```
 
-### Creating Custom Message Handlers
+---
+
+## Custom Message Handlers
 
 ```go
 type MyHandler struct {
@@ -80,8 +69,8 @@ type MyHandler struct {
 }
 
 func (h *MyHandler) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
-    h.logger.Info("Processing message", "message_type", msgType)
-    
+    h.logger.Info("Handling message", "type", msgType)
+
     switch msgType {
     case "my-event":
         return h.handleMyEvent(ctx, payload)
@@ -91,18 +80,20 @@ func (h *MyHandler) HandleMessage(ctx context.Context, msgType string, payload m
 }
 
 func (h *MyHandler) handleMyEvent(ctx context.Context, payload map[string]interface{}) error {
-    // Handle your specific event
+    // Do something with the payload
     return nil
 }
 
-// Register in your service
+// Register the handler
 myHandler := &MyHandler{logger: logger.Get().WithService("my-handler")}
 consumerRegistry.Register("my-queue-url", myHandler.HandleMessage)
 ```
 
+---
+
 ## Message Format
 
-Messages are sent and received in a structured format:
+All messages follow the same structure:
 
 ```json
 {
@@ -113,15 +104,12 @@ Messages are sent and received in a structured format:
 }
 ```
 
+---
+
 ## Error Handling
 
-- Consumers continue running even if individual message processing fails
-- Failed messages are logged but not retried (SQS handles retries)
-- If a consumer fails to initialize, it's logged and skipped
-- Empty queue URLs are skipped with a warning
+- Consumer continues running even if message processing fails
+- Failed messages are logged (SQS handles retries)
 
-## Dependencies
+---
 
-This package depends on:
-- `github.com/aws/aws-sdk-go-v2` - AWS SDK for Go v2
-- `github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger` - For structured logging 

@@ -1,55 +1,61 @@
 # Auth Package
 
-Authentication and authorization package for microservices with Keycloak integration.
+A shared authentication and authorization library for backend services. Integrates with Keycloak and provides middleware for validating user and service tokens.
 
 ## Quick Start
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 
-// Create validator
+// Create a token validator
 validator := auth.NewKeycloakValidator(
-    "http://localhost:8080",  // Keycloak URL
-    "hobby",                  // Realm  
+    "http://localhost:8080",  // Keycloak base URL
+    "hobby",                  // Realm
     "asset-manager",          // Client ID
 )
 
-// Create middleware with builder pattern
+// Create middleware
 middleware := auth.NewAuthMiddleware(validator)
 
-// Apply to routes
+// Apply to routes using builder
 router.Use(func(next http.Handler) http.Handler {
     return middleware.RequireUserAuth().RequireServiceAuth().Build()(next.ServeHTTP)
 })
 ```
 
-## Builder Pattern
+## Builder Usage
+
+The middleware supports flexible composition:
 
 ```go
-// User authentication only
+// Only require user authentication
 middleware.RequireUserAuth().Build()
 
-// Service authentication only  
+// Only require service authentication
 middleware.RequireServiceAuth().Build()
 
-// Both user and service authentication
+// Require both
 middleware.RequireUserAuth().RequireServiceAuth().Build()
 ```
 
 ## Role-Based Authorization
 
+Handlers can be restricted by roles:
+
 ```go
-// Require specific role
+// Require a specific role
 middleware.RequireRole("admin")(handler)
 
-// Require any of multiple roles
+// Require any one of the given roles
 middleware.RequireAnyRole([]string{"admin", "editor"})(handler)
 
-// Require all roles
+// Require all listed roles
 middleware.RequireAllRoles([]string{"admin", "moderator"})(handler)
 ```
 
-## Context Values
+## Context Keys
 
-- `"user"` - Regular user authentication
-- `"service_user"` - Service-to-service authentication 
+When authentication is successful, the following keys are set in the request context:
+
+- `"user"` – Authenticated user (JWT subject and claims)
+- `"service_user"` – Service-level identity for internal communication
