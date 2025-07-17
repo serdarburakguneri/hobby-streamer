@@ -1,6 +1,6 @@
 # Hobby Streamer
 
-A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities.
+A personal playground for experimenting with video streaming and content management. This project explores building a simple streaming platform with basic asset management capabilities while testing best practices and improving Go knowledge.
 
 ## Architecture
 
