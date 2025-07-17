@@ -8,8 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/auth"
-	httphandler "github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/http"
+	appconfig "github.com/serdarburakguneri/hobby-streamer/backend/auth-service/internal/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
@@ -26,28 +25,16 @@ func main() {
 	secretsManager.LoadFromEnvironment()
 
 	cfg := configManager.GetConfig()
-	dynamicCfg := configManager.GetDynamicConfig()
 
 	logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
 	log := logger.WithService(cfg.Service)
 	log.Info("Starting auth-service", "environment", cfg.Environment)
 
-	keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
-	realm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
-	clientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
-	clientSecret := dynamicCfg.GetStringFromComponent("keycloak", "client_secret")
-
-	log.Debug("Keycloak configuration", "url", keycloakURL, "realm", realm, "client_id", clientID)
-
-	authService := auth.NewService(keycloakURL, realm, clientID, clientSecret)
-
-	router := httphandler.NewRouter(authService)
-
-	handler := logger.RequestLoggingMiddleware(log)(httphandler.CORS(router))
+	appConfig := appconfig.NewAppConfig(configManager, secretsManager, log)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
-		Handler:      handler,
+		Handler:      appConfig.HTTP.Handler,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,

@@ -1,0 +1,42 @@
+package config
+
+import (
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+)
+
+type DatabaseConfig struct {
+	Driver neo4j.Driver
+}
+
+func NewDatabaseConfig(configManager *config.Manager, secretsManager *config.SecretsManager, log *logger.Logger) (*DatabaseConfig, error) {
+	dynamicCfg := configManager.GetDynamicConfig()
+
+	uri := dynamicCfg.GetStringFromComponent("neo4j", "uri")
+	username := dynamicCfg.GetStringFromComponent("neo4j", "username")
+	password := secretsManager.Get("neo4j_password")
+
+	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
+	if err != nil {
+		log.WithError(err).Error("Failed to create Neo4j driver")
+		return nil, err
+	}
+
+	if err := driver.VerifyConnectivity(); err != nil {
+		log.WithError(err).Error("Failed to connect to Neo4j")
+		return nil, err
+	}
+
+	log.Info("Neo4j connection established", "uri", uri)
+
+	return &DatabaseConfig{
+		Driver: driver,
+	}, nil
+}
+
+func (dc *DatabaseConfig) Close() {
+	if dc.Driver != nil {
+		dc.Driver.Close()
+	}
+}
