@@ -113,64 +113,18 @@ func main() {
 		}
 	}
 
-	authMiddleware := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
+	keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
+	keycloakRealm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
+	keycloakClientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
 
-			token := r.Header.Get("Authorization")
-			if token == "" {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			if len(token) > 7 && token[:7] == "Bearer " {
-				token = token[7:]
-			}
-
-			keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
-			keycloakRealm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
-			keycloakClientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
-
-			log := logger.WithService("auth-middleware")
-			log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", keycloakRealm, "clientID", keycloakClientID)
-
-			validator := auth.NewKeycloakValidator(keycloakURL, keycloakRealm, keycloakClientID)
-			user, err := validator.ValidateToken(r.Context(), token)
-			if err != nil {
-				log.WithError(err).Debug("Regular token validation failed, trying service token")
-
-				serviceValidator := auth.NewServiceTokenValidator(keycloakURL, keycloakRealm, keycloakClientID)
-				serviceUser, serviceErr := serviceValidator.ValidateServiceToken(r.Context(), token)
-				if serviceErr != nil {
-					log.WithError(serviceErr).Error("Service token validation also failed")
-					http.Error(w, "Invalid token", http.StatusUnauthorized)
-					return
-				}
-
-				if !serviceValidator.IsServiceToken(serviceUser) {
-					log.Error("Service token is not from streaming-api service")
-					http.Error(w, "Invalid service token", http.StatusUnauthorized)
-					return
-				}
-
-				log.Debug("Service token validated successfully", "service", serviceUser.ClientID, "roles", serviceUser.Roles)
-				ctx := context.WithValue(r.Context(), "service_user", serviceUser)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
-			}
-
-			log.Debug("Token validated successfully", "user", user.Username, "roles", user.Roles)
-			ctx := context.WithValue(r.Context(), "user", user)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
+	keycloakValidator := auth.NewKeycloakValidator(keycloakURL, keycloakRealm, keycloakClientID)
+	authMiddleware := auth.NewAuthMiddleware(keycloakValidator)
 
 	router.Use(corsMiddleware)
 	router.Use(loggerMiddleware(log))
-	router.Use(authMiddleware)
+	router.Use(func(next http.Handler) http.Handler {
+		return authMiddleware.RequireUserAuth().RequireServiceAuth().Build()(next.ServeHTTP)
+	})
 
 	resolver := graph.NewResolver(assetService, bucketService)
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: resolver})

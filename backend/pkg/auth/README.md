@@ -1,106 +1,55 @@
-# Shared Auth Package
+# Auth Package
 
-Shared authentication package that provides token validation and role-based authorization for microservices.
+Authentication and authorization package for microservices with Keycloak integration.
 
-## Features
-
-- TokenValidator interface for consistent token validation across services
-- KeycloakValidator implementation for JWT validation with Keycloak
-- HTTP middleware for easy integration into services
-- Role-based authorization helpers
-
-## Usage
-
-### 1. Import the package
+## Quick Start
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
-```
 
-### 2. Create a validator
-
-```go
+// Create validator
 validator := auth.NewKeycloakValidator(
     "http://localhost:8080",  // Keycloak URL
-    "hobby",                  // Realm
+    "hobby",                  // Realm  
     "asset-manager",          // Client ID
 )
-```
 
-### 3. Create middleware
-
-```go
+// Create middleware with builder pattern
 middleware := auth.NewAuthMiddleware(validator)
+
+// Apply to routes
+router.Use(func(next http.Handler) http.Handler {
+    return middleware.RequireUserAuth().RequireServiceAuth().Build()(next.ServeHTTP)
+})
 ```
 
-### 4. Apply to routes
+## Builder Pattern
 
 ```go
-// Require authentication only
-r.HandleFunc("/assets", middleware.RequireAuth(handler.ListAssets)).Methods("GET")
+// User authentication only
+middleware.RequireUserAuth().Build()
 
+// Service authentication only  
+middleware.RequireServiceAuth().Build()
+
+// Both user and service authentication
+middleware.RequireUserAuth().RequireServiceAuth().Build()
+```
+
+## Role-Based Authorization
+
+```go
 // Require specific role
-r.HandleFunc("/assets", middleware.RequireRole("admin")(handler.CreateAsset)).Methods("POST")
+middleware.RequireRole("admin")(handler)
 
 // Require any of multiple roles
-r.HandleFunc("/assets", middleware.RequireAnyRole([]string{"admin", "editor"})(handler.UpdateAsset)).Methods("PUT")
+middleware.RequireAnyRole([]string{"admin", "editor"})(handler)
 
 // Require all roles
-r.HandleFunc("/assets", middleware.RequireAllRoles([]string{"admin", "moderator"})(handler.DeleteAsset)).Methods("DELETE")
+middleware.RequireAllRoles([]string{"admin", "moderator"})(handler)
 ```
 
-## Interface
+## Context Values
 
-### TokenValidator
-
-```go
-type TokenValidator interface {
-    ValidateToken(ctx context.Context, token string) (*User, error)
-    HasRole(user *User, role string) bool
-    HasAnyRole(user *User, roles []string) bool
-    HasAllRoles(user *User, roles []string) bool
-}
-```
-
-### User
-
-```go
-type User struct {
-    ID       string   `json:"id"`
-    Username string   `json:"username"`
-    Email    string   `json:"email"`
-    Roles    []string `json:"roles"`
-}
-```
-
-## Middleware Functions
-
-- `RequireAuth()` - Validates token and adds user to context
-- `RequireRole(role)` - Requires specific role
-- `RequireAnyRole(roles)` - Requires any of the specified roles
-- `RequireAllRoles(roles)` - Requires all specified roles
-
-## Example Integration
-
-```go
-func main() {
-    validator := auth.NewKeycloakValidator(
-        os.Getenv("KEYCLOAK_URL"),
-        os.Getenv("KEYCLOAK_REALM"),
-        os.Getenv("KEYCLOAK_CLIENT_ID"),
-    )
-    
-    middleware := auth.NewAuthMiddleware(validator)
-    
-    r := mux.NewRouter()
-    
-    // Public endpoints
-    r.HandleFunc("/health", healthHandler).Methods("GET")
-    
-    // Protected endpoints
-    r.HandleFunc("/assets", middleware.RequireAuth(assetHandler.ListAssets)).Methods("GET")
-    r.HandleFunc("/assets", middleware.RequireRole("admin")(assetHandler.CreateAsset)).Methods("POST")
-    
-    http.ListenAndServe(":8080", r)
-}
-``` 
+- `"user"` - Regular user authentication
+- `"service_user"` - Service-to-service authentication 
