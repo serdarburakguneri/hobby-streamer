@@ -197,8 +197,6 @@ type Mutation {
   deleteAsset(id: ID!): Boolean!
   patchPublishRule(id: ID!, patches: [JSONPatch!]!): Asset!
 
-  updateVideoStatus(assetId: ID!, videoId: ID!, status: String!): Asset!
-  updateVideoCDN(assetId: ID!, videoId: ID!, cdnPrefix: String!): Asset!
   addVideo(assetId: ID!, type: VideoType!, format: String!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
   deleteVideo(assetId: ID!, videoId: ID!): Asset!
 

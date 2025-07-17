@@ -383,9 +383,8 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 		return fmt.Errorf("failed to patch asset: %w", err)
 	}
 
-	// Handle parent relationship update if parentId was changed
 	if parentIdUpdated {
-		// First, remove any existing parent relationship
+		
 		removeParentQuery := `
 			MATCH (child:Asset {id: $childId})-[r:BELONGS_TO]->(parent:Asset)
 			DELETE r
@@ -590,39 +589,6 @@ func (r *Repository) recordToAsset(record *neo4j.Record) (*Asset, error) {
 	return asset, nil
 }
 
-func (r *Repository) GetParent(ctx context.Context, childID string) (*Asset, error) {
-	log := r.logger.WithContext(ctx)
-
-	session := r.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
-
-	query := `
-		MATCH (child:Asset {id: $childID})-[:BELONGS_TO]->(parent:Asset)
-		RETURN parent
-	`
-
-	result, err := session.Run(query, map[string]interface{}{"childID": childID})
-	if err != nil {
-		log.WithError(err).Error("Failed to get parent from Neo4j", "child_id", childID)
-		return nil, fmt.Errorf("get parent failed: %w", err)
-	}
-
-	record, err := result.Single()
-	if err != nil {
-		log.Debug("Parent not found in Neo4j", "child_id", childID)
-		return nil, nil // No parent found
-	}
-
-	parent, err := r.recordToAsset(record)
-	if err != nil {
-		log.WithError(err).Error("Failed to convert Neo4j record to parent asset", "child_id", childID)
-		return nil, fmt.Errorf("convert record to parent asset failed: %w", err)
-	}
-
-	log.Debug("Parent retrieved successfully from Neo4j", "child_id", childID, "parent_id", parent.ID)
-	return parent, nil
-}
-
 func (r *Repository) GetChildren(ctx context.Context, parentID string) ([]Asset, error) {
 	log := r.logger.WithContext(ctx)
 
@@ -658,6 +624,39 @@ func (r *Repository) GetChildren(ctx context.Context, parentID string) ([]Asset,
 
 	log.Debug("Children retrieved successfully from Neo4j", "parent_id", parentID, "count", len(assets))
 	return assets, nil
+}
+
+func (r *Repository) GetParent(ctx context.Context, childID string) (*Asset, error) {
+	log := r.logger.WithContext(ctx)
+
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := `
+		MATCH (child:Asset {id: $childID})-[:BELONGS_TO]->(parent:Asset)
+		RETURN parent
+	`
+
+	result, err := session.Run(query, map[string]interface{}{"childID": childID})
+	if err != nil {
+		log.WithError(err).Error("Failed to get parent from Neo4j", "child_id", childID)
+		return nil, fmt.Errorf("get parent failed: %w", err)
+	}
+
+	record, err := result.Single()
+	if err != nil {
+		log.Debug("Parent not found in Neo4j", "child_id", childID)
+		return nil, nil
+	}
+
+	parent, err := r.recordToAsset(record)
+	if err != nil {
+		log.WithError(err).Error("Failed to convert Neo4j record to parent asset", "child_id", childID)
+		return nil, fmt.Errorf("convert record to parent asset failed: %w", err)
+	}
+
+	log.Debug("Parent retrieved successfully from Neo4j", "child_id", childID, "parent_id", parent.ID)
+	return parent, nil
 }
 
 func (r *Repository) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error) {

@@ -118,8 +118,6 @@ type ComplexityRoot struct {
 		PatchPublishRule      func(childComplexity int, id string, patches []*model.JSONPatch) int
 		RemoveAssetFromBucket func(childComplexity int, bucketID string, assetID string) int
 		UpdateBucket          func(childComplexity int, id string, input model.UpdateBucketInput) int
-		UpdateVideoCdn        func(childComplexity int, assetID string, videoID string, cdnPrefix string) int
-		UpdateVideoStatus     func(childComplexity int, assetID string, videoID string, status string) int
 	}
 
 	PublishRule struct {
@@ -182,8 +180,6 @@ type MutationResolver interface {
 	PatchAsset(ctx context.Context, id string, patches []*model.JSONPatch) (*model.Asset, error)
 	DeleteAsset(ctx context.Context, id string) (bool, error)
 	PatchPublishRule(ctx context.Context, id string, patches []*model.JSONPatch) (*model.Asset, error)
-	UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) (*model.Asset, error)
-	UpdateVideoCdn(ctx context.Context, assetID string, videoID string, cdnPrefix string) (*model.Asset, error)
 	AddVideo(ctx context.Context, assetID string, typeArg model.VideoType, format string, bucket string, key string, url string, contentType string, size int) (*model.Asset, error)
 	DeleteVideo(ctx context.Context, assetID string, videoID string) (*model.Asset, error)
 	CreateBucket(ctx context.Context, input model.BucketInput) (*model.Bucket, error)
@@ -646,30 +642,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateBucket(childComplexity, args["id"].(string), args["input"].(model.UpdateBucketInput)), true
-
-	case "Mutation.updateVideoCDN":
-		if e.complexity.Mutation.UpdateVideoCdn == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateVideoCDN_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateVideoCdn(childComplexity, args["assetId"].(string), args["videoId"].(string), args["cdnPrefix"].(string)), true
-
-	case "Mutation.updateVideoStatus":
-		if e.complexity.Mutation.UpdateVideoStatus == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateVideoStatus_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateVideoStatus(childComplexity, args["assetId"].(string), args["videoId"].(string), args["status"].(string)), true
 
 	case "PublishRule.ageRating":
 		if e.complexity.PublishRule.AgeRating == nil {
@@ -1746,154 +1718,6 @@ func (ec *executionContext) field_Mutation_updateBucket_argsInput(
 	}
 
 	var zeroVal model.UpdateBucketInput
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoCDN_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_updateVideoCDN_argsAssetID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["assetId"] = arg0
-	arg1, err := ec.field_Mutation_updateVideoCDN_argsVideoID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["videoId"] = arg1
-	arg2, err := ec.field_Mutation_updateVideoCDN_argsCdnPrefix(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["cdnPrefix"] = arg2
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_updateVideoCDN_argsAssetID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["assetId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("assetId"))
-	if tmp, ok := rawArgs["assetId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoCDN_argsVideoID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["videoId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("videoId"))
-	if tmp, ok := rawArgs["videoId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoCDN_argsCdnPrefix(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["cdnPrefix"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("cdnPrefix"))
-	if tmp, ok := rawArgs["cdnPrefix"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_updateVideoStatus_argsAssetID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["assetId"] = arg0
-	arg1, err := ec.field_Mutation_updateVideoStatus_argsVideoID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["videoId"] = arg1
-	arg2, err := ec.field_Mutation_updateVideoStatus_argsStatus(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["status"] = arg2
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_updateVideoStatus_argsAssetID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["assetId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("assetId"))
-	if tmp, ok := rawArgs["assetId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoStatus_argsVideoID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["videoId"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("videoId"))
-	if tmp, ok := rawArgs["videoId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_updateVideoStatus_argsStatus(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["status"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-	if tmp, ok := rawArgs["status"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -4672,192 +4496,6 @@ func (ec *executionContext) fieldContext_Mutation_patchPublishRule(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_patchPublishRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_updateVideoStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_updateVideoStatus(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateVideoStatus(rctx, fc.Args["assetId"].(string), fc.Args["videoId"].(string), fc.Args["status"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Asset)
-	fc.Result = res
-	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋgraphᚋmodelᚐAsset(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateVideoStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Asset_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Asset_slug(ctx, field)
-			case "title":
-				return ec.fieldContext_Asset_title(ctx, field)
-			case "description":
-				return ec.fieldContext_Asset_description(ctx, field)
-			case "type":
-				return ec.fieldContext_Asset_type(ctx, field)
-			case "genre":
-				return ec.fieldContext_Asset_genre(ctx, field)
-			case "genres":
-				return ec.fieldContext_Asset_genres(ctx, field)
-			case "tags":
-				return ec.fieldContext_Asset_tags(ctx, field)
-			case "status":
-				return ec.fieldContext_Asset_status(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Asset_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Asset_updatedAt(ctx, field)
-			case "metadata":
-				return ec.fieldContext_Asset_metadata(ctx, field)
-			case "ownerId":
-				return ec.fieldContext_Asset_ownerId(ctx, field)
-			case "videos":
-				return ec.fieldContext_Asset_videos(ctx, field)
-			case "publishRule":
-				return ec.fieldContext_Asset_publishRule(ctx, field)
-			case "parent":
-				return ec.fieldContext_Asset_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Asset_children(ctx, field)
-			case "buckets":
-				return ec.fieldContext_Asset_buckets(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateVideoStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_updateVideoCDN(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_updateVideoCDN(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateVideoCdn(rctx, fc.Args["assetId"].(string), fc.Args["videoId"].(string), fc.Args["cdnPrefix"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Asset)
-	fc.Result = res
-	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋgraphᚋmodelᚐAsset(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateVideoCDN(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Asset_id(ctx, field)
-			case "slug":
-				return ec.fieldContext_Asset_slug(ctx, field)
-			case "title":
-				return ec.fieldContext_Asset_title(ctx, field)
-			case "description":
-				return ec.fieldContext_Asset_description(ctx, field)
-			case "type":
-				return ec.fieldContext_Asset_type(ctx, field)
-			case "genre":
-				return ec.fieldContext_Asset_genre(ctx, field)
-			case "genres":
-				return ec.fieldContext_Asset_genres(ctx, field)
-			case "tags":
-				return ec.fieldContext_Asset_tags(ctx, field)
-			case "status":
-				return ec.fieldContext_Asset_status(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Asset_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Asset_updatedAt(ctx, field)
-			case "metadata":
-				return ec.fieldContext_Asset_metadata(ctx, field)
-			case "ownerId":
-				return ec.fieldContext_Asset_ownerId(ctx, field)
-			case "videos":
-				return ec.fieldContext_Asset_videos(ctx, field)
-			case "publishRule":
-				return ec.fieldContext_Asset_publishRule(ctx, field)
-			case "parent":
-				return ec.fieldContext_Asset_parent(ctx, field)
-			case "children":
-				return ec.fieldContext_Asset_children(ctx, field)
-			case "buckets":
-				return ec.fieldContext_Asset_buckets(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateVideoCDN_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9962,20 +9600,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "patchPublishRule":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_patchPublishRule(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updateVideoStatus":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateVideoStatus(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updateVideoCDN":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateVideoCDN(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

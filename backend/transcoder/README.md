@@ -5,7 +5,6 @@ Background worker that processes video jobs from an SQS queue, including analysi
 ## Features
 - Consumes jobs from an SQS queue using the shared SQS package
 - Runs ffmpeg-based analysis and transcoding jobs (HLS, DASH)
-- Error handling with typed errors and retry mechanisms
 
 ## Requirements
 - Go 1.22+

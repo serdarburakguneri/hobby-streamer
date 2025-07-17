@@ -308,36 +308,6 @@ func (r *mutationResolver) PatchPublishRule(ctx context.Context, id string, patc
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
-// UpdateVideoStatus is the resolver for the updateVideoStatus field.
-func (r *mutationResolver) UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) (*model.Asset, error) {
-	err := r.Resolver.AssetService.UpdateVideoStatus(ctx, assetID, videoID, status)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update video status: %w", err)
-	}
-
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get updated asset: %w", err)
-	}
-
-	return mapAssetToGraphQL(updatedAsset), nil
-}
-
-// UpdateVideoCdn is the resolver for the updateVideoCDN field.
-func (r *mutationResolver) UpdateVideoCdn(ctx context.Context, assetID string, videoID string, cdnPrefix string) (*model.Asset, error) {
-	err := r.Resolver.AssetService.UpdateVideoCDN(ctx, assetID, videoID, cdnPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update video CDN: %w", err)
-	}
-
-	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get updated asset: %w", err)
-	}
-
-	return mapAssetToGraphQL(updatedAsset), nil
-}
-
 // AddVideo is the resolver for the addVideo field.
 func (r *mutationResolver) AddVideo(ctx context.Context, assetID string, typeArg model.VideoType, format string, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
 	var assetVideoType asset.VideoType

@@ -23,7 +23,6 @@ type AssetService interface {
 	SearchAssets(ctx context.Context, query string, limit int, lastKey map[string]interface{}) (*AssetPage, error)
 	GetAssetByID(ctx context.Context, id string) (*Asset, error)
 	GetAssetBySlug(ctx context.Context, slug string) (*Asset, error)
-	GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error)
 	CreateAsset(ctx context.Context, a *Asset) (*Asset, error)
 	UpdateAsset(ctx context.Context, id string, a *Asset) error
 	PatchAsset(ctx context.Context, id string, patch map[string]interface{}) error
@@ -31,10 +30,7 @@ type AssetService interface {
 	AddImage(ctx context.Context, id string, img *Image) error
 	DeleteImage(ctx context.Context, id string, filename string) error
 	AddVideo(ctx context.Context, id string, video *Video) error
-	UpdateVideo(ctx context.Context, assetID string, videoID string, video *Video) error
 	DeleteVideo(ctx context.Context, assetID string, videoID string) error
-	UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) error
-	UpdateVideoCDN(ctx context.Context, assetID string, videoID string, cdnPrefix string) error
 	HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error
 	HandleTranscodeCompletion(ctx context.Context, payload map[string]interface{}) error
 	GetChildren(ctx context.Context, parentID string) ([]Asset, error)
@@ -90,23 +86,6 @@ func (s *Service) GetAssetByID(ctx context.Context, id string) (*Asset, error) {
 
 func (s *Service) GetAssetBySlug(ctx context.Context, slug string) (*Asset, error) {
 	return s.Repo.GetAssetBySlug(ctx, slug)
-}
-
-func (s *Service) GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error) {
-	if len(ids) == 0 {
-		return []Asset{}, nil
-	}
-
-	assets := make([]Asset, 0, len(ids))
-	for _, id := range ids {
-		asset, err := s.Repo.GetAssetByID(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get asset %s: %w", id, err)
-		}
-		assets = append(assets, *asset)
-	}
-
-	return assets, nil
 }
 
 func (s *Service) ListAssets(ctx context.Context, limit int, lastKey map[string]interface{}) (*AssetPage, error) {
@@ -404,65 +383,6 @@ func (s *Service) setCDNPrefixIfAvailable(video *Video, bucket string) {
 
 // --- AssetService Methods ---
 
-func (s *Service) UpdateVideo(ctx context.Context, assetID string, videoID string, video *Video) error {
-	asset, err := s.Repo.GetAssetByID(ctx, assetID)
-	if err != nil {
-		return apperrors.NewNotFoundError("asset not found", err)
-	}
-
-	existingVideo := getVideoByID(asset, videoID)
-	if existingVideo == nil {
-		return apperrors.NewNotFoundError("video not found", nil)
-	}
-
-	video.UpdatedAt = time.Now()
-	*existingVideo = *video
-	existingVideo.ID = videoID
-
-	return s.Repo.SaveAsset(ctx, asset)
-}
-
-func (s *Service) UpdateVideoStatus(ctx context.Context, assetID string, videoID string, status string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, assetID)
-	if err != nil {
-		return apperrors.NewNotFoundError("asset not found", err)
-	}
-
-	video := getVideoByID(asset, videoID)
-	if video == nil {
-		return apperrors.NewNotFoundError("video not found", nil)
-	}
-
-	video.Status = status
-	video.UpdatedAt = time.Now()
-
-	if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
-		s.setCDNPrefixIfAvailable(video, video.StorageLocation.Bucket)
-	}
-
-	return s.Repo.SaveAsset(ctx, asset)
-}
-
-func (s *Service) UpdateVideoCDN(ctx context.Context, assetID string, videoID string, cdnPrefix string) error {
-	asset, err := s.Repo.GetAssetByID(ctx, assetID)
-	if err != nil {
-		return apperrors.NewNotFoundError("asset not found", err)
-	}
-
-	video := getVideoByID(asset, videoID)
-	if video == nil {
-		return apperrors.NewNotFoundError("video not found", nil)
-	}
-
-	if video.StreamInfo == nil {
-		video.StreamInfo = &StreamInfo{}
-	}
-	video.StreamInfo.CdnPrefix = &cdnPrefix
-	video.UpdatedAt = time.Now()
-
-	return s.Repo.SaveAsset(ctx, asset)
-}
-
 func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
 	log := logger.Get().WithService("asset-service")
 
@@ -487,9 +407,23 @@ func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[strin
 
 	log.Info("Processing analyze completion", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "success", analyzePayload.Success, "status", status)
 
-	err = s.UpdateVideoStatus(ctx, analyzePayload.AssetID, analyzePayload.VideoID, status)
+	asset, err := s.Repo.GetAssetByID(ctx, analyzePayload.AssetID)
 	if err != nil {
-		log.WithError(err).Error("Failed to update video status after analyze completion", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "status", status)
+		log.WithError(err).Error("Failed to get asset for analyze completion", "asset_id", analyzePayload.AssetID)
+		return err
+	}
+
+	for i, video := range asset.Videos {
+		if video.ID == analyzePayload.VideoID {
+			asset.Videos[i].Status = status
+			asset.Videos[i].UpdatedAt = time.Now()
+			break
+		}
+	}
+
+	err = s.Repo.SaveAsset(ctx, asset)
+	if err != nil {
+		log.WithError(err).Error("Failed to save asset after analyze completion", "asset_id", analyzePayload.AssetID, "video_id", analyzePayload.VideoID, "status", status)
 		return err
 	}
 
