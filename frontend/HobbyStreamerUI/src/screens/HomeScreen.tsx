@@ -26,6 +26,7 @@ export const HomeScreen: React.FC = () => {
         apiService.getAssets(),
       ]);
       
+      // For now, just set buckets without individual assets since the endpoint is failing
       setBuckets(bucketsData);
       setAllAssets(assetsData);
     } catch (error) {
@@ -75,14 +76,25 @@ export const HomeScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Bucket Rows */}
+        {/* All Assets Section */}
+        {allAssets.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>All Content</Text>
+            <BucketRow
+              title="Available Content"
+              assets={allAssets}
+              onAssetPress={handleAssetPress}
+            />
+          </View>
+        )}
+
+        {/* Bucket Sections */}
         {buckets.map((bucket) => (
-          <BucketRow
-            key={bucket.id}
-            title={bucket.name}
-            assets={bucket.assets || []}
-            onAssetPress={handleAssetPress}
-          />
+          <View key={bucket.id} style={styles.section}>
+            <Text style={styles.sectionTitle}>{bucket.name}</Text>
+            <Text style={styles.sectionDescription}>{bucket.description}</Text>
+            <Text style={styles.sectionInfo}>Bucket Key: {bucket.key}</Text>
+          </View>
         ))}
 
         {buckets.length === 0 && allAssets.length === 0 && (
@@ -112,6 +124,26 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#ffffff',
     fontSize: 16,
+  },
+  section: {
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    color: '#cccccc',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  sectionInfo: {
+    color: '#888888',
+    fontSize: 12,
+    marginBottom: 12,
   },
   emptyContainer: {
     flex: 1,

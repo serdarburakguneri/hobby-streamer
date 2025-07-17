@@ -14,4 +14,5 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/streaming-api/streaming-api .
+COPY --from=builder /app/streaming-api/config ./config
 CMD ["./streaming-api"]

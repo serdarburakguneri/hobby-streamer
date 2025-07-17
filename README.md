@@ -8,7 +8,7 @@ A personal playground for experimenting with video streaming and content managem
 
 ### Video Upload and Transcoding Flow
 
-For a detailed view of how video uploading and transcoding works in the system, see the [Video Upload and Transcoding Sequence Diagram](docs/video-upload-transcode-sequence.md). This diagram shows the complete flow from user upload through analysis and transcoding to HLS/DASH formats.
+For a detailed view of how video uploading and transcoding works in the system, see the [Video Upload and Transcode Sequence Diagram](docs/video-upload-transcode-sequence.md). This diagram shows the complete flow from user upload through analysis and transcoding to HLS/DASH formats.
 
 ## Tech Stack
 
@@ -27,6 +27,7 @@ For a detailed view of how video uploading and transcoding works in the system, 
 - Elasticsearch – Log storage and search
 - Kibana – Log visualization and analysis
 - Nginx (To replace cloudfront locally)
+
 
 ### Frontend
 - React Native – Cross-platform mobile and web development
@@ -56,6 +57,7 @@ See [Shared Libraries Documentation](backend/pkg/README.md) for detailed informa
 
 **Available Libraries:**
 - [Auth Package](backend/pkg/auth/README.md): Shared authentication library with JWT validation and role-based authorization
+- [Config Package](backend/pkg/config/README.md): Dynamic configuration management with service-specific components and feature flags
 - [Constants Package](backend/pkg/constants/README.md): Common constants for HTTP status codes, roles, and other shared values
 - [Errors Package](backend/pkg/errors/README.md): Error handling library with typed errors, retry mechanisms, circuit breakers, and graceful degradation patterns
 - [Logger Package](backend/pkg/logger/README.md): Centralized structured logging solution for all backend services
@@ -97,5 +99,5 @@ To set up the development environment with all services, simply run:
 - CMS UI Web: http://localhost:8081
 - Kibana (Logs): http://localhost:5601
 - Elasticsearch: http://localhost:9200
-- Nginx HLS Proxy: http://localhost:8083
+- Nginx Proxy: http://localhost:8083
 

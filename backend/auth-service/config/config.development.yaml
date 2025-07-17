@@ -1,0 +1,38 @@
+environment: development
+service: auth-service
+
+log:
+  level: debug
+  format: text
+
+server:
+  port: "8080"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+
+features:
+  enable_circuit_breaker: true
+  enable_retry: true
+  enable_caching: true
+  enable_metrics: false
+  enable_tracing: false
+
+circuit_breaker:
+  threshold: 5
+  timeout: "30s"
+
+retry:
+  max_attempts: 3
+  base_delay: "100ms"
+  max_delay: "5s"
+
+cache:
+  ttl: "30m"
+
+components:
+  keycloak:
+    url: "https://keycloak:8443"
+    realm: "hobby"
+    client_id: "asset-manager"
+    client_secret: "" 

@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -15,39 +15,42 @@ import (
 )
 
 func main() {
-	logFormat := getEnv("LOG_FORMAT", "text")
-	logger.Init(slog.LevelInfo, logFormat)
-	log := logger.WithService("transcoder-worker")
-
-	log.Info("Starting transcoder worker")
-
-	ctx := context.Background()
-	queueURL := os.Getenv("TRANSCODER_QUEUE_URL")
-	if queueURL == "" {
-		log.Error("TRANSCODER_QUEUE_URL environment variable is not set")
+	configManager, err := config.NewManager("transcoder")
+	if err != nil {
+		logger.Get().WithError(err).Error("Failed to initialize config")
 		os.Exit(1)
 	}
+	defer configManager.Close()
 
-	log.Debug("Queue configuration", "queue_url", queueURL)
+	secretsManager := config.NewSecretsManager()
+	secretsManager.LoadFromEnvironment()
 
-	analyzeQueueURL := os.Getenv("ANALYZE_QUEUE_URL")
-	var analyzeProducer *sqs.Producer
-	if analyzeQueueURL != "" {
-		var err error
-		analyzeProducer, err = sqs.NewProducer(ctx, analyzeQueueURL)
-		if err != nil {
-			log.WithError(err).Error("Failed to create analyze SQS producer, continuing without analyze completion messages")
-		} else {
-			log.Info("Analyze SQS producer initialized successfully", "analyze_queue_url", analyzeQueueURL)
-		}
+	cfg := configManager.GetConfig()
+	dynamicCfg := configManager.GetDynamicConfig()
+
+	logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
+	log := logger.WithService(cfg.Service)
+	log.Info("Starting transcoder worker", "environment", cfg.Environment)
+
+	ctx := context.Background()
+	transcoderQueueURL := dynamicCfg.GetStringFromComponent("sqs", "transcoder_queue_url")
+	analyzeQueueURL := dynamicCfg.GetStringFromComponent("sqs", "analyze_queue_url")
+
+	log.Info("Queue configuration", "transcoder_queue_url", transcoderQueueURL, "analyze_queue_url", analyzeQueueURL)
+
+	analyzeProducer, err := sqs.NewProducer(ctx, analyzeQueueURL)
+	if err != nil {
+		log.WithError(err).Error("Failed to create analyze SQS producer")
+		os.Exit(1)
 	}
+	log.Info("Analyze SQS producer initialized successfully", "analyze_queue_url", analyzeQueueURL)
 
 	analyzeRunner := job.NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer)
 	transcodeHLSRunner := job.NewTranscodeHLSRunnerWithAnalyzeProducer(analyzeProducer)
 	transcodeDASHRunner := job.NewTranscodeDASHRunnerWithAnalyzeProducer(analyzeProducer)
 
 	registry := sqs.NewConsumerRegistry()
-	registry.Register(queueURL, func(ctx context.Context, msgType string, payload map[string]interface{}) error {
+	registry.Register(transcoderQueueURL, func(ctx context.Context, msgType string, payload map[string]interface{}) error {
 		log.Info("SQS message received", "msgType", msgType, "payload", payload)
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
@@ -80,11 +83,4 @@ func main() {
 	log.Info("Shutting down transcoder worker...")
 	registry.Stop()
 	log.Info("Transcoder worker stopped")
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

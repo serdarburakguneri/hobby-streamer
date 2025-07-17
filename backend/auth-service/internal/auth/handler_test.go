@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -122,7 +122,7 @@ func TestAuthHandler_Login_ServiceError(t *testing.T) {
 
 	mockService := &MockAuthService{
 		loginFunc: func(ctx context.Context, req *LoginRequest) (*Token, error) {
-			return nil, fmt.Errorf("authentication failed")
+			return nil, apperrors.NewUnauthorizedError("authentication failed", nil)
 		},
 	}
 

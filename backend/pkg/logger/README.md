@@ -20,7 +20,7 @@ import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 
 func main() {
     // Initialize logger with level and format
-    logger.Init(slog.LevelInfo, "json") // or "text"
+    logger.Init(logger.GetLogLevel("info"), "json") // or "text"
     
     // Get service-specific logger
     log := logger.WithService("my-service")
@@ -32,6 +32,10 @@ func main() {
 ### Log Levels
 
 ```go
+// Convert string log level to slog.Level
+level := logger.GetLogLevel("debug") // Returns slog.LevelDebug
+
+// Use in logging
 log.Debug("Debug information", "key", "value")
 log.Info("Information message", "user_id", 123)
 log.Warn("Warning message", "attempt", 3)

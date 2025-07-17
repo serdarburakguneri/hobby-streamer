@@ -225,3 +225,18 @@ func WithError(err error) *Logger {
 func WithFields(fields map[string]any) *Logger {
 	return Get().WithFields(fields)
 }
+
+func GetLogLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}

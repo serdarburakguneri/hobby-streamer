@@ -13,5 +13,6 @@ RUN cd auth-service && go build -o main ./cmd/main.go
 FROM alpine:latest
 WORKDIR /root/
 COPY --from=builder /app/auth-service/main .
+COPY --from=builder /app/auth-service/config ./config
 EXPOSE 8080
 CMD ["./main"] 

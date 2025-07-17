@@ -1,0 +1,39 @@
+environment: development
+service: transcoder
+
+log:
+  level: debug
+  format: text
+
+server:
+  port: "8080"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+
+features:
+  enable_circuit_breaker: true
+  enable_retry: true
+  enable_caching: true
+  enable_metrics: false
+  enable_tracing: false
+
+circuit_breaker:
+  threshold: 5
+  timeout: "30s"
+
+retry:
+  max_attempts: 3
+  base_delay: "100ms"
+  max_delay: "5s"
+
+cache:
+  ttl: "30m"
+
+components:
+  sqs:
+    transcoder_queue_url: "http://localstack:4566/000000000000/transcoder-jobs"
+    analyze_queue_url: "http://localstack:4566/000000000000/analyze-completed"
+    region: "us-east-1"
+    endpoint: "http://localstack:4566"
+    force_path_style: true 

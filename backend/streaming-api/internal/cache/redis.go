@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,12 +21,18 @@ type Service struct {
 	client *Client
 }
 
-func NewRedisClient() (*Client, error) {
-	redisURL := getRedisURL()
+func NewRedisClientWithConfig(host string, port int, db int, password string) (*Client, error) {
+	if host == "" {
+		return nil, errors.NewInternalError("Redis host is required", nil)
+	}
+	if port <= 0 {
+		return nil, errors.NewInternalError("Redis port must be greater than 0", nil)
+	}
 
-	opt, err := redis.ParseURL(redisURL)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to parse Redis URL", err)
+	opt := &redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", host, port),
+		DB:       db,
+		Password: password,
 	}
 
 	client := redis.NewClient(opt)
@@ -223,11 +228,4 @@ func (s *Service) InvalidateAssetsListCache(ctx context.Context) error {
 		return errors.NewTransientError("failed to invalidate assets list cache", err)
 	}
 	return nil
-}
-
-func getRedisURL() string {
-	if url := os.Getenv("REDIS_URL"); url != "" {
-		return url
-	}
-	return "redis://localhost:6379/0"
 }

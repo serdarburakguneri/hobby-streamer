@@ -33,9 +33,7 @@ type Service struct {
 
 var _ AuthService = (*Service)(nil)
 
-// NewService creates a new Service with a default keyFunc (no verification)
 func NewService(keycloakURL, realm, clientID, clientSecret string) *Service {
-	// Create HTTP client that ignores SSL certificate errors for local development
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -56,9 +54,7 @@ func NewService(keycloakURL, realm, clientID, clientSecret string) *Service {
 	}
 }
 
-// NewServiceWithKeyFunc allows injecting a custom keyFunc (for tests or custom verification)
 func NewServiceWithKeyFunc(keycloakURL, realm, clientID, clientSecret string, keyFunc jwt.Keyfunc) *Service {
-	// Create HTTP client that ignores SSL certificate errors for local development
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -108,32 +104,27 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*Token, error) 
 func (s *Service) ValidateToken(ctx context.Context, tokenString string) (*TokenValidationResponse, error) {
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-	// Split the token into parts
 	parts := strings.Split(tokenString, ".")
 	if len(parts) != 3 {
 		return &TokenValidationResponse{Valid: false, Message: "Invalid token format"}, nil
 	}
 
-	// Decode the payload (second part)
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return &TokenValidationResponse{Valid: false, Message: "Invalid token payload"}, nil
 	}
 
-	// Parse the claims
 	var claims jwt.MapClaims
 	if err := json.Unmarshal(payload, &claims); err != nil {
 		return &TokenValidationResponse{Valid: false, Message: "Invalid token claims"}, nil
 	}
 
-	// Check if token is expired
 	if exp, ok := claims["exp"].(float64); ok {
 		if time.Now().Unix() > int64(exp) {
 			return &TokenValidationResponse{Valid: false, Message: "Token expired"}, nil
 		}
 	}
 
-	// Check if token is not yet valid
 	if nbf, ok := claims["nbf"].(float64); ok {
 		if time.Now().Unix() < int64(nbf) {
 			return &TokenValidationResponse{Valid: false, Message: "Token not yet valid"}, nil

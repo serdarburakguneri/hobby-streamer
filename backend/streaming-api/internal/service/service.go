@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -33,13 +32,7 @@ type Service struct {
 	circuitBreaker  *errors.CircuitBreaker
 }
 
-func NewService(cacheService *cache.Service) *Service {
-	assetManagerURL := getEnv("ASSET_MANAGER_URL", "http://localhost:8081")
-	keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
-	realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
-	clientID := getEnv("STREAMING_API_CLIENT_ID", "streaming-api")
-	clientSecret := getEnv("STREAMING_API_CLIENT_SECRET", "")
-
+func NewService(cacheService *cache.Service, assetManagerURL, keycloakURL, realm, clientID, clientSecret string) *Service {
 	log := logger.Get().WithService("streaming-service")
 	log.Info("Initializing streaming service", "asset_manager_url", assetManagerURL, "keycloak_url", keycloakURL, "realm", realm, "client_id", clientID)
 
@@ -218,10 +211,14 @@ func (s *Service) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]mo
 func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (*model.Bucket, error) {
 	query := fmt.Sprintf(`
 		query {
-			bucket(key: "%s") {
+			bucketByKey(key: "%s") {
+				id
 				key
 				name
 				description
+				type
+				status
+				assetIds
 				createdAt
 				updatedAt
 			}
@@ -259,18 +256,26 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 	query := `
 		query {
 			buckets {
-				key
-				name
-				description
-				createdAt
-				updatedAt
+				items {
+					id
+					key
+					name
+					description
+					type
+					status
+					assetIds
+					createdAt
+					updatedAt
+				}
 			}
 		}
 	`
 
 	var response struct {
 		Data struct {
-			Buckets []model.Bucket `json:"buckets"`
+			Buckets struct {
+				Items []model.Bucket `json:"items"`
+			} `json:"buckets"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
@@ -292,7 +297,7 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
-	return response.Data.Buckets, nil
+	return response.Data.Buckets.Items, nil
 }
 
 func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (*model.Asset, error) {
@@ -357,28 +362,43 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 	query := `
 		query {
 			assets {
-				id
-				slug
-				title
-				description
-				type
-				genre
-				status
-				bucketKey
-				createdAt
-				updatedAt
-				videos {
+				items {
 					id
-					filename
+					slug
+					title
+					description
+					type
+					genre
 					status
-					format
-					url
-					thumbnailUrl
-					duration
-					width
-					height
-					bitrate
-					filesize
+					createdAt
+					updatedAt
+					videos {
+						id
+						type
+						format
+						storageLocation {
+							bucket
+							key
+							url
+						}
+						width
+						height
+						duration
+						bitrate
+						size
+						contentType
+						status
+						thumbnail {
+							fileName
+							url
+							width
+							height
+							size
+							contentType
+						}
+						createdAt
+						updatedAt
+					}
 				}
 			}
 		}
@@ -386,7 +406,9 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 
 	var response struct {
 		Data struct {
-			Assets []model.Asset `json:"assets"`
+			Assets struct {
+				Items []model.Asset `json:"items"`
+			} `json:"assets"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
@@ -408,7 +430,7 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
 	}
 
-	return response.Data.Assets, nil
+	return response.Data.Assets.Items, nil
 }
 
 func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string) (*model.Asset, error) {
@@ -469,7 +491,16 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 }
 
 func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, response interface{}) error {
-	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(query))
+	requestBody := map[string]string{
+		"query": query,
+	}
+
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return errors.NewInternalError("failed to marshal request body", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(jsonBody)))
 	if err != nil {
 		return errors.NewInternalError("failed to create request", err)
 	}
@@ -503,11 +534,4 @@ func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, res
 	}
 
 	return nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

@@ -14,4 +14,5 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates ffmpeg
 WORKDIR /root/
 COPY --from=builder /app/transcoder/transcoder-worker .
+COPY --from=builder /app/transcoder/config ./config
 ENTRYPOINT ["./transcoder-worker"] 

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
@@ -45,6 +45,7 @@ type AssetService interface {
 type Service struct {
 	Repo        AssetRepository
 	SQSProducer *sqs.Producer
+	Config      *config.DynamicConfig
 }
 
 var _ AssetService = (*Service)(nil)
@@ -234,9 +235,9 @@ func (s *Service) deleteAssetFiles(ctx context.Context, asset *Asset) error {
 		return nil
 	}
 
-	lambdaURL := getEnv("DELETE_FILES_LAMBDA_URL", "")
+	lambdaURL := s.Config.GetStringFromComponent("lambda", "delete_files_endpoint")
 	if lambdaURL == "" {
-		return apperrors.NewInternalError("DELETE_FILES_LAMBDA_URL not configured", nil)
+		return apperrors.NewInternalError("delete_files_endpoint not configured", nil)
 	}
 
 	requestBody, err := json.Marshal(deleteRequest)
@@ -573,11 +574,11 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 func (s *Service) getCDNPrefixForBucket(bucket string) string {
 	switch bucket {
 	case "hls-storage":
-		return os.Getenv("HLS_CDN_PREFIX")
+		return s.Config.GetStringFromComponent("cdn", "hls_prefix")
 	case "dash-storage":
-		return os.Getenv("DASH_CDN_PREFIX")
+		return s.Config.GetStringFromComponent("cdn", "dash_prefix")
 	case "thumbnails-storage":
-		return os.Getenv("THUMBNAILS_CDN_PREFIX")
+		return s.Config.GetStringFromComponent("cdn", "thumbnails_prefix")
 	default:
 		return ""
 	}
@@ -654,20 +655,17 @@ func isValidSlug(slug string) bool {
 	return matched
 }
 
-func NewService(repo AssetRepository) *Service {
-	return &Service{Repo: repo}
+func NewService(repo AssetRepository, cfg *config.DynamicConfig) *Service {
+	return &Service{
+		Repo:   repo,
+		Config: cfg,
+	}
 }
 
-func NewServiceWithSQS(repo AssetRepository, sqsProducer *sqs.Producer) *Service {
+func NewServiceWithSQS(repo AssetRepository, sqsProducer *sqs.Producer, cfg *config.DynamicConfig) *Service {
 	return &Service{
 		Repo:        repo,
 		SQSProducer: sqsProducer,
+		Config:      cfg,
 	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

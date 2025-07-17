@@ -22,23 +22,34 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/consumer"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
 func main() {
-	logLevel := getLogLevel()
-	logFormat := getEnv("LOG_FORMAT", "text")
-	logger.Init(logLevel, logFormat)
-	log := logger.WithService("asset-manager")
-	log.Info("Starting asset-manager service")
+	configManager, err := config.NewManager("asset-manager")
+	if err != nil {
+		slog.Error("Failed to initialize config", "error", err)
+		os.Exit(1)
+	}
+	defer configManager.Close()
 
-	neo4jURI := getEnv("NEO4J_URI", "bolt://localhost:7687")
-	neo4jUsername := getEnv("NEO4J_USERNAME", "neo4j")
-	neo4jPassword := getEnv("NEO4J_PASSWORD", "password")
-	port := getEnv("PORT", "8080")
+	secretsManager := config.NewSecretsManager()
+	secretsManager.LoadFromEnvironment()
 
-	driver, err := neo4j.NewDriver(neo4jURI, neo4j.BasicAuth(neo4jUsername, neo4jPassword, ""))
+	cfg := configManager.GetConfig()
+	dynamicCfg := configManager.GetDynamicConfig()
+
+	logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
+	log := logger.WithService(cfg.Service)
+	log.Info("Starting asset-manager service", "environment", cfg.Environment)
+
+	uri := dynamicCfg.GetStringFromComponent("neo4j", "uri")
+	username := dynamicCfg.GetStringFromComponent("neo4j", "username")
+	password := secretsManager.Get("neo4j_password")
+
+	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
 	if err != nil {
 		log.WithError(err).Error("Failed to create Neo4j driver")
 		os.Exit(1)
@@ -49,44 +60,34 @@ func main() {
 		log.WithError(err).Error("Failed to connect to Neo4j")
 		os.Exit(1)
 	}
+	log.Info("Neo4j connection established", "uri", uri)
 
 	assetRepo := asset.NewRepository(driver)
 	bucketRepo := bucket.NewRepository(driver)
 
-	sqsQueueURL := getEnv("TRANSCODER_QUEUE_URL", "")
-	var assetService *asset.Service
-	if sqsQueueURL != "" {
-		sqsProducer, err := sqs.NewProducer(context.Background(), sqsQueueURL)
-		if err != nil {
-			log.WithError(err).Error("Failed to create SQS producer")
-			os.Exit(1)
-		}
-		assetService = asset.NewServiceWithSQS(assetRepo, sqsProducer)
-		log.Info("Asset service initialized with SQS producer", "queue_url", sqsQueueURL)
-	} else {
-		assetService = asset.NewService(assetRepo)
-		log.Info("Asset service initialized without SQS producer")
+	transcoderQueueURL := dynamicCfg.GetStringFromComponent("sqs", "transcoder_queue_url")
+	sqsProducer, err := sqs.NewProducer(context.Background(), transcoderQueueURL)
+	if err != nil {
+		log.WithError(err).Error("Failed to create SQS producer")
+		os.Exit(1)
 	}
+	assetService := asset.NewServiceWithSQS(assetRepo, sqsProducer, dynamicCfg)
+	log.Info("Asset service initialized with SQS producer", "queue_url", transcoderQueueURL)
 
 	bucketService := bucket.NewService(bucketRepo)
 
-	analyzeQueueURL := getEnv("ANALYZE_QUEUE_URL", "")
-	var consumerRegistry *sqs.ConsumerRegistry
-	if analyzeQueueURL != "" {
-		consumerRegistry = sqs.NewConsumerRegistry()
+	analyzeQueueURL := dynamicCfg.GetStringFromComponent("sqs", "analyze_queue_url")
+	consumerRegistry := sqs.NewConsumerRegistry()
 
-		messageRouter := consumer.NewMessageRouter(assetService)
-		consumerRegistry.Register(analyzeQueueURL, messageRouter.HandleMessage)
+	messageRouter := consumer.NewMessageRouter(assetService)
+	consumerRegistry.Register(analyzeQueueURL, messageRouter.HandleMessage)
 
-		go func() {
-			if err := consumerRegistry.Start(context.Background()); err != nil {
-				log.WithError(err).Error("Failed to start consumer registry")
-			}
-		}()
-		log.Info("Message router initialized", "queue_url", analyzeQueueURL, "supported_messages", []string{"analyze-completed", "transcode-hls-completed", "transcode-dash-completed"})
-	} else {
-		log.Info("Message router not initialized - no queue URL provided")
-	}
+	go func() {
+		if err := consumerRegistry.Start(context.Background()); err != nil {
+			log.WithError(err).Error("Failed to start consumer registry")
+		}
+	}()
+	log.Info("Message router initialized", "queue_url", analyzeQueueURL, "supported_messages", []string{"analyze-completed", "transcode-hls-completed", "transcode-dash-completed"})
 
 	router := mux.NewRouter()
 
@@ -129,19 +130,19 @@ func main() {
 				token = token[7:]
 			}
 
-			keycloakURL := getEnv("KEYCLOAK_URL", "http://localhost:8080")
-			realm := getEnv("KEYCLOAK_REALM", "hobby-realm")
-			clientID := getEnv("KEYCLOAK_CLIENT_ID", "asset-manager")
+			keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
+			keycloakRealm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
+			keycloakClientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
 
 			log := logger.WithService("auth-middleware")
-			log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", realm, "clientID", clientID)
+			log.Debug("Validating token", "keycloakURL", keycloakURL, "realm", keycloakRealm, "clientID", keycloakClientID)
 
-			validator := auth.NewKeycloakValidator(keycloakURL, realm, clientID)
+			validator := auth.NewKeycloakValidator(keycloakURL, keycloakRealm, keycloakClientID)
 			user, err := validator.ValidateToken(r.Context(), token)
 			if err != nil {
 				log.WithError(err).Debug("Regular token validation failed, trying service token")
 
-				serviceValidator := auth.NewServiceTokenValidator(keycloakURL, realm, clientID)
+				serviceValidator := auth.NewServiceTokenValidator(keycloakURL, keycloakRealm, keycloakClientID)
 				serviceUser, serviceErr := serviceValidator.ValidateServiceToken(r.Context(), token)
 				if serviceErr != nil {
 					log.WithError(serviceErr).Error("Service token validation also failed")
@@ -192,12 +193,15 @@ func main() {
 	router.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 
 	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: router,
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      router,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
 	go func() {
-		log.Info("Starting server", "port", port)
+		log.Info("Starting server", "port", cfg.Server.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("Server error", "error", err)
 		}
@@ -217,27 +221,4 @@ func main() {
 	}
 
 	log.Info("Server exited")
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getLogLevel() slog.Level {
-	level := getEnv("LOG_LEVEL", "info")
-	switch level {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
 }
