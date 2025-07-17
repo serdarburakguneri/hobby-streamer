@@ -13,6 +13,7 @@ import (
 type AssetRepository interface {
 	GetAssetByID(ctx context.Context, id string) (*Asset, error)
 	GetAssetBySlug(ctx context.Context, slug string) (*Asset, error)
+	GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error)
 	ListAssets(ctx context.Context, limit int, lastKey map[string]interface{}) (*AssetPage, error)
 	SearchAssets(ctx context.Context, query string, limit int, lastKey map[string]interface{}) (*AssetPage, error)
 	SaveAsset(ctx context.Context, asset *Asset) error
@@ -384,7 +385,7 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 	}
 
 	if parentIdUpdated {
-		
+
 		removeParentQuery := `
 			MATCH (child:Asset {id: $childId})-[r:BELONGS_TO]->(parent:Asset)
 			DELETE r
@@ -732,4 +733,47 @@ func (r *Repository) DeleteAsset(ctx context.Context, id string) error {
 
 	log.Debug("Asset deleted successfully from Neo4j", "asset_id", id)
 	return nil
+}
+
+func (r *Repository) GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error) {
+	log := r.logger.WithContext(ctx)
+
+	if len(ids) == 0 {
+		return []Asset{}, nil
+	}
+
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := `
+		MATCH (a:Asset)
+		WHERE a.id IN $ids
+		OPTIONAL MATCH (a)-[:BELONGS_TO]->(parent:Asset)
+		RETURN a, parent
+		ORDER BY a.id
+	`
+
+	result, err := session.Run(query, map[string]interface{}{"ids": ids})
+	if err != nil {
+		log.WithError(err).Error("Failed to get assets by IDs from Neo4j", "asset_ids", ids)
+		return nil, fmt.Errorf("get assets by IDs failed: %w", err)
+	}
+
+	var assets []Asset
+	for result.Next() {
+		asset, err := r.recordToAssetWithParent(result.Record())
+		if err != nil {
+			log.WithError(err).Error("Failed to parse asset record", "asset_ids", ids)
+			return nil, fmt.Errorf("failed to parse asset record: %w", err)
+		}
+		assets = append(assets, *asset)
+	}
+
+	if err := result.Err(); err != nil {
+		log.WithError(err).Error("Error iterating over assets result", "asset_ids", ids)
+		return nil, fmt.Errorf("error iterating over assets result: %w", err)
+	}
+
+	log.Debug("Retrieved assets by IDs", "count", len(assets), "requested_ids", len(ids))
+	return assets, nil
 }

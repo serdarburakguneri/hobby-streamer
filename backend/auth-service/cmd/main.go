@@ -32,9 +32,12 @@ func main() {
 
 	appConfig := appconfig.NewAppConfig(configManager, secretsManager, log)
 
+	router := appConfig.HTTP.Handler
+	router = logger.CompressionMiddleware(router)
+
 	server := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
-		Handler:      appConfig.HTTP.Handler,
+		Handler:      router,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,

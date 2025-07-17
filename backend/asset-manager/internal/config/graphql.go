@@ -38,6 +38,7 @@ func NewGraphQLConfig(assetService *asset.Service, bucketService *bucket.Service
 	gqlHandler.AddTransport(&transport.POST{})
 	gqlHandler.AddTransport(&transport.MultipartForm{})
 	gqlHandler.Use(extension.Introspection{})
+	gqlHandler.Use(extension.FixedComplexityLimit(1000))
 
 	router := mux.NewRouter()
 	router.Handle("/graphql", gqlHandler).Methods("GET", "POST", "OPTIONS")

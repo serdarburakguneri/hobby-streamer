@@ -30,9 +30,16 @@ func NewRedisClientWithConfig(host string, port int, db int, password string) (*
 	}
 
 	opt := &redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		DB:       db,
-		Password: password,
+		Addr:         fmt.Sprintf("%s:%d", host, port),
+		DB:           db,
+		Password:     password,
+		PoolSize:     20,
+		MinIdleConns: 5,
+		MaxRetries:   3,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolTimeout:  4 * time.Second,
 	}
 
 	client := redis.NewClient(opt)
@@ -88,6 +95,10 @@ func (s *Service) SetBucket(ctx context.Context, bucket *model.Bucket) error {
 	ttl := 30 * time.Minute
 	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
 		return errors.NewTransientError("failed to set bucket in cache", err)
+	}
+
+	if err := s.client.client.Set(ctx, "bucket:keys", bucket.Key, ttl).Err(); err != nil {
+		s.client.logger.WithError(err).Warn("Failed to cache bucket key for invalidation")
 	}
 
 	return nil

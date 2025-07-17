@@ -36,6 +36,9 @@ components:
     port: 6379
     db: 0
     password: ""
+    pool_size: 20
+    min_idle_conns: 5
+    max_retries: 3
 
   keycloak:
     url: "https://keycloak:8443"

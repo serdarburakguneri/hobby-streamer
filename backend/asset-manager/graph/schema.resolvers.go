@@ -21,16 +21,17 @@ func (r *bucketResolver) Assets(ctx context.Context, obj *model.Bucket) ([]*mode
 		return []*model.Asset{}, nil
 	}
 
-	var assets []*model.Asset
-	for _, assetID := range obj.AssetIds {
-		asset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get asset %s: %w", assetID, err)
-		}
-		assets = append(assets, mapAssetToGraphQL(asset))
+	assets, err := r.Resolver.AssetService.GetAssetsByIDs(ctx, obj.AssetIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get assets: %w", err)
 	}
 
-	return assets, nil
+	var result []*model.Asset
+	for _, asset := range assets {
+		result = append(result, mapAssetToGraphQL(&asset))
+	}
+
+	return result, nil
 }
 
 // CreateAsset is the resolver for the createAsset field.

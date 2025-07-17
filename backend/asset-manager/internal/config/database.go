@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
@@ -17,7 +19,14 @@ func NewDatabaseConfig(configManager *config.Manager, secretsManager *config.Sec
 	username := dynamicCfg.GetStringFromComponent("neo4j", "username")
 	password := secretsManager.Get("neo4j_password")
 
-	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
+	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""), func(config *neo4j.Config) {
+		config.MaxConnectionPoolSize = 50
+		config.ConnectionAcquisitionTimeout = 30 * time.Second
+		config.MaxConnectionLifetime = 1 * time.Hour
+		config.ConnectionLivenessCheckTimeout = 30 * time.Second
+		config.SocketConnectTimeout = 10 * time.Second
+		config.SocketKeepalive = true
+	})
 	if err != nil {
 		log.WithError(err).Error("Failed to create Neo4j driver")
 		return nil, err

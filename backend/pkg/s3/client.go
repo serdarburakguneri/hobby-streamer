@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,15 @@ func NewClient(ctx context.Context) (*Client, error) {
 		Region:           aws.String(region),
 		Endpoint:         aws.String(awsEndpoint),
 		S3ForcePathStyle: aws.Bool(true),
+		HTTPClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+				TLSHandshakeTimeout: 10 * time.Second,
+			},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AWS session: %w", err)

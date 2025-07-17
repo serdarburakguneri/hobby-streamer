@@ -23,6 +23,7 @@ type AssetService interface {
 	SearchAssets(ctx context.Context, query string, limit int, lastKey map[string]interface{}) (*AssetPage, error)
 	GetAssetByID(ctx context.Context, id string) (*Asset, error)
 	GetAssetBySlug(ctx context.Context, slug string) (*Asset, error)
+	GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error)
 	CreateAsset(ctx context.Context, a *Asset) (*Asset, error)
 	UpdateAsset(ctx context.Context, id string, a *Asset) error
 	PatchAsset(ctx context.Context, id string, patch map[string]interface{}) error
@@ -86,6 +87,10 @@ func (s *Service) GetAssetByID(ctx context.Context, id string) (*Asset, error) {
 
 func (s *Service) GetAssetBySlug(ctx context.Context, slug string) (*Asset, error) {
 	return s.Repo.GetAssetBySlug(ctx, slug)
+}
+
+func (s *Service) GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error) {
+	return s.Repo.GetAssetsByIDs(ctx, ids)
 }
 
 func (s *Service) ListAssets(ctx context.Context, limit int, lastKey map[string]interface{}) (*AssetPage, error) {

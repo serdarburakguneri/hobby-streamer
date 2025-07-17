@@ -25,6 +25,7 @@ func NewHandler(service service.ServiceInterface) *Handler {
 func (h *Handler) SetupRoutes() *mux.Router {
 	router := mux.NewRouter()
 
+	router.Use(logger.CompressionMiddleware)
 	router.Use(h.corsMiddleware)
 	router.Use(h.loggingMiddleware)
 
@@ -73,6 +74,7 @@ func (h *Handler) GetBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "public, max-age=1800")
 	h.writeJSON(w, http.StatusOK, bucket)
 }
 
