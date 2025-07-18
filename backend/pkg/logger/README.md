@@ -1,124 +1,86 @@
-# Structured Logging Package
+# Logger Package
 
-Centralized, structured logging solution for all backend services.
+A structured logging package built on top of Go's `slog` with support for both synchronous and asynchronous logging.
 
 ## Features
 
-- Structured Logging: Uses Go's built-in `log/slog` package for structured, JSON-formatted logs
-- Log Levels: Support for DEBUG, INFO, WARN, ERROR levels
-- Context Awareness: Automatic inclusion of request context, user information, and custom fields
-- Service Identification: Each service gets its own logger with service name
-- HTTP Request Logging: Middleware for automatic HTTP request/response logging
-- Error Context: Enhanced error logging with stack traces and context
+- Structured logging with JSON and text formats
+- Request tracking with unique IDs
+- HTTP request logging middleware
+- Compression middleware
+- **Async logging support** for improved performance
+- Context-aware logging
+- Service and error context
 
 ## Usage
 
-### Basic Setup
+### Basic Usage
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 
-func main() {
-    // Initialize logger with level and format
-    logger.Init(logger.GetLogLevel("info"), "json") // or "text"
-    
-    // Get service-specific logger
-    log := logger.WithService("my-service")
-    
-    log.Info("Service started")
-}
+// Initialize synchronous logger
+logger.Init(slog.LevelInfo, "text")
+
+// Log messages
+logger.Info("Application started")
+logger.Error("Something went wrong", "error", err)
 ```
 
-### Log Levels
+### Async Logging
+
+For high-throughput applications, use async logging to avoid blocking:
 
 ```go
-// Convert string log level to slog.Level
-level := logger.GetLogLevel("debug") // Returns slog.LevelDebug
+// Initialize async logger with buffer size
+logger.InitAsync(slog.LevelInfo, "json", 1000)
 
-// Use in logging
-log.Debug("Debug information", "key", "value")
-log.Info("Information message", "user_id", 123)
-log.Warn("Warning message", "attempt", 3)
-log.Error("Error occurred", "operation", "database_query")
+// Log messages (non-blocking)
+logger.Info("High-volume logging")
+logger.Error("Error occurred", "error", err)
+
+// Clean shutdown
+defer logger.Close()
 ```
 
-### Error Logging
+### Configuration
+
+Enable async logging in your config:
+
+```yaml
+log:
+  level: info
+  format: json
+  async:
+    enabled: true
+    buffer_size: 1000
+```
+
+
+## Middleware
+
+### Request Logging
 
 ```go
-err := someOperation()
-if err != nil {
-    log.WithError(err).Error("Operation failed", "operation", "database_query")
-}
+handler := logger.RequestLoggingMiddleware(logger.Get())(yourHandler)
 ```
 
-### Context-Aware Logging
+### Compression
 
 ```go
-// In HTTP handlers
-func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
-    log := h.logger.WithContext(r.Context())
-    log.Info("Request processed", "user_id", getUserID(r))
-}
+handler := logger.CompressionMiddleware(yourHandler)
 ```
 
-### HTTP Request Logging Middleware
+## Context Support
 
 ```go
-import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
-
-func main() {
-    log := logger.WithService("my-service")
-    
-    // Apply logging middleware
-    handler := logger.RequestLoggingMiddleware(log)(yourHandler)
-    
-    http.ListenAndServe(":8080", handler)
-}
+// Add context to logger
+ctx := context.WithValue(context.Background(), "user_id", "123")
+logger.WithContext(ctx).Info("User action")
 ```
 
-## Environment Variables
+## Service Context
 
-Configure logging behavior using environment variables:
-
-- `LOG_LEVEL`: Set log level (debug, info, warn, error) - default: info
-- `LOG_FORMAT`: Set log format (json, text) - default: text
-
-## Log Output Examples
-
-### Text Format
-```
-time=2024-01-15T10:30:00.000Z level=INFO service=asset-manager msg="Asset created successfully" asset_id=123 title="My Video"
-```
-
-### JSON Format
-```json
-{
-  "time": "2024-01-15T10:30:00.000Z",
-  "level": "INFO",
-  "service": "asset-manager",
-  "msg": "Asset created successfully",
-  "asset_id": 123,
-  "title": "My Video"
-}
-```
-
-### HTTP Request Log
-```
-time=2024-01-15T10:30:00.000Z level=INFO service=asset-manager msg="HTTP request completed" method=POST path=/assets status_code=201 duration_ms=45 user_id=123
-```
-
-## Integration with Services
-
-All backend services have been updated to use this logging system:
-
-- asset-manager: Asset management operations
-- auth-service: Authentication and authorization
-- transcoder: Video processing and transcoding
-
-## Benefits
-
-1. Consistency: All services use the same logging format and levels
-2. Observability: Structured logs make it easier to monitor and debug
-3. Performance: Efficient logging with minimal overhead
-4. Context: Rich context information for better debugging
-5. Standards: Uses Go's official structured logging package 
+```go
+logger.WithService("my-service").Info("Service started")
+``` 

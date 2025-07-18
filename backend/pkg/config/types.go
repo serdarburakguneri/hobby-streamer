@@ -16,6 +16,10 @@ const (
 type LogConfig struct {
 	Level  string `mapstructure:"level" validate:"required,oneof=debug info warn error"`
 	Format string `mapstructure:"format" validate:"required,oneof=text json"`
+	Async  struct {
+		Enabled    bool `mapstructure:"enabled"`
+		BufferSize int  `mapstructure:"buffer_size" validate:"min=1"`
+	} `mapstructure:"async"`
 }
 
 type ServerConfig struct {

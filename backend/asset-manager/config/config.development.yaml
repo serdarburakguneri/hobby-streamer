@@ -4,6 +4,9 @@ service: asset-manager
 log:
   level: debug
   format: text
+  async:
+    enabled: true
+    buffer_size: 1000
 
 server:
   port: "8080"

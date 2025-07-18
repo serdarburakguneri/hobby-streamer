@@ -7,11 +7,23 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
 type Logger struct {
 	*slog.Logger
+	async   bool
+	logChan chan logEntry
+	done    chan struct{}
+	wg      sync.WaitGroup
+}
+
+type logEntry struct {
+	level  slog.Level
+	msg    string
+	args   []any
+	logger *slog.Logger
 }
 
 func New(level slog.Level, format string) *Logger {
@@ -34,6 +46,46 @@ func New(level slog.Level, format string) *Logger {
 
 	return &Logger{
 		Logger: slog.New(handler),
+	}
+}
+
+func NewAsync(level slog.Level, format string, bufferSize int) *Logger {
+	logger := New(level, format)
+	logger.async = true
+	logger.logChan = make(chan logEntry, bufferSize)
+	logger.done = make(chan struct{})
+
+	logger.wg.Add(1)
+	go logger.processLogs()
+
+	return logger
+}
+
+func (l *Logger) processLogs() {
+	defer l.wg.Done()
+	for {
+		select {
+		case entry := <-l.logChan:
+			switch entry.level {
+			case slog.LevelDebug:
+				entry.logger.Debug(entry.msg, entry.args...)
+			case slog.LevelInfo:
+				entry.logger.Info(entry.msg, entry.args...)
+			case slog.LevelWarn:
+				entry.logger.Warn(entry.msg, entry.args...)
+			case slog.LevelError:
+				entry.logger.Error(entry.msg, entry.args...)
+			}
+		case <-l.done:
+			return
+		}
+	}
+}
+
+func (l *Logger) Close() {
+	if l.async {
+		close(l.done)
+		l.wg.Wait()
 	}
 }
 
@@ -139,19 +191,51 @@ func (l *Logger) WithFields(fields map[string]any) *Logger {
 }
 
 func (l *Logger) Info(msg string, args ...any) {
-	l.Logger.Info(msg, args...)
+	if l.async {
+		select {
+		case l.logChan <- logEntry{level: slog.LevelInfo, msg: msg, args: args, logger: l.Logger}:
+		default:
+			l.Logger.Warn("Logger buffer full, dropping log message", "msg", msg)
+		}
+	} else {
+		l.Logger.Info(msg, args...)
+	}
 }
 
 func (l *Logger) Warn(msg string, args ...any) {
-	l.Logger.Warn(msg, args...)
+	if l.async {
+		select {
+		case l.logChan <- logEntry{level: slog.LevelWarn, msg: msg, args: args, logger: l.Logger}:
+		default:
+			l.Logger.Warn("Logger buffer full, dropping log message", "msg", msg)
+		}
+	} else {
+		l.Logger.Warn(msg, args...)
+	}
 }
 
 func (l *Logger) Error(msg string, args ...any) {
-	l.Logger.Error(msg, args...)
+	if l.async {
+		select {
+		case l.logChan <- logEntry{level: slog.LevelError, msg: msg, args: args, logger: l.Logger}:
+		default:
+			l.Logger.Warn("Logger buffer full, dropping log message", "msg", msg)
+		}
+	} else {
+		l.Logger.Error(msg, args...)
+	}
 }
 
 func (l *Logger) Debug(msg string, args ...any) {
-	l.Logger.Debug(msg, args...)
+	if l.async {
+		select {
+		case l.logChan <- logEntry{level: slog.LevelDebug, msg: msg, args: args, logger: l.Logger}:
+		default:
+			l.Logger.Warn("Logger buffer full, dropping log message", "msg", msg)
+		}
+	} else {
+		l.Logger.Debug(msg, args...)
+	}
 }
 
 func (l *Logger) LogRequest(r *http.Request, statusCode int, duration time.Duration) {
@@ -185,11 +269,21 @@ func Init(level slog.Level, format string) {
 	defaultLogger = New(level, format)
 }
 
+func InitAsync(level slog.Level, format string, bufferSize int) {
+	defaultLogger = NewAsync(level, format, bufferSize)
+}
+
 func Get() *Logger {
 	if defaultLogger == nil {
 		Init(slog.LevelInfo, "text")
 	}
 	return defaultLogger
+}
+
+func Close() {
+	if defaultLogger != nil {
+		defaultLogger.Close()
+	}
 }
 
 func Info(msg string, args ...any) {

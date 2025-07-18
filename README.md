@@ -36,6 +36,40 @@ For a closer look at the media pipeline, see the [Upload & Transcode Sequence Di
 ### Frontend
 - React Native – Streaming and CMS frontend (Web support enabled)
 
+## Features
+
+### Asynchronous Processing & Resilience
+- **Event-driven architecture** with SQS for reliable message processing
+- **Circuit breakers** and retry mechanisms for external service calls
+- **Graceful degradation** with fallback strategies
+- **Dead letter queues** for failed message handling
+- **Distributed tracing** through structured logging
+
+### Observability & Monitoring
+- **Structured logging** with correlation IDs across all services
+- **Centralized log aggregation** with Fluentd → Elasticsearch → Kibana
+- **Health checks** and readiness probes for all services
+- **Error tracking** with detailed context and stack traces
+
+### Security & Access Control
+- **OAuth2/JWT authentication** with Keycloak integration
+- **Role-based access control** (RBAC) with fine-grained permissions
+- **Rate limiting** and DDoS protection
+- **Input validation** and sanitization
+- **Secure file uploads** with presigned URLs
+- **CORS protection** and security headers
+
+### Scalability & Performance
+- **Horizontal scaling** ready with stateless service design
+- **Redis caching** for frequently accessed data
+- **Efficient video transcoding** with parallel processing
+
+### Developer Experience
+- **Local development** with full AWS emulation
+- **Hot reloading** for rapid iteration
+- **Code quality checks** with linting, formatting, and security scanning
+
+
 ## Code Organization
 
 ### Core Backend Services
@@ -132,17 +166,3 @@ make generate
 # Build all services
 make build
 ```
-
-### Available Makefile Targets
-- `make help` - Show available targets
-- `make install-tools` - Install development tools
-- `make lint` - Run golangci-lint on all Go files
-- `make test` - Run tests for all packages
-- `make build` - Build all services
-- `make clean` - Clean build artifacts
-- `make generate` - Generate code (GraphQL, etc.)
-- `make generate-graphql` - Generate GraphQL code only
-- `make generate-mocks` - Generate mock files for testing
-- `make fmt` - Format code
-- `make vet` - Run go vet
-- `make security` - Run security checks with gosec

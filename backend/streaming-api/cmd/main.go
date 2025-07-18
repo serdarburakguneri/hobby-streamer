@@ -26,7 +26,11 @@ func main() {
 
 	cfg := configManager.GetConfig()
 
-	logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
+	if cfg.Log.Async.Enabled {
+		logger.InitAsync(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format, cfg.Log.Async.BufferSize)
+	} else {
+		logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
+	}
 	log := logger.WithService(cfg.Service)
 	log.Info("Starting streaming-api service", "environment", cfg.Environment)
 
@@ -36,6 +40,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer appConfig.Close()
+	defer logger.Close()
 
 	handler := appConfig.Security.Middleware(appConfig.HTTP.Handler)
 
