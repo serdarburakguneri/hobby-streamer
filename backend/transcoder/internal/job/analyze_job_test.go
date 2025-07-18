@@ -158,27 +158,27 @@ func TestAnalyzeRunner_NewAnalyzeRunner(t *testing.T) {
 		t.Error("NewAnalyzeRunner() expected s3Client to be set")
 	}
 
-	if runner.analyzeProducer != nil {
-		t.Error("NewAnalyzeRunner() expected analyzeProducer to be nil")
+	if runner.completionProducer != nil {
+		t.Error("NewAnalyzeRunner() expected completionProducer to be nil")
 	}
 }
 
-func TestAnalyzeRunner_NewAnalyzeRunnerWithAnalyzeProducer(t *testing.T) {
-	runner := NewAnalyzeRunnerWithAnalyzeProducer(nil)
+func TestAnalyzeRunner_NewAnalyzeRunnerWithCompletionProducer(t *testing.T) {
+	runner := NewAnalyzeRunnerWithCompletionProducer(nil)
 
 	if runner == nil {
-		t.Error("NewAnalyzeRunnerWithAnalyzeProducer() expected runner but got nil")
+		t.Error("NewAnalyzeRunnerWithCompletionProducer() expected runner but got nil")
 	}
 
 	if runner.logger == nil {
-		t.Error("NewAnalyzeRunnerWithAnalyzeProducer() expected logger to be set")
+		t.Error("NewAnalyzeRunnerWithCompletionProducer() expected logger to be set")
 	}
 
 	if runner.s3Client == nil {
-		t.Error("NewAnalyzeRunnerWithAnalyzeProducer() expected s3Client to be set")
+		t.Error("NewAnalyzeRunnerWithCompletionProducer() expected s3Client to be set")
 	}
 
-	if runner.analyzeProducer != nil {
-		t.Error("NewAnalyzeRunnerWithAnalyzeProducer() expected analyzeProducer to be nil when passed nil")
+	if runner.completionProducer != nil {
+		t.Error("NewAnalyzeRunnerWithCompletionProducer() expected completionProducer to be nil when passed nil")
 	}
 }

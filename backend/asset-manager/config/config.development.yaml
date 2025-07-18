@@ -61,10 +61,10 @@ components:
     force_path_style: true
 
   sqs:
-    transcoder_queue_url: "http://localstack:4566/000000000000/transcoder-jobs"
-    analyze_queue_url: "http://localstack:4566/000000000000/analyze-completed"
-    hls_queue_url: "http://localstack:4566/000000000000/hls-completed"
-    dash_queue_url: "http://localstack:4566/000000000000/dash-completed"
+    analyze_jobs_queue_url: "http://localstack:4566/000000000000/analyze-jobs"
+    analyze_completed_queue_url: "http://localstack:4566/000000000000/analyze-completed"
+    hls_completed_queue_url: "http://localstack:4566/000000000000/hls-completed"
+    dash_completed_queue_url: "http://localstack:4566/000000000000/dash-completed"
 
   s3:
     raw_storage_bucket: "raw-storage"

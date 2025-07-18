@@ -15,9 +15,9 @@ import (
 )
 
 type AnalyzeRunner struct {
-	logger          *logger.Logger
-	analyzeProducer *sqs.Producer
-	s3Client        *s3.Client
+	logger             *logger.Logger
+	completionProducer *sqs.Producer
+	s3Client           *s3.Client
 }
 
 func NewAnalyzeRunner() *AnalyzeRunner {
@@ -28,12 +28,12 @@ func NewAnalyzeRunner() *AnalyzeRunner {
 	}
 }
 
-func NewAnalyzeRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *AnalyzeRunner {
+func NewAnalyzeRunnerWithCompletionProducer(completionProducer *sqs.Producer) *AnalyzeRunner {
 	s3Client, _ := s3.NewClient(context.Background())
 	return &AnalyzeRunner{
-		logger:          logger.WithService("analyze-runner"),
-		analyzeProducer: analyzeProducer,
-		s3Client:        s3Client,
+		logger:             logger.WithService("analyze-runner"),
+		completionProducer: completionProducer,
+		s3Client:           s3Client,
 	}
 }
 
@@ -48,7 +48,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	var p messages.AnalyzePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal analyze payload")
-		if a.analyzeProducer != nil {
+		if a.completionProducer != nil {
 			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "invalid payload format")
 		}
 		return apperrors.NewValidationError("invalid payload format", err)
@@ -78,7 +78,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		localPath, err = a.s3Client.Download(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if a.analyzeProducer != nil {
+			if a.completionProducer != nil {
 				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "failed to download input file")
 			}
 			return apperrors.NewExternalError("failed to download input file from S3", err)
@@ -88,7 +88,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 		localPath = p.Input
 		if _, err := os.Stat(localPath); os.IsNotExist(err) {
 			log.Error("Input file does not exist", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if a.analyzeProducer != nil {
+			if a.completionProducer != nil {
 				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "input file not found")
 			}
 			return apperrors.NewNotFoundError("input file not found", err)
@@ -100,7 +100,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
-		if a.analyzeProducer != nil {
+		if a.completionProducer != nil {
 			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "ffmpeg analysis failed")
 		}
 		return apperrors.NewInternalError("ffmpeg analysis failed", err)
@@ -109,7 +109,7 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	log.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out))
 	log.Debug("FFmpeg analysis output", "output", string(out))
 
-	if a.analyzeProducer != nil {
+	if a.completionProducer != nil {
 		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, true, "")
 	}
 
@@ -129,7 +129,7 @@ func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, video
 		payload.Error = errorMessage
 	}
 
-	err := a.analyzeProducer.SendMessage(ctx, messages.MessageTypeAnalyzeCompleted, payload)
+	err := a.completionProducer.SendMessage(ctx, messages.MessageTypeAnalyzeCompleted, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send analyze completed message", "asset_id", assetID, "video_id", videoID, "success", success)
 	} else {

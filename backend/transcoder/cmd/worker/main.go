@@ -36,7 +36,7 @@ func main() {
 	}
 
 	log.Info("Starting SQS consumer")
-	if err := appConfig.SQS.ConsumerRegistry.Start(ctx); err != nil {
+	if err := appConfig.SQS.Consumer.ConsumerRegistry.Start(ctx); err != nil {
 		log.WithError(err).Error("Failed to start consumer registry")
 		os.Exit(1)
 	}
@@ -46,6 +46,6 @@ func main() {
 	<-quit
 
 	log.Info("Shutting down transcoder worker...")
-	appConfig.SQS.ConsumerRegistry.Stop()
+	appConfig.SQS.Consumer.ConsumerRegistry.Stop()
 	log.Info("Transcoder worker stopped")
 }

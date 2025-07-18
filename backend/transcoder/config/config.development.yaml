@@ -32,8 +32,12 @@ cache:
 
 components:
   sqs:
-    transcoder_queue_url: "http://localstack:4566/000000000000/transcoder-jobs"
-    analyze_queue_url: "http://localstack:4566/000000000000/analyze-completed"
+    hls_queue_url: "http://localstack:4566/000000000000/hls-jobs"
+    dash_queue_url: "http://localstack:4566/000000000000/dash-jobs"
+    analyze_queue_url: "http://localstack:4566/000000000000/analyze-jobs"
+    analyze_completed_queue_url: "http://localstack:4566/000000000000/analyze-completed"
+    hls_completed_queue_url: "http://localstack:4566/000000000000/hls-completed"
+    dash_completed_queue_url: "http://localstack:4566/000000000000/dash-completed"
     region: "us-east-1"
     endpoint: "http://localstack:4566"
     force_path_style: true 

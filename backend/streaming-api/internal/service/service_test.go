@@ -131,6 +131,7 @@ func createTestService() *Service {
 		assetManagerURL: "http://localhost:8080",
 		serviceClient:   &mockServiceClient{},
 		circuitBreaker:  circuitBreaker,
+		graphQLClient:   NewGraphQLClient(&mockServiceClient{}),
 	}
 }
 

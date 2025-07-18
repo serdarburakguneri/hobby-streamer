@@ -4,8 +4,8 @@ Lambda function that triggers video transcoding by sending messages to an SQS qu
 
 ## Features
 
-- Accepts requests with `assetId`, `videoType`, and `format`
-- Sends structured SQS messages to the transcoder job queue
+- Accepts requests with `assetId`, `videoId`, and `format`
+- Sends structured SQS messages to separate HLS and DASH job queues
 - Supports HLS and DASH job types
 - Returns success or error response
 
@@ -16,8 +16,10 @@ Lambda function that triggers video transcoding by sending messages to an SQS qu
 ```json
 {
   "assetId": "asset-123",
-  "videoType": "main",
-  "format": "hls"
+  "videoId": "video-456",
+  "format": "hls",
+  "input": "s3://bucket/path/to/video.mp4",
+  "sourceFileName": "video.mp4"
 }
 ```
 
@@ -38,7 +40,8 @@ Lambda function that triggers video transcoding by sending messages to an SQS qu
 
 | Variable              | Description                            | Default         |
 |-----------------------|----------------------------------------|-----------------|
-| `TRANSCODER_QUEUE_URL`| SQS queue URL for transcoding jobs     | (required)      |
+| `HLS_QUEUE_URL`       | SQS queue URL for HLS transcoding jobs | `http://localhost:4566/000000000000/hls-jobs` |
+| `DASH_QUEUE_URL`      | SQS queue URL for DASH transcoding jobs| `http://localhost:4566/000000000000/dash-jobs` |
 | `AWS_REGION`          | AWS region                             | `us-east-1`     |
 | `AWS_ENDPOINT`        | Custom AWS endpoint (e.g. LocalStack)  | (optional)      |
 

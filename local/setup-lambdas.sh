@@ -49,7 +49,7 @@ else
     --handler main \
     --zip-file fileb://function.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={TRANSCODER_QUEUE_URL=$TRANSCODER_QUEUE_URL,AWS_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
+    --environment "Variables={HLS_QUEUE_URL=$HLS_QUEUE_URL,DASH_QUEUE_URL=$DASH_QUEUE_URL,AWS_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
     --region $AWS_REGION > /dev/null
 fi
 

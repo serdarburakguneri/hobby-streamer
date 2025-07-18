@@ -16,12 +16,12 @@ import (
 )
 
 type TranscodeDASHRunner struct {
-	logger          *logger.Logger
-	analyzeProducer *sqs.Producer
-	outputBucket    string
-	outputKey       string
-	outputFileName  string
-	s3Client        *s3.Client
+	logger             *logger.Logger
+	completionProducer *sqs.Producer
+	outputBucket       string
+	outputKey          string
+	outputFileName     string
+	s3Client           *s3.Client
 }
 
 func NewTranscodeDASHRunner() *TranscodeDASHRunner {
@@ -32,12 +32,12 @@ func NewTranscodeDASHRunner() *TranscodeDASHRunner {
 	}
 }
 
-func NewTranscodeDASHRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *TranscodeDASHRunner {
+func NewTranscodeDASHRunnerWithCompletionProducer(completionProducer *sqs.Producer) *TranscodeDASHRunner {
 	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeDASHRunner{
-		logger:          logger.WithService("dash-runner"),
-		analyzeProducer: analyzeProducer,
-		s3Client:        s3Client,
+		logger:             logger.WithService("dash-runner"),
+		completionProducer: completionProducer,
+		s3Client:           s3Client,
 	}
 }
 
@@ -52,34 +52,54 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	var p messages.TranscodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal DASH payload")
-		if d.analyzeProducer != nil {
-			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "invalid payload format")
-		}
 		return apperrors.NewValidationError("invalid payload format", err)
+	}
+
+	if p.Format != "dash" {
+		log.Error("Invalid format for DASH transcode job", "format", p.Format)
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "invalid format for DASH transcode job")
+		}
+		return apperrors.NewValidationError("format must be 'dash' for DASH transcode job", nil)
 	}
 
 	if p.AssetID == "" {
 		log.Error("Missing assetId in DASH transcode payload")
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing assetId in payload")
+		}
 		return apperrors.NewValidationError("assetId is required", nil)
 	}
 
 	if p.VideoID == "" {
 		log.Error("Missing videoId in DASH transcode payload")
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing videoId in payload")
+		}
 		return apperrors.NewValidationError("videoId is required", nil)
 	}
 
 	if p.Input == "" {
 		log.Error("Missing input in DASH transcode payload")
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing input in payload")
+		}
 		return apperrors.NewValidationError("input is required", nil)
 	}
 
 	if p.OutputBucket == "" {
 		log.Error("Missing outputBucket in DASH transcode payload")
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputBucket in payload")
+		}
 		return apperrors.NewValidationError("outputBucket is required", nil)
 	}
 
 	if p.OutputFileName == "" {
 		log.Error("Missing outputFileName in DASH transcode payload")
+		if d.completionProducer != nil {
+			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputFileName in payload")
+		}
 		return apperrors.NewValidationError("outputFileName is required", nil)
 	}
 
@@ -97,7 +117,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		localInputPath, err = d.s3Client.Download(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if d.analyzeProducer != nil {
+			if d.completionProducer != nil {
 				d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to download input file")
 			}
 			return apperrors.NewExternalError("failed to download input file from S3", err)
@@ -107,7 +127,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 		localInputPath = p.Input
 		if _, err := os.Stat(localInputPath); os.IsNotExist(err) {
 			log.Error("Input file does not exist", "input", localInputPath, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if d.analyzeProducer != nil {
+			if d.completionProducer != nil {
 				d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "input file not found")
 			}
 			return apperrors.NewNotFoundError("input file not found", err)
@@ -118,7 +138,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	dashDir := filepath.Join(tempDir, "dash_output")
 	if err := os.MkdirAll(dashDir, 0750); err != nil {
 		log.WithError(err).Error("Failed to create DASH output directory", "dir", dashDir, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if d.analyzeProducer != nil {
+		if d.completionProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to create output directory")
 		}
 		return apperrors.NewInternalError("failed to create output directory", err)
@@ -134,7 +154,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg DASH transcoding failed", "input", localInputPath, "output", localOutputPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
-		if d.analyzeProducer != nil {
+		if d.completionProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "ffmpeg transcoding failed")
 		}
 		return apperrors.NewInternalError("ffmpeg transcoding failed", err)
@@ -146,7 +166,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 	entries, err := os.ReadDir(dashDir)
 	if err != nil {
 		log.WithError(err).Error("Failed to read DASH output directory", "dir", dashDir, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if d.analyzeProducer != nil {
+		if d.completionProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to read output directory")
 		}
 		return apperrors.NewInternalError("failed to read output directory", err)
@@ -164,7 +184,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 			if upErr := d.s3Client.Upload(ctx, localPath, d.outputBucket, s3Key); upErr != nil {
 				log.WithError(upErr).Error("Failed to upload file to S3", "bucket", d.outputBucket, "key", s3Key, "asset_id", p.AssetID, "video_id", p.VideoID)
 				uploadErrors++
-				if d.analyzeProducer != nil {
+				if d.completionProducer != nil {
 					d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to upload transcoded files")
 				}
 				return apperrors.NewExternalError("failed to upload transcoded files to S3", upErr)
@@ -174,13 +194,13 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 
 	if uploadErrors > 0 {
 		log.Error("Some files failed to upload", "upload_errors", uploadErrors, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if d.analyzeProducer != nil {
+		if d.completionProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "partial upload failure")
 		}
 		return apperrors.NewExternalError("partial upload failure", nil)
 	}
 
-	if d.analyzeProducer != nil {
+	if d.completionProducer != nil {
 		d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
 	}
 
@@ -209,18 +229,13 @@ func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetI
 		payload.Error = errorMessage
 	}
 
-	var messageType string
-	switch format {
-	case "hls":
-		messageType = messages.MessageTypeTranscodeHLSCompleted
-	case "dash":
-		messageType = messages.MessageTypeTranscodeDASHCompleted
-	default:
-		log.Error("Unknown format for transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
+	if format != "dash" {
+		log.Error("Invalid format for DASH transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
 		return
 	}
+	messageType := messages.MessageTypeTranscodeDASHCompleted
 
-	err := d.analyzeProducer.SendMessage(ctx, messageType, payload)
+	err := d.completionProducer.SendMessage(ctx, messageType, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send transcode completed message", "asset_id", assetID, "video_id", videoID, "format", format, "success", success)
 	} else {

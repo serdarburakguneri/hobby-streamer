@@ -33,15 +33,13 @@ func NewAppConfig(ctx context.Context, configManager *config.Manager, secretsMan
 	loggingConfig := NewLoggingConfig(log)
 
 	dynamicCfg := configManager.GetDynamicConfig()
-	servicesConfig := NewServicesConfig(databaseConfig.Driver, nil, dynamicCfg)
+	servicesConfig := NewServicesConfig(databaseConfig.Driver, dynamicCfg)
 
 	sqsConfig, err := NewSQSConfig(ctx, configManager, servicesConfig.AssetService, log)
 	if err != nil {
 		databaseConfig.Close()
 		return nil, err
 	}
-
-	servicesConfig = NewServicesConfig(databaseConfig.Driver, sqsConfig.Producer, dynamicCfg)
 
 	graphQLConfig := NewGraphQLConfig(servicesConfig.AssetService, servicesConfig.BucketService)
 

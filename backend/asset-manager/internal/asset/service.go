@@ -41,9 +41,8 @@ type AssetService interface {
 }
 
 type Service struct {
-	Repo        AssetRepository
-	SQSProducer *sqs.Producer
-	Config      *config.DynamicConfig
+	Repo   AssetRepository
+	Config *config.DynamicConfig
 }
 
 var _ AssetService = (*Service)(nil)
@@ -293,10 +292,6 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
-	if asset.Videos == nil {
-		asset.Videos = make([]Video, 0)
-	}
-
 	if video.ID == "" {
 		video.ID = generateID()
 	}
@@ -314,7 +309,7 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 		return err
 	}
 
-	if s.SQSProducer != nil && video.Format == VideoFormatRaw {
+	if video.Format == VideoFormatRaw {
 		s.sendAnalyzeJob(ctx, asset.ID, video.ID, video.StorageLocation)
 	}
 	return nil
@@ -330,7 +325,19 @@ func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID st
 		VideoID: videoID,
 	}
 
-	err := s.SQSProducer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
+	analyzeJobsQueueURL := s.Config.GetStringFromComponent("sqs", "analyze_jobs_queue_url")
+	if analyzeJobsQueueURL == "" {
+		log.Error("Analyze jobs queue URL not configured", "asset_id", assetID, "video_id", videoID)
+		return
+	}
+
+	producer, err := sqs.NewProducer(ctx, analyzeJobsQueueURL)
+	if err != nil {
+		log.WithError(err).Error("Failed to create analyze SQS producer", "asset_id", assetID, "video_id", videoID)
+		return
+	}
+
+	err = producer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send analyze job", "asset_id", assetID, "video_id", videoID, "input", input)
 	} else {
@@ -366,10 +373,6 @@ func (s *Service) GetParent(ctx context.Context, childID string) (*Asset, error)
 func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre string) ([]Asset, error) {
 	return s.Repo.GetAssetsByTypeAndGenre(ctx, assetType, genre)
 }
-
-// --- Helper Functions ---
-
-// --- AssetService Methods ---
 
 func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
 	log := logger.Get().WithService("asset-service")
@@ -586,8 +589,7 @@ func NewService(repo AssetRepository, cfg *config.DynamicConfig) *Service {
 
 func NewServiceWithSQS(repo AssetRepository, sqsProducer *sqs.Producer, cfg *config.DynamicConfig) *Service {
 	return &Service{
-		Repo:        repo,
-		SQSProducer: sqsProducer,
-		Config:      cfg,
+		Repo:   repo,
+		Config: cfg,
 	}
 }

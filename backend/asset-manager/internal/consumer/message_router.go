@@ -25,6 +25,24 @@ func NewMessageRouter(assetService asset.AssetService) *MessageRouter {
 	}
 }
 
+func (r *MessageRouter) HandleAnalyzeMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
+	log := r.logger.WithContext(ctx)
+	log.Info("Handling analyze message", "message_type", msgType)
+	return r.analyzeConsumer.HandleMessage(ctx, msgType, payload)
+}
+
+func (r *MessageRouter) HandleHLSMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
+	log := r.logger.WithContext(ctx)
+	log.Info("Handling HLS message", "message_type", msgType)
+	return r.hlsConsumer.HandleMessage(ctx, msgType, payload)
+}
+
+func (r *MessageRouter) HandleDASHMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
+	log := r.logger.WithContext(ctx)
+	log.Info("Handling DASH message", "message_type", msgType)
+	return r.dashConsumer.HandleMessage(ctx, msgType, payload)
+}
+
 func (r *MessageRouter) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
 	log := r.logger.WithContext(ctx)
 

@@ -11,25 +11,23 @@ import (
 )
 
 type SQSConfig struct {
-	Producer         *sqs.Producer
 	ConsumerRegistry *sqs.ConsumerRegistry
 }
 
 func NewSQSConfig(ctx context.Context, configManager *config.Manager, assetService *asset.Service, log *logger.Logger) (*SQSConfig, error) {
 	dynamicCfg := configManager.GetDynamicConfig()
 
-	transcoderQueueURL := dynamicCfg.GetStringFromComponent("sqs", "transcoder_queue_url")
-	sqsProducer, err := sqs.NewProducer(ctx, transcoderQueueURL)
-	if err != nil {
-		log.WithError(err).Error("Failed to create SQS producer")
-		return nil, err
-	}
+	analyzeCompletedQueueURL := dynamicCfg.GetStringFromComponent("sqs", "analyze_completed_queue_url")
+	hlsCompletedQueueURL := dynamicCfg.GetStringFromComponent("sqs", "hls_completed_queue_url")
+	dashCompletedQueueURL := dynamicCfg.GetStringFromComponent("sqs", "dash_completed_queue_url")
 
-	analyzeQueueURL := dynamicCfg.GetStringFromComponent("sqs", "analyze_queue_url")
 	consumerRegistry := sqs.NewConsumerRegistry()
 
 	messageRouter := consumer.NewMessageRouter(assetService)
-	consumerRegistry.Register(analyzeQueueURL, messageRouter.HandleMessage)
+
+	consumerRegistry.Register(analyzeCompletedQueueURL, messageRouter.HandleAnalyzeMessage)
+	consumerRegistry.Register(hlsCompletedQueueURL, messageRouter.HandleHLSMessage)
+	consumerRegistry.Register(dashCompletedQueueURL, messageRouter.HandleDASHMessage)
 
 	go func() {
 		if err := consumerRegistry.Start(ctx); err != nil {
@@ -37,10 +35,13 @@ func NewSQSConfig(ctx context.Context, configManager *config.Manager, assetServi
 		}
 	}()
 
-	log.Info("Message router initialized", "queue_url", analyzeQueueURL, "supported_messages", []string{"analyze-completed", "transcode-hls-completed", "transcode-dash-completed"})
+	log.Info("Message router initialized",
+		"analyze_completed_queue_url", analyzeCompletedQueueURL,
+		"hls_completed_queue_url", hlsCompletedQueueURL,
+		"dash_completed_queue_url", dashCompletedQueueURL,
+		"supported_messages", []string{"analyze-completed", "transcode-hls-completed", "transcode-dash-completed"})
 
 	return &SQSConfig{
-		Producer:         sqsProducer,
 		ConsumerRegistry: consumerRegistry,
 	}, nil
 }

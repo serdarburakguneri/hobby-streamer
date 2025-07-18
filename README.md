@@ -36,39 +36,6 @@ For a closer look at the media pipeline, see the [Upload & Transcode Sequence Di
 ### Frontend
 - React Native – Streaming and CMS frontend (Web support enabled)
 
-## Features
-
-### Asynchronous Processing & Resilience
-- **Event-driven architecture** with SQS for reliable message processing
-- **Circuit breakers** and retry mechanisms for external service calls
-- **Graceful degradation** with fallback strategies
-- **Dead letter queues** for failed message handling
-- **Distributed tracing** through structured logging
-
-### Observability & Monitoring
-- **Structured logging** with correlation IDs across all services
-- **Centralized log aggregation** with Fluentd → Elasticsearch → Kibana
-- **Health checks** and readiness probes for all services
-- **Error tracking** with detailed context and stack traces
-
-### Security & Access Control
-- **OAuth2/JWT authentication** with Keycloak integration
-- **Role-based access control** (RBAC) with fine-grained permissions
-- **Rate limiting** and DDoS protection
-- **Input validation** and sanitization
-- **Secure file uploads** with presigned URLs
-- **CORS protection** and security headers
-
-### Scalability & Performance
-- **Horizontal scaling** ready with stateless service design
-- **Redis caching** for frequently accessed data
-- **Efficient video transcoding** with parallel processing
-
-### Developer Experience
-- **Local development** with full AWS emulation
-- **Hot reloading** for rapid iteration
-- **Code quality checks** with linting, formatting, and security scanning
-
 
 ## Code Organization
 
@@ -108,9 +75,38 @@ See [Shared Libraries Documentation](backend/pkg/README.md) for details.
 
 See [Logging Setup](local/LOGGING.md) for details on how Fluentd, Elasticsearch, and Kibana are integrated into the stack.
 
-### Security
+## Features
 
-See [Security Implementation](docs/SECURITY.md) for comprehensive details on rate limiting, CORS protection, input validation, and security headers implemented across all services.
+### Asynchronous Processing & Resilience
+- **Event-driven architecture** with SQS for reliable message processing
+- **Circuit breakers** and retry mechanisms for external service calls
+- **Graceful degradation** with fallback strategies
+- **Dead letter queues** for failed message handling
+- **Distributed tracing** through structured logging
+
+### Observability & Monitoring
+- **Structured logging** with correlation IDs across all services
+- **Centralized log aggregation** with Fluentd → Elasticsearch → Kibana
+- **Health checks** and readiness probes for all services
+- **Error tracking** with detailed context and stack traces
+
+### Security & Access Control
+- **OAuth2/JWT authentication** with Keycloak integration
+- **Role-based access control** (RBAC) with fine-grained permissions
+- **Rate limiting** and DDoS protection
+- **Input validation** and sanitization
+- **Secure file uploads** with presigned URLs
+- **CORS protection** and security headers
+
+### Scalability & Performance
+- **Horizontal scaling** ready with stateless service design
+- **Redis caching** for frequently accessed data
+- **Efficient video transcoding** with parallel processing
+
+### Developer Experience
+- **Local development** with full AWS emulation
+- **Hot reloading** for rapid iteration
+- **Code quality checks** with linting, formatting, and security scanning
 
 ## Getting Started
 

@@ -128,9 +128,28 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		})
 	}
 
-	queueURL := os.Getenv("TRANSCODER_QUEUE_URL")
+	var queueURL string
+	switch req.Format {
+	case "hls":
+		queueURL = os.Getenv("HLS_QUEUE_URL")
+		if queueURL == "" {
+			queueURL = "http://localhost:4566/000000000000/hls-jobs"
+		}
+	case "dash":
+		queueURL = os.Getenv("DASH_QUEUE_URL")
+		if queueURL == "" {
+			queueURL = "http://localhost:4566/000000000000/dash-jobs"
+		}
+	default:
+		log.Error("Invalid format for queue selection", "format", req.Format)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Invalid format",
+			Type:    "validation",
+		})
+	}
+
 	if queueURL == "" {
-		log.Error("Missing TRANSCODER_QUEUE_URL env variable")
+		log.Error("Missing queue URL for format", "format", req.Format)
 		return respondJSON(http.StatusInternalServerError, ErrorResponse{
 			Message: "Server configuration error: missing queue URL",
 			Type:    "internal",

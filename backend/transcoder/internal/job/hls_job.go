@@ -16,12 +16,12 @@ import (
 )
 
 type TranscodeHLSRunner struct {
-	logger          *logger.Logger
-	analyzeProducer *sqs.Producer
-	outputBucket    string
-	outputKey       string
-	outputFileName  string
-	s3Client        *s3.Client
+	logger             *logger.Logger
+	completionProducer *sqs.Producer
+	outputBucket       string
+	outputKey          string
+	outputFileName     string
+	s3Client           *s3.Client
 }
 
 func NewTranscodeHLSRunner() *TranscodeHLSRunner {
@@ -32,12 +32,12 @@ func NewTranscodeHLSRunner() *TranscodeHLSRunner {
 	}
 }
 
-func NewTranscodeHLSRunnerWithAnalyzeProducer(analyzeProducer *sqs.Producer) *TranscodeHLSRunner {
+func NewTranscodeHLSRunnerWithCompletionProducer(completionProducer *sqs.Producer) *TranscodeHLSRunner {
 	s3Client, _ := s3.NewClient(context.Background())
 	return &TranscodeHLSRunner{
-		logger:          logger.WithService("hls-runner"),
-		analyzeProducer: analyzeProducer,
-		s3Client:        s3Client,
+		logger:             logger.WithService("hls-runner"),
+		completionProducer: completionProducer,
+		s3Client:           s3Client,
 	}
 }
 
@@ -52,10 +52,55 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 	var p messages.TranscodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal HLS payload")
-		if h.analyzeProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "invalid payload format")
-		}
 		return apperrors.NewValidationError("invalid payload format", err)
+	}
+
+	if p.Format != "hls" {
+		log.Error("Invalid format for HLS transcode job", "format", p.Format)
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "invalid format for HLS transcode job")
+		}
+		return apperrors.NewValidationError("format must be 'hls' for HLS transcode job", nil)
+	}
+
+	if p.AssetID == "" {
+		log.Error("Missing assetId in HLS transcode payload")
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing assetId in payload")
+		}
+		return apperrors.NewValidationError("assetId is required", nil)
+	}
+
+	if p.VideoID == "" {
+		log.Error("Missing videoId in HLS transcode payload")
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing videoId in payload")
+		}
+		return apperrors.NewValidationError("videoId is required", nil)
+	}
+
+	if p.Input == "" {
+		log.Error("Missing input in HLS transcode payload")
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing input in payload")
+		}
+		return apperrors.NewValidationError("input is required", nil)
+	}
+
+	if p.OutputBucket == "" {
+		log.Error("Missing outputBucket in HLS transcode payload")
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputBucket in payload")
+		}
+		return apperrors.NewValidationError("outputBucket is required", nil)
+	}
+
+	if p.OutputFileName == "" {
+		log.Error("Missing outputFileName in HLS transcode payload")
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputFileName in payload")
+		}
+		return apperrors.NewValidationError("outputFileName is required", nil)
 	}
 
 	h.outputBucket = p.OutputBucket
@@ -85,7 +130,7 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 		return err
 	}
 
-	if h.analyzeProducer != nil {
+	if h.completionProducer != nil {
 		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
 	}
 
@@ -108,7 +153,7 @@ func (h *TranscodeHLSRunner) downloadInput(ctx context.Context, p messages.Trans
 		localInputPath, err := h.s3Client.Download(ctx, p.Input)
 		if err != nil {
 			log.WithError(err).Error("Failed to download input from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if h.analyzeProducer != nil {
+			if h.completionProducer != nil {
 				h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to download input file")
 			}
 			return "", apperrors.NewExternalError("failed to download input file from S3", err)
@@ -119,7 +164,7 @@ func (h *TranscodeHLSRunner) downloadInput(ctx context.Context, p messages.Trans
 	localInputPath := p.Input
 	if _, err := os.Stat(localInputPath); os.IsNotExist(err) {
 		log.Error("Input file does not exist", "input", localInputPath, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if h.analyzeProducer != nil {
+		if h.completionProducer != nil {
 			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "input file not found")
 		}
 		return "", apperrors.NewNotFoundError("input file not found", err)
@@ -160,7 +205,7 @@ func (h *TranscodeHLSRunner) runTranscoding(ctx context.Context, localInputPath,
 
 	if err != nil {
 		log.WithError(err).Error("FFmpeg HLS transcoding failed", "input", localInputPath, "output", localOutputPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
-		if h.analyzeProducer != nil {
+		if h.completionProducer != nil {
 			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "ffmpeg transcoding failed")
 		}
 		return "", apperrors.NewInternalError("ffmpeg transcoding failed", err)
@@ -178,7 +223,7 @@ func (h *TranscodeHLSRunner) uploadOutput(ctx context.Context, hlsDir string, p 
 	entries, err := os.ReadDir(hlsDir)
 	if err != nil {
 		log.WithError(err).Error("Failed to read HLS output directory", "dir", hlsDir, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if h.analyzeProducer != nil {
+		if h.completionProducer != nil {
 			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to read output directory")
 		}
 		return apperrors.NewInternalError("failed to read output directory", err)
@@ -196,7 +241,7 @@ func (h *TranscodeHLSRunner) uploadOutput(ctx context.Context, hlsDir string, p 
 			if upErr := h.s3Client.Upload(ctx, localPath, h.outputBucket, s3Key); upErr != nil {
 				log.WithError(upErr).Error("Failed to upload file to S3", "bucket", h.outputBucket, "key", s3Key, "asset_id", p.AssetID, "video_id", p.VideoID)
 				uploadErrors++
-				if h.analyzeProducer != nil {
+				if h.completionProducer != nil {
 					h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to upload transcoded files")
 				}
 				return apperrors.NewExternalError("failed to upload transcoded files to S3", upErr)
@@ -206,7 +251,7 @@ func (h *TranscodeHLSRunner) uploadOutput(ctx context.Context, hlsDir string, p 
 
 	if uploadErrors > 0 {
 		log.Error("Some files failed to upload", "upload_errors", uploadErrors, "asset_id", p.AssetID, "video_id", p.VideoID)
-		if h.analyzeProducer != nil {
+		if h.completionProducer != nil {
 			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "partial upload failure")
 		}
 		return apperrors.NewExternalError("partial upload failure", nil)
@@ -236,18 +281,13 @@ func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID
 		payload.Error = errorMessage
 	}
 
-	var messageType string
-	switch format {
-	case "hls":
-		messageType = messages.MessageTypeTranscodeHLSCompleted
-	case "dash":
-		messageType = messages.MessageTypeTranscodeDASHCompleted
-	default:
-		log.Error("Unknown format for transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
+	if format != "hls" {
+		log.Error("Invalid format for HLS transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
 		return
 	}
+	messageType := messages.MessageTypeTranscodeHLSCompleted
 
-	err := h.analyzeProducer.SendMessage(ctx, messageType, payload)
+	err := h.completionProducer.SendMessage(ctx, messageType, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send transcode completed message", "asset_id", assetID, "video_id", videoID, "format", format, "success", success)
 	} else {
