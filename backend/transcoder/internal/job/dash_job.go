@@ -229,10 +229,6 @@ func (d *TranscodeDASHRunner) sendTranscodeCompleted(ctx context.Context, assetI
 		payload.Error = errorMessage
 	}
 
-	if format != "dash" {
-		log.Error("Invalid format for DASH transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
-		return
-	}
 	messageType := messages.MessageTypeTranscodeDASHCompleted
 
 	err := d.completionProducer.SendMessage(ctx, messageType, payload)

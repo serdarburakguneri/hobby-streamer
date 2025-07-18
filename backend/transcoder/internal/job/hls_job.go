@@ -280,11 +280,7 @@ func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID
 	if !success && errorMessage != "" {
 		payload.Error = errorMessage
 	}
-
-	if format != "hls" {
-		log.Error("Invalid format for HLS transcode completion", "format", format, "asset_id", assetID, "video_id", videoID)
-		return
-	}
+	
 	messageType := messages.MessageTypeTranscodeHLSCompleted
 
 	err := h.completionProducer.SendMessage(ctx, messageType, payload)
