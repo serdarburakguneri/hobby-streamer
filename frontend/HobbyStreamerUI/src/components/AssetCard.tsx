@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Asset } from '../types/asset';
+import { VideoPlayer } from './VideoPlayer';
 
 interface AssetCardProps {
   asset: Asset;
@@ -8,10 +9,12 @@ interface AssetCardProps {
 }
 
 const { width } = Dimensions.get('window');
-const cardWidth = width * 0.25;
-const cardHeight = cardWidth * 1.4;
+const cardWidth = width * 0.3;
+const cardHeight = cardWidth * 1.5;
 
 export const AssetCard: React.FC<AssetCardProps> = ({ asset, onPress }) => {
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  
   const hasVideos = Array.isArray(asset.videos) && asset.videos.length > 0;
   const thumbnailUrl = hasVideos
     ? asset.videos[0]?.thumbnail?.url || asset.videos[0]?.thumbnail?.storageLocation?.url
@@ -19,21 +22,44 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, onPress }) => {
 
   const imageSource = thumbnailUrl ? { uri: thumbnailUrl } : require('../../assets/video-placeholder.png');
 
-  const title = asset.title || 'Untitled';
+  const handlePress = () => {
+    if (hasVideos) {
+      setShowVideoPlayer(true);
+    } else {
+      onPress(asset);
+    }
+  };
+
+  const handleCloseVideoPlayer = () => {
+    setShowVideoPlayer(false);
+  };
 
   return (
-    <TouchableOpacity 
-      style={styles.container} 
-      onPress={() => onPress(asset)}
-      activeOpacity={0.8}
-    >
-      <Text style={styles.title}>{title}</Text>
-      <Image 
-        source={imageSource} 
-        style={styles.thumbnail}
-        resizeMode="cover"
+    <>
+      <TouchableOpacity 
+        style={styles.container} 
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <Image 
+          source={imageSource} 
+          style={styles.thumbnail}
+          resizeMode="cover"
+        />
+        <View style={styles.overlay} />
+        {hasVideos && (
+          <View style={styles.playButton}>
+            <View style={styles.playIcon}>▶</View>
+          </View>
+        )}
+      </TouchableOpacity>
+      
+      <VideoPlayer
+        asset={asset}
+        visible={showVideoPlayer}
+        onClose={handleCloseVideoPlayer}
       />
-    </TouchableOpacity>
+    </>
   );
 };
 
@@ -41,20 +67,46 @@ const styles = StyleSheet.create({
   container: {
     width: cardWidth,
     height: cardHeight,
-    marginHorizontal: 4,
-    borderRadius: 6,
+    marginHorizontal: 6,
+    borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '500',
-    padding: 8,
-    textAlign: 'left',
+    backgroundColor: '#2a2a2a',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   thumbnail: {
     width: '100%',
     height: '100%',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  playButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -20 }, { translateY: -20 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 40,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIcon: {
+    fontSize: 24,
+    color: '#fff',
+    marginLeft: 2,
   },
 }); 

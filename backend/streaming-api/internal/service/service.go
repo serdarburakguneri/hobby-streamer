@@ -190,19 +190,27 @@ func (s *Service) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]mo
 		return []model.Asset{}, nil
 	}
 
-	var assets []model.Asset
-	for _, assetID := range bucket.AssetIDs {
-		asset, err := s.fetchAssetByIDFromAssetManager(ctx, assetID)
-		if err != nil {
-			s.logger.WithError(err).Warn("Failed to fetch asset", "asset_id", assetID)
-			continue
-		}
-		if asset != nil {
-			assets = append(assets, *asset)
+	allAssets, err := s.GetAssets(ctx)
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to fetch all assets for bucket filtering", "bucket_key", bucketKey)
+		return nil, errors.NewExternalError("failed to fetch assets", err)
+	}
+
+	var bucketAssets []model.Asset
+	assetIDSet := make(map[string]bool)
+	for _, id := range bucket.AssetIDs {
+		assetIDSet[id] = true
+	}
+
+	for _, asset := range allAssets {
+		if assetIDSet[asset.ID] {
+			bucketAssets = append(bucketAssets, asset)
 		}
 	}
 
-	return assets, nil
+	s.logger.Debug("Filtered assets for bucket", "bucket_key", bucketKey, "total_assets", len(allAssets), "bucket_asset_ids", len(bucket.AssetIDs), "filtered_assets", len(bucketAssets))
+
+	return bucketAssets, nil
 }
 
 func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (*model.Bucket, error) {
@@ -224,7 +232,7 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 
 	var response struct {
 		Data struct {
-			Bucket *model.Bucket `json:"bucket"`
+			BucketByKey *model.Bucket `json:"bucketByKey"`
 		} `json:"data"`
 		Errors []struct {
 			Message string `json:"message"`
@@ -244,7 +252,7 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 		return nil, err
 	}
 
-	return response.Data.Bucket, nil
+	return response.Data.BucketByKey, nil
 }
 
 func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Bucket, error) {

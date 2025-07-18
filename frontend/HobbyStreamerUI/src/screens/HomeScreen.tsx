@@ -15,20 +15,34 @@ import { apiService } from '../services/api';
 
 export const HomeScreen: React.FC = () => {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
-  const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
-      const [bucketsData, assetsData] = await Promise.all([
-        apiService.getBuckets(),
-        apiService.getAssets(),
-      ]);
+      const bucketsData = await apiService.getBuckets();
+      console.log('Loaded buckets:', bucketsData.length);
       
-      // For now, just set buckets without individual assets since the endpoint is failing
-      setBuckets(bucketsData);
-      setAllAssets(assetsData);
+      const bucketsWithAssets = await Promise.all(
+        bucketsData.map(async (bucket) => {
+          try {
+            const assets = await apiService.getAssetsInBucket(bucket.key);
+            console.log(`Bucket "${bucket.name}" has ${assets.length} assets`);
+            return {
+              ...bucket,
+              assets
+            };
+          } catch (error) {
+            console.error(`Failed to load assets for bucket ${bucket.name}:`, error);
+            return {
+              ...bucket,
+              assets: []
+            };
+          }
+        })
+      );
+      
+      setBuckets(bucketsWithAssets);
     } catch (error) {
       console.error('Failed to load data:', error);
       Alert.alert('Error', 'Failed to load content. Please try again.');
@@ -76,28 +90,16 @@ export const HomeScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* All Assets Section */}
-        {allAssets.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>All Content</Text>
-            <BucketRow
-              title="Available Content"
-              assets={allAssets}
-              onAssetPress={handleAssetPress}
-            />
-          </View>
-        )}
-
-        {/* Bucket Sections */}
         {buckets.map((bucket) => (
-          <View key={bucket.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{bucket.name}</Text>
-            <Text style={styles.sectionDescription}>{bucket.description}</Text>
-            <Text style={styles.sectionInfo}>Bucket Key: {bucket.key}</Text>
-          </View>
+          <BucketRow
+            key={bucket.id}
+            title={bucket.name}
+            assets={bucket.assets || []}
+            onAssetPress={handleAssetPress}
+          />
         ))}
 
-        {buckets.length === 0 && allAssets.length === 0 && (
+        {buckets.length === 0 && (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No content available</Text>
           </View>
@@ -124,26 +126,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#ffffff',
     fontSize: 16,
-  },
-  section: {
-    marginVertical: 16,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  sectionDescription: {
-    color: '#cccccc',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  sectionInfo: {
-    color: '#888888',
-    fontSize: 12,
-    marginBottom: 12,
   },
   emptyContainer: {
     flex: 1,
