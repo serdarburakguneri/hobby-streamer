@@ -18,7 +18,7 @@ fi
 
 # Run linting
 echo "Running linting..."
-if ! cd backend && $(HOME)/go/bin/golangci-lint run ./...; then
+if ! cd backend && $HOME/go/bin/golangci-lint run ./...; then
     echo "Linting issues found. Please fix them and commit again."
     exit 1
 fi
@@ -31,9 +31,9 @@ if ! cd backend && go test ./...; then
 fi
 
 # Run security checks if gosec is available
-if command -v $(HOME)/go/bin/gosec &> /dev/null; then
+if command -v $HOME/go/bin/gosec &> /dev/null; then
     echo "Running security checks..."
-    if ! cd backend && $(HOME)/go/bin/gosec ./...; then
+    if ! cd backend && $HOME/go/bin/gosec ./...; then
         echo "Security issues found. Please review and fix them."
         exit 1
     fi
