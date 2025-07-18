@@ -58,7 +58,6 @@ type DeleteFilesRequest struct {
 }
 
 func generateID() string {
-	rand.Seed(time.Now().UnixNano())
 	return strconv.Itoa(rand.Intn(1_000_000_000))
 }
 
@@ -365,27 +364,6 @@ func (s *Service) GetAssetsByTypeAndGenre(ctx context.Context, assetType, genre 
 
 // --- Helper Functions ---
 
-func getVideoByID(asset *Asset, videoID string) *Video {
-	for i := range asset.Videos {
-		if asset.Videos[i].ID == videoID {
-			return &asset.Videos[i]
-		}
-	}
-	return nil
-}
-
-func (s *Service) setCDNPrefixIfAvailable(video *Video, bucket string) {
-	cdnPrefix := s.getCDNPrefixForBucket(bucket)
-	if cdnPrefix != "" {
-		if video.StreamInfo == nil {
-			video.StreamInfo = &StreamInfo{}
-		}
-		video.StreamInfo.CdnPrefix = &cdnPrefix
-		playURL := cdnPrefix + "/" + video.StorageLocation.Key
-		video.StreamInfo.PlayURL = &playURL
-	}
-}
-
 // --- AssetService Methods ---
 
 func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error {
@@ -558,7 +536,7 @@ func (s *Service) validateAsset(a *Asset) error {
 		}
 	}
 
-	if a.Genres != nil && len(a.Genres) > 0 {
+	if len(a.Genres) > 0 {
 		validGenres := []string{
 			AssetGenreAction, AssetGenreDrama, AssetGenreComedy, AssetGenreHorror,
 			AssetGenreSciFi, AssetGenreRomance, AssetGenreThriller, AssetGenreFantasy,

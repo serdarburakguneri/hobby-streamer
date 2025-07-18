@@ -9,10 +9,6 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 )
 
-replace (
-	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../logger
-)
+replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../logger
 
-require (
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
-) 
+require github.com/jmespath/go-jmespath v0.4.0 // indirect

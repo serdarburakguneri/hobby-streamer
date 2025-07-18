@@ -16,7 +16,9 @@ func MarshalJSONObject(v map[string]interface{}) graphql.Marshaler {
 		if err != nil {
 			panic(err)
 		}
-		w.Write(data)
+		if _, err := w.Write(data); err != nil {
+			panic(err)
+		}
 	})
 }
 
@@ -41,7 +43,9 @@ func UnmarshalJSONObject(v interface{}) (map[string]interface{}, error) {
 // MarshalTime marshals Time to GraphQL
 func MarshalTime(t time.Time) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
-		io.WriteString(w, fmt.Sprintf("%q", t.Format(time.RFC3339)))
+		if _, err := io.WriteString(w, fmt.Sprintf("%q", t.Format(time.RFC3339))); err != nil {
+			panic(err)
+		}
 	})
 }
 

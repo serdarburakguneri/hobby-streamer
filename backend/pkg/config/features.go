@@ -188,7 +188,6 @@ func hashString(s string) int {
 	hash := 0
 	for _, char := range s {
 		hash = ((hash << 5) - hash) + int(char)
-		hash = hash & hash
 	}
 	if hash < 0 {
 		hash = -hash

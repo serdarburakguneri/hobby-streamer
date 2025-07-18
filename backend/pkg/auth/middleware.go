@@ -8,6 +8,13 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
+type contextKey string
+
+const (
+	userContextKey        contextKey = "user"
+	serviceUserContextKey contextKey = "service_user"
+)
+
 type AuthMiddleware struct {
 	validator   TokenValidator
 	userAuth    bool
@@ -49,7 +56,7 @@ func (m *AuthMiddleware) Build() func(http.HandlerFunc) http.HandlerFunc {
 			if m.userAuth && m.serviceAuth {
 				user, err := m.validator.ValidateToken(r.Context(), token)
 				if err == nil {
-					ctx := context.WithValue(r.Context(), "user", user)
+					ctx := context.WithValue(r.Context(), userContextKey, user)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
@@ -72,7 +79,7 @@ func (m *AuthMiddleware) Build() func(http.HandlerFunc) http.HandlerFunc {
 					return
 				}
 
-				ctx := context.WithValue(r.Context(), "service_user", serviceUser)
+				ctx := context.WithValue(r.Context(), serviceUserContextKey, serviceUser)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -84,7 +91,7 @@ func (m *AuthMiddleware) Build() func(http.HandlerFunc) http.HandlerFunc {
 					return
 				}
 
-				ctx := context.WithValue(r.Context(), "user", user)
+				ctx := context.WithValue(r.Context(), userContextKey, user)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -108,7 +115,7 @@ func (m *AuthMiddleware) Build() func(http.HandlerFunc) http.HandlerFunc {
 					return
 				}
 
-				ctx := context.WithValue(r.Context(), "service_user", serviceUser)
+				ctx := context.WithValue(r.Context(), serviceUserContextKey, serviceUser)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -121,7 +128,7 @@ func (m *AuthMiddleware) Build() func(http.HandlerFunc) http.HandlerFunc {
 func (m *AuthMiddleware) RequireRole(role string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value("user").(*User)
+			user, ok := r.Context().Value(userContextKey).(*User)
 			if !ok {
 				http.Error(w, constants.ErrUserNotFound, http.StatusInternalServerError)
 				return
@@ -140,7 +147,7 @@ func (m *AuthMiddleware) RequireRole(role string) func(http.HandlerFunc) http.Ha
 func (m *AuthMiddleware) RequireAnyRole(roles []string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value("user").(*User)
+			user, ok := r.Context().Value(userContextKey).(*User)
 			if !ok {
 				http.Error(w, constants.ErrUserNotFound, http.StatusInternalServerError)
 				return
@@ -159,7 +166,7 @@ func (m *AuthMiddleware) RequireAnyRole(roles []string) func(http.HandlerFunc) h
 func (m *AuthMiddleware) RequireAllRoles(roles []string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := r.Context().Value("user").(*User)
+			user, ok := r.Context().Value(userContextKey).(*User)
 			if !ok {
 				http.Error(w, constants.ErrUserNotFound, http.StatusInternalServerError)
 				return

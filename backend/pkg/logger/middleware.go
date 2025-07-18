@@ -20,7 +20,7 @@ func RequestLoggingMiddleware(logger *Logger) func(http.Handler) http.Handler {
 
 			w.Header().Set("X-Tracking-ID", trackingID)
 
-			ctx := context.WithValue(r.Context(), "tracking_id", trackingID)
+			ctx := context.WithValue(r.Context(), TrackingIDContextKey, trackingID)
 			r = r.WithContext(ctx)
 
 			trackedLogger := logger.WithTrackingID(trackingID)

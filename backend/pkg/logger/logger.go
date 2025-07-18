@@ -39,7 +39,9 @@ func New(level slog.Level, format string) *Logger {
 
 func GenerateTrackingID() string {
 	bytes := make([]byte, 8)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return "00000000"
+	}
 	return hex.EncodeToString(bytes)
 }
 
@@ -95,7 +97,7 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 		attrs = append(attrs, "request_id", requestID)
 	}
 
-	if trackingID := ctx.Value("tracking_id"); trackingID != nil {
+	if trackingID := ctx.Value(TrackingIDContextKey); trackingID != nil {
 		attrs = append(attrs, "tracking_id", trackingID)
 	}
 

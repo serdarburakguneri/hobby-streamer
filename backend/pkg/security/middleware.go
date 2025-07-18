@@ -59,7 +59,9 @@ func RateLimitMiddleware(limit int, window time.Duration) func(http.Handler) htt
 			if !limiter.Allow(key) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(`{"error": "Rate limit exceeded"}`))
+				if _, err := w.Write([]byte(`{"error": "Rate limit exceeded"}`)); err != nil {
+					logger.Get().WithError(err).Error("Failed to write rate limit response")
+				}
 				return
 			}
 
@@ -117,7 +119,9 @@ func InputValidationMiddleware() func(http.Handler) http.Handler {
 			if r.ContentLength > 10*1024*1024 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
-				w.Write([]byte(`{"error": "Request too large"}`))
+				if _, err := w.Write([]byte(`{"error": "Request too large"}`)); err != nil {
+					logger.Get().WithError(err).Error("Failed to write request too large response")
+				}
 				return
 			}
 
@@ -128,7 +132,9 @@ func InputValidationMiddleware() func(http.Handler) http.Handler {
 					!strings.Contains(contentType, "application/x-www-form-urlencoded") {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusUnsupportedMediaType)
-					w.Write([]byte(`{"error": "Unsupported content type"}`))
+					if _, err := w.Write([]byte(`{"error": "Unsupported content type"}`)); err != nil {
+						logger.Get().WithError(err).Error("Failed to write unsupported content type response")
+					}
 					return
 				}
 			}

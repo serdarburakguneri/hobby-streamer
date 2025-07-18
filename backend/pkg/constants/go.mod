@@ -1,3 +1,3 @@
-module github.com/serdarburakguneri/hobby-streamer/pkg/constants
+module github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants
 
 go 1.21 

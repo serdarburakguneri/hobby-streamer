@@ -304,6 +304,7 @@ func TestService_GetBucketByID(t *testing.T) {
 
 	if bucket == nil {
 		t.Error("GetBucketByID() expected bucket but got nil")
+		return
 	}
 
 	if bucket.ID != expectedBucket.ID {
@@ -347,6 +348,7 @@ func TestService_GetBucketByKey(t *testing.T) {
 
 	if bucket == nil {
 		t.Error("GetBucketByKey() expected bucket but got nil")
+		return
 	}
 
 	if bucket.Key != expectedBucket.Key {
