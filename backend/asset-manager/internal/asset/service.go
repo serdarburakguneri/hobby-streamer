@@ -2,9 +2,10 @@ package asset
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -58,7 +59,11 @@ type DeleteFilesRequest struct {
 }
 
 func generateID() string {
-	return strconv.Itoa(rand.Intn(1_000_000_000))
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000_000))
+	if err != nil {
+		return "000000000"
+	}
+	return strconv.Itoa(int(n.Int64()))
 }
 
 func generateSlug(title string) string {

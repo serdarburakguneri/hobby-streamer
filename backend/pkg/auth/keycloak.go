@@ -42,7 +42,7 @@ type JWK struct {
 
 func NewKeycloakValidator(keycloakURL, realm, clientID string) *KeycloakValidator {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec // Development only - disable TLS verification for local Keycloak
 	}
 	httpClient := &http.Client{
 		Transport: tr,

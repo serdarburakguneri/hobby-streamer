@@ -41,7 +41,7 @@ type TokenResponse struct {
 
 func NewServiceClient(keycloakURL, realm, clientID, clientSecret string) *ServiceClient {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec // Development only - disable TLS verification for local services
 	}
 	httpClient := &http.Client{
 		Transport: tr,

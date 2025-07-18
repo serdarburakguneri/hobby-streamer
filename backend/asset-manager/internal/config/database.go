@@ -46,6 +46,8 @@ func NewDatabaseConfig(configManager *config.Manager, secretsManager *config.Sec
 
 func (dc *DatabaseConfig) Close() {
 	if dc.Driver != nil {
-		dc.Driver.Close()
+		if err := dc.Driver.Close(); err != nil {
+			logger.Get().WithError(err).Error("Failed to close Neo4j driver")
+		}
 	}
 }

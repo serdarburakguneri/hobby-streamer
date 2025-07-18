@@ -37,7 +37,7 @@ type ServiceUser struct {
 
 func NewServiceTokenValidator(keycloakURL, realm, clientID string) *ServiceTokenValidator {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec // Development only - disable TLS verification for local services
 	}
 	httpClient := &http.Client{
 		Transport: tr,
