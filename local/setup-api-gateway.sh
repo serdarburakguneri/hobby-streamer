@@ -59,11 +59,6 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   UPLOAD_ID=$(echo $UPLOAD_RESPONSE | jq -r '.id')
   echo "[INFO] Upload Resource ID: $UPLOAD_ID"
 
-  echo "[INFO] Creating transcode resource..."
-  TRANSCODE_RESPONSE=$(aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-resource --rest-api-id $API_ID --parent-id $ROOT_ID --path-part transcode)
-  TRANSCODE_ID=$(echo $TRANSCODE_RESPONSE | jq -r '.id')
-  echo "[INFO] Transcode Resource ID: $TRANSCODE_ID"
-
   create_method_with_cors() {
       local resource_id=$1
       local http_method=$2
@@ -187,10 +182,6 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   create_method_with_cors $UPLOAD_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:generate-presigned-url/invocations"
   create_options_method $UPLOAD_ID
 
-  echo "[INFO] Setting up transcode endpoint..."
-  create_method_with_cors $TRANSCODE_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:trigger-transcode-job/invocations"
-  create_options_method $TRANSCODE_ID
-
   echo "[INFO] Deploying API..."
   aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-deployment \
     --rest-api-id $API_ID \
@@ -203,13 +194,6 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
     --source-arn "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/upload"
-
-  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT lambda add-permission \
-    --function-name trigger-transcode-job \
-    --statement-id apigateway-invoke \
-    --action lambda:InvokeFunction \
-    --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/transcode"
 
   echo $API_ID > .api-gateway-id
   echo "[INFO] API ID saved to .api-gateway-id"
@@ -233,8 +217,6 @@ sed -i.bak "s|getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', '[^']*')|getEnvVar('RE
 sed -i.bak "s|getEnvVar('REACT_APP_AUTH_BASE_URL', '[^']*')|getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/auth')|" \
   ../frontend/HobbyStreamerCMS/src/config/api.ts
 sed -i.bak "s|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', '[^']*')|getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/graphql')|" \
-  ../frontend/HobbyStreamerCMS/src/config/api.ts
-sed -i.bak "s|getEnvVar('REACT_APP_TRANSCODE_BASE_URL', '[^']*')|getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/$API_ID/dev/transcode')|" \
   ../frontend/HobbyStreamerCMS/src/config/api.ts
 rm -f ../frontend/HobbyStreamerCMS/src/config/api.ts.bak
 echo "[INFO] Frontend updated with API Gateway ID: $API_ID"

@@ -292,6 +292,42 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
+	// Check if a video with the same format already exists
+	for i, existingVideo := range asset.Videos {
+		if existingVideo.Format == video.Format {
+			// If the existing video is failed, we can retry by updating its status
+			if existingVideo.Status == VideoStatusFailed {
+				asset.Videos[i].Status = VideoStatusPending
+				asset.Videos[i].UpdatedAt = time.Now()
+				err = s.Repo.SaveAsset(ctx, asset)
+				if err != nil {
+					return err
+				}
+
+				// Trigger transcoding job for the existing video
+				if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
+					jobSent := s.sendTranscodeJob(ctx, asset.ID, existingVideo.ID, existingVideo.StorageLocation, string(video.Format))
+					if !jobSent {
+						// If job couldn't be sent, set status to failed
+						asset.Videos[i].Status = VideoStatusFailed
+						asset.Videos[i].UpdatedAt = time.Now()
+						s.Repo.SaveAsset(ctx, asset)
+					}
+				}
+				return nil
+			}
+
+			// If the existing video is ready, return success (already available)
+			if existingVideo.Status == VideoStatusReady {
+				return nil
+			}
+
+			// If the existing video is in progress, return conflict
+			return apperrors.NewConflictError("video with this format is already being processed", nil)
+		}
+	}
+
+	// No existing video with this format, create new one
 	if video.ID == "" {
 		video.ID = generateID()
 	}
@@ -310,12 +346,36 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	}
 
 	if video.Format == VideoFormatRaw {
-		s.sendAnalyzeJob(ctx, asset.ID, video.ID, video.StorageLocation)
+		jobSent := s.sendAnalyzeJob(ctx, asset.ID, video.ID, video.StorageLocation)
+		if !jobSent {
+			// If job couldn't be sent, set status to failed
+			for i, v := range asset.Videos {
+				if v.ID == video.ID {
+					asset.Videos[i].Status = VideoStatusFailed
+					asset.Videos[i].UpdatedAt = time.Now()
+					s.Repo.SaveAsset(ctx, asset)
+					break
+				}
+			}
+		}
+	} else if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
+		jobSent := s.sendTranscodeJob(ctx, asset.ID, video.ID, video.StorageLocation, string(video.Format))
+		if !jobSent {
+			// If job couldn't be sent, set status to failed
+			for i, v := range asset.Videos {
+				if v.ID == video.ID {
+					asset.Videos[i].Status = VideoStatusFailed
+					asset.Videos[i].UpdatedAt = time.Now()
+					s.Repo.SaveAsset(ctx, asset)
+					break
+				}
+			}
+		}
 	}
 	return nil
 }
 
-func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object) {
+func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object) bool {
 	log := logger.Get().WithService("asset-service")
 
 	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
@@ -328,20 +388,87 @@ func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID st
 	analyzeJobsQueueURL := s.Config.GetStringFromComponent("sqs", "analyze_jobs_queue_url")
 	if analyzeJobsQueueURL == "" {
 		log.Error("Analyze jobs queue URL not configured", "asset_id", assetID, "video_id", videoID)
-		return
+		return false
 	}
 
 	producer, err := sqs.NewProducer(ctx, analyzeJobsQueueURL)
 	if err != nil {
 		log.WithError(err).Error("Failed to create analyze SQS producer", "asset_id", assetID, "video_id", videoID)
-		return
+		return false
 	}
 
 	err = producer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
 	if err != nil {
 		log.WithError(err).Error("Failed to send analyze job", "asset_id", assetID, "video_id", videoID, "input", input)
-	} else {
-		log.Info("Analyze job sent successfully", "asset_id", assetID, "video_id", videoID, "input", input)
+		return false
+	}
+
+	log.Info("Analyze job sent successfully", "asset_id", assetID, "video_id", videoID, "input", input)
+	return true
+}
+
+func (s *Service) sendTranscodeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object, format string) bool {
+	log := logger.Get().WithService("asset-service")
+
+	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
+
+	var queueURL string
+	var messageType string
+
+	switch format {
+	case "hls":
+		queueURL = s.Config.GetStringFromComponent("sqs", "hls_queue_url")
+		messageType = messages.MessageTypeTranscodeHLS
+	case "dash":
+		queueURL = s.Config.GetStringFromComponent("sqs", "dash_queue_url")
+		messageType = messages.MessageTypeTranscodeDASH
+	default:
+		log.Error("Invalid format for transcode job", "format", format, "asset_id", assetID, "video_id", videoID)
+		return false
+	}
+
+	if queueURL == "" {
+		log.Error("Transcode queue URL not configured", "format", format, "asset_id", assetID, "video_id", videoID)
+		return false
+	}
+
+	outputBucket := fmt.Sprintf("%s-storage", format)
+	outputKey := fmt.Sprintf("%s/%s/playlist.%s", assetID, videoID, getFileExtension(format))
+
+	payload := messages.TranscodePayload{
+		Input:          input,
+		AssetID:        assetID,
+		VideoID:        videoID,
+		Format:         format,
+		OutputBucket:   outputBucket,
+		OutputKey:      outputKey,
+		OutputFileName: fmt.Sprintf("playlist.%s", getFileExtension(format)),
+	}
+
+	producer, err := sqs.NewProducer(ctx, queueURL)
+	if err != nil {
+		log.WithError(err).Error("Failed to create transcode SQS producer", "asset_id", assetID, "video_id", videoID, "format", format)
+		return false
+	}
+
+	err = producer.SendMessage(ctx, messageType, payload)
+	if err != nil {
+		log.WithError(err).Error("Failed to send transcode job", "asset_id", assetID, "video_id", videoID, "format", format, "input", input)
+		return false
+	}
+
+	log.Info("Transcode job sent successfully", "asset_id", assetID, "video_id", videoID, "format", format, "input", input)
+	return true
+}
+
+func getFileExtension(format string) string {
+	switch format {
+	case "hls":
+		return "m3u8"
+	case "dash":
+		return "mpd"
+	default:
+		return "mp4"
 	}
 }
 
@@ -446,7 +573,47 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 
 	log.Info("Processing transcode completion", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "format", transcodePayload.Format, "success", transcodePayload.Success, "status", status)
 
-	if transcodePayload.Success {
+	asset, err := s.Repo.GetAssetByID(ctx, transcodePayload.AssetID)
+	if err != nil {
+		log.WithError(err).Error("Failed to get asset for transcode completion", "asset_id", transcodePayload.AssetID)
+		return err
+	}
+	
+	videoUpdated := false
+	for i, video := range asset.Videos {
+		if video.Format == VideoFormat(transcodePayload.Format) {
+			asset.Videos[i].Status = status
+			asset.Videos[i].UpdatedAt = time.Now()
+
+			if transcodePayload.Success {				
+				asset.Videos[i].StorageLocation = S3Object{
+					Bucket: transcodePayload.Bucket,
+					Key:    transcodePayload.Key,
+					URL:    transcodePayload.URL,
+				}
+
+				if transcodePayload.Format == "dash" {
+					asset.Videos[i].ContentType = "application/dash+xml"
+				} else {
+					asset.Videos[i].ContentType = "application/x-mpegURL"
+				}
+
+				cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
+				if cdnPrefix != "" {
+					playURL := cdnPrefix + "/" + transcodePayload.Key
+					asset.Videos[i].StreamInfo = &StreamInfo{
+						CdnPrefix: &cdnPrefix,
+						PlayURL:   &playURL,
+					}
+				}
+			}
+
+			videoUpdated = true
+			break
+		}
+	}
+	
+	if !videoUpdated && transcodePayload.Success {
 		s3Object := S3Object{
 			Bucket: transcodePayload.Bucket,
 			Key:    transcodePayload.Key,
@@ -469,27 +636,26 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 		}
 
 		cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
-		log.Debug("CDN prefix lookup", "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix)
 		if cdnPrefix != "" {
 			playURL := cdnPrefix + "/" + transcodePayload.Key
 			video.StreamInfo = &StreamInfo{
 				CdnPrefix: &cdnPrefix,
 				PlayURL:   &playURL,
 			}
-			log.Debug("Set CDN prefix and play URL for video", "asset_id", transcodePayload.AssetID, "bucket", transcodePayload.Bucket, "cdn_prefix", cdnPrefix, "play_url", playURL)
-		} else {
-			log.Warn("No CDN prefix found for bucket", "bucket", transcodePayload.Bucket)
 		}
 
-		err = s.AddVideo(ctx, transcodePayload.AssetID, video)
-		if err != nil {
-			log.WithError(err).Error("Failed to add transcoded video", "asset_id", transcodePayload.AssetID, "video_id", video.ID)
-			return err
-		}
+		asset.Videos = append(asset.Videos, *video)
+		log.Info("Created new transcoded video", "asset_id", transcodePayload.AssetID, "video_id", video.ID, "format", transcodePayload.Format)
+	} else if !videoUpdated && !transcodePayload.Success {
+		log.Error("Transcode failed and no existing video found to update", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "error", transcodePayload.Error)
+	} else if videoUpdated && !transcodePayload.Success {
+		log.Error("Transcode failed, updated existing video status", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "error", transcodePayload.Error)
+	}
 
-		log.Info("Created new transcoded video", "asset_id", transcodePayload.AssetID, "video_id", video.ID, "format", transcodePayload.Format, "s3_location", s3Object)
-	} else {
-		log.Error("Transcode failed", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "error", transcodePayload.Error)
+	err = s.Repo.SaveAsset(ctx, asset)
+	if err != nil {
+		log.WithError(err).Error("Failed to save asset after transcode completion", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID)
+		return err
 	}
 
 	log.Info("Transcode completion processed successfully", "asset_id", transcodePayload.AssetID, "video_id", transcodePayload.VideoID, "format", transcodePayload.Format, "success", transcodePayload.Success, "status", status)

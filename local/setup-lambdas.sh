@@ -30,31 +30,6 @@ fi
 
 popd > /dev/null
 
-pushd ../backend/lambdas/cmd/trigger_transcode_job > /dev/null
-echo "[INFO] Building trigger transcode job Lambda..."
-echo "[INFO] Resolving dependencies..."
-go mod tidy
-
-GOOS=linux GOARCH=amd64 go build -o main main.go
-zip -j function.zip main
-
-if awslocal --no-cli-pager --region $AWS_REGION lambda get-function --function-name trigger-transcode-job > /dev/null 2>&1; then
-  echo "[INFO] Updating existing Lambda function: trigger-transcode-job"
-  awslocal --no-cli-pager --region $AWS_REGION lambda update-function-code --function-name trigger-transcode-job --zip-file fileb://function.zip > /dev/null
-else
-  echo "[INFO] Creating Lambda function: trigger-transcode-job"
-  awslocal --no-cli-pager --region $AWS_REGION lambda create-function \
-    --function-name trigger-transcode-job \
-    --runtime go1.x \
-    --handler main \
-    --zip-file fileb://function.zip \
-    --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={HLS_QUEUE_URL=$HLS_QUEUE_URL,DASH_QUEUE_URL=$DASH_QUEUE_URL,AWS_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
-    --region $AWS_REGION > /dev/null
-fi
-
-popd > /dev/null
-
 pushd ../backend/lambdas/cmd/delete_files > /dev/null
 echo "[INFO] Building delete files Lambda..."
 

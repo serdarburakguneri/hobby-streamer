@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import VideoUpload from './VideoUpload';
 import VideoPreview from './VideoPreview';
-import { triggerTranscodeJob } from '../../services/api';
 import { VideoType, VideoFormat } from '../../types/asset';
+import { useAssetService } from '../../services/api';
 
 interface VideoSectionProps {
   videos: any[] | undefined;
@@ -21,6 +21,7 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
   const [triggeringJobs, setTriggeringJobs] = useState<{[key: string]: boolean}>({});
   const [previewVideo, setPreviewVideo] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const { addVideo } = useAssetService();
 
   const handleTriggerTranscode = async (videoId: string, format: 'hls' | 'dash') => {
     const jobKey = `${videoId}-${format}`;
@@ -33,18 +34,19 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
       }
 
       const storageLocation = video.storageLocation;
-      const keyParts = storageLocation.key.split('/');
-      const sourceFileName = keyParts[keyParts.length - 1];
       
-      if (!sourceFileName) {
-        throw new Error('Invalid video file path - missing filename');
-      }
+      // Call addVideo mutation to trigger transcoding
+      await addVideo(
+        assetId,
+        video.type,
+        format,
+        storageLocation.bucket,
+        storageLocation.key,
+        storageLocation.url,
+        video.contentType || 'video/mp4',
+        video.size || 0
+      );
       
-      await triggerTranscodeJob(assetId, videoId, format, {
-        bucket: storageLocation.bucket,
-        key: storageLocation.key,
-        sourceFileName
-      });
       Alert.alert('Success', `${format.toUpperCase()} transcoding job triggered successfully`);
       onRefreshAsset();
     } catch (error: any) {
@@ -419,32 +421,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  transcodeButtons: {
-    flexDirection: 'row',
-    gap: 4,
+  previewButton: {
+    padding: 4,
   },
   transcodeButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#007AFF',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 3,
-    gap: 2,
+    gap: 4,
   },
   transcodeButtonDisabled: {
-    backgroundColor: '#e9ecef',
+    backgroundColor: '#e0e0e0',
+    opacity: 0.7,
   },
   transcodeButtonText: {
-    fontSize: 10,
+    fontSize: 12,
+    fontWeight: 'bold',
     color: '#fff',
-    fontWeight: '600',
   },
   transcodeButtonTextDisabled: {
     color: '#999',
   },
-  previewButton: {
-    padding: 4,
+  transcodeButtons: {
+    flexDirection: 'row',
+    gap: 8,
   },
   deleteButton: {
     padding: 4,

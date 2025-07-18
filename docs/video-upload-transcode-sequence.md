@@ -34,24 +34,25 @@ sequenceDiagram
 
     Note over User,Transcoder: Transcoding Flow
     User->>CMS: Trigger HLS/DASH transcoding
-    CMS->>API: Start transcoding job
-    API->>SQS: Send transcode job
+    CMS->>AssetMgr: addVideo GraphQL mutation
+    AssetMgr->>Neo4j: Create new video variant
+    AssetMgr->>SQS: Send transcode job
     SQS->>Transcoder: Process transcode job
     Transcoder->>S3: Download raw video
     Transcoder->>S3: Upload transcoded files
     Transcoder->>SQS: Send transcode complete
-    SQS->>AssetMgr: Create new video variant
+    SQS->>AssetMgr: Update video status to ready
 ```
 
 ## Key Components
 
 - **CMS Frontend**: React Native app for managing videos
-- **Asset Manager**: GraphQL API for asset metadata
-- **Transcoder Worker**: Background video processing service
+- **Asset Manager**: GraphQL API for asset metadata and transcoding orchestration
+- **Transcoder Worker**: Background video processing service with retry mechanism
 - **Neo4j**: Database for asset relationships
 - **S3**: File storage (raw, HLS, DASH buckets)
 - **SQS**: Message queue for job coordination
-- **Lambda**: Serverless functions for presigned URLs
+- **Lambda**: Serverless functions for presigned URLs and file operations
 
 ## Storage Structure
 
@@ -83,8 +84,12 @@ S3 Buckets:
 ## Status Flow
 
 1. **Upload**: Video uploaded → status: "ready"
-2. **Transcode**: User triggers → new video record with status: "transcoding" → "ready"
+2. **Transcode**: User triggers via GraphQL → new video record with status: "transcoding" → "ready"
 3. **Multiple formats**: Same content can have raw, HLS, and DASH variants
+4. **Retry mechanism**: Transcoder automatically retries failed jobs with exponential backoff
+5. **Error handling**: Validation errors are immediately discarded, other errors trigger retries
+
+
 
 
 

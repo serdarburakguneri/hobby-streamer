@@ -42,6 +42,8 @@ const (
 	VideoStatusFailed           = "failed"
 	VideoStatusAnalyzeCompleted = "analyze_completed"
 	VideoStatusAnalyzeFailed    = "analyze_failed"
+	VideoStatusRetry            = "retry"
+	VideoStatusRetrying         = "retrying"
 )
 
 const (

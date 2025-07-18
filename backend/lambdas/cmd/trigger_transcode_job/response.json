@@ -1,1 +1,0 @@
-{"statusCode":405,"headers":{"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":"Content-Type, Authorization, X-Requested-With","Access-Control-Allow-Methods":"GET, POST, PUT, DELETE, OPTIONS","Access-Control-Allow-Origin":"*","Content-Type":"application/json"},"multiValueHeaders":null,"body":"{\"message\":\"Only POST method is allowed\"}"}

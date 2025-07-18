@@ -1620,56 +1620,6 @@ export const assetService = {
   },
 };
 
-export const triggerTranscodeJob = async (
-  assetId: string, 
-  videoId: string, 
-  format: 'hls' | 'dash',
-  s3Info?: { bucket: string; key: string; sourceFileName?: string }
-): Promise<any> => {
-  try {
-    const token = await refreshTokenIfNeeded();
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-
-    const payload: any = {
-      assetId,
-      videoId,
-      format
-    };
-
-    if (s3Info) {
-      payload.input = `s3://${s3Info.bucket}/${s3Info.key}`;
-      if (s3Info.sourceFileName) {
-        payload.sourceFileName = s3Info.sourceFileName;
-      }
-    }
-
-    const response = await axios.post(
-      `${API_CONFIG.TRANSCODE_BASE_URL}`,
-      payload,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      }
-    );
-
-    return response.data;
-  } catch (error: any) {
-    console.error('Failed to trigger transcoding job:', error);
-    if (error.response?.status === 401) {
-      await clearAuthTokens();
-      if (logoutCallback) {
-        logoutCallback();
-      }
-    }
-    throw error;
-  }
-};
-
 export const authService = {
   login: async (username: string, password: string): Promise<{ accessToken: string; refreshToken: string }> => {
     const response = await authApi.post('/login', {

@@ -48,9 +48,6 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	var p messages.AnalyzePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		log.WithError(err).Error("Failed to unmarshal analyze payload")
-		if a.completionProducer != nil {
-			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "invalid payload format")
-		}
 		return apperrors.NewValidationError("invalid payload format", err)
 	}
 
@@ -71,26 +68,40 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 
 	log.Info("Starting video analysis", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
 
+	err := apperrors.Retry(ctx, func(ctx context.Context) error {
+		return a.executeAnalysis(ctx, p)
+	}, apperrors.DefaultRetryConfig())
+
+	if err != nil {
+		log.WithError(err).Error("Video analysis failed after retries", "asset_id", p.AssetID, "video_id", p.VideoID)
+		if a.completionProducer != nil {
+			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "analysis failed after retries")
+		}
+		return err
+	}
+
+	if a.completionProducer != nil {
+		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, true, "")
+	}
+
+	return nil
+}
+
+func (a *AnalyzeRunner) executeAnalysis(ctx context.Context, p messages.AnalyzePayload) error {
 	var localPath string
 	var err error
 
 	if strings.HasPrefix(p.Input, "s3://") {
 		localPath, err = a.s3Client.Download(ctx, p.Input)
 		if err != nil {
-			log.WithError(err).Error("Failed to download from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if a.completionProducer != nil {
-				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "failed to download input file")
-			}
+			a.logger.WithError(err).Error("Failed to download from S3", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID)
 			return apperrors.NewExternalError("failed to download input file from S3", err)
 		}
 		defer os.Remove(localPath)
 	} else {
 		localPath = p.Input
 		if _, err := os.Stat(localPath); os.IsNotExist(err) {
-			log.Error("Input file does not exist", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID)
-			if a.completionProducer != nil {
-				a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "input file not found")
-			}
+			a.logger.Error("Input file does not exist", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID)
 			return apperrors.NewNotFoundError("input file not found", err)
 		}
 	}
@@ -99,19 +110,12 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
-		if a.completionProducer != nil {
-			a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, false, "ffmpeg analysis failed")
-		}
+		a.logger.WithError(err).Error("FFmpeg analysis failed", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "ffmpeg_output", string(out))
 		return apperrors.NewInternalError("ffmpeg analysis failed", err)
 	}
 
-	log.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out))
-	log.Debug("FFmpeg analysis output", "output", string(out))
-
-	if a.completionProducer != nil {
-		a.sendAnalyzeCompleted(ctx, p.AssetID, p.VideoID, true, "")
-	}
+	a.logger.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out))
+	a.logger.Debug("FFmpeg analysis output", "output", string(out))
 
 	return nil
 }

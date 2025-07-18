@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -101,7 +102,29 @@ func (c *Consumer) Start(ctx context.Context, handle func(Message) error) {
 				log.Debug("Message processed successfully", "message_type", msg.Type, "message_id", *m.MessageId)
 			} else {
 				log.WithError(err).Error("Handler failed for message", "message_type", msg.Type, "message_id", *m.MessageId)
+
+				// For validation errors, delete the message immediately since retrying won't help
+				if isValidationError(err) {
+					log.Info("Deleting message due to validation error (non-retryable)", "message_type", msg.Type, "message_id", *m.MessageId)
+					_, _ = c.client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+						QueueUrl:      &c.queueURL,
+						ReceiptHandle: m.ReceiptHandle,
+					})
+				}
 			}
 		}
 	}
+}
+
+func isValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check if it's a validation error from our error package
+	if appErr, ok := err.(*apperrors.AppError); ok {
+		return appErr.Type == apperrors.ErrorTypeValidation
+	}
+
+	return false
 }

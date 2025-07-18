@@ -151,7 +151,7 @@ msg:*auth* AND level:error
 
 **Find lambda function logs:**
 ```
-service_name:generate-presigned-url OR service_name:trigger-transcode-job OR service_name:delete-files
+service_name:generate-presigned-url OR service_name:delete-files
 ```
 
 **Find transcoding job triggers:**

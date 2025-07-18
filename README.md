@@ -50,7 +50,6 @@ There’s also a [sequence diagram](docs/video-upload-transcode-sequence.md)
 ### Lambdas
 - `generate_presigned_upload_url`: temporary S3 URL ([README](backend/lambdas/cmd/generate_presigned_upload_url/README.md))
 - `delete_files`: cleanup on delete ([README](backend/lambdas/cmd/delete_files/README.md))
-- `trigger_transcode_job`: triggers FFmpeg jobs ([README](backend/lambdas/cmd/trigger_transcode_job/README.md))
 
 ### Frontend
 - `HobbyStreamerCMS`: Dashboard UI ([README](frontend/HobbyStreamerCMS/README.md))

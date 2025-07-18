@@ -57,49 +57,31 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 
 	if p.Format != "hls" {
 		log.Error("Invalid format for HLS transcode job", "format", p.Format)
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "invalid format for HLS transcode job")
-		}
 		return apperrors.NewValidationError("format must be 'hls' for HLS transcode job", nil)
 	}
 
 	if p.AssetID == "" {
 		log.Error("Missing assetId in HLS transcode payload")
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing assetId in payload")
-		}
 		return apperrors.NewValidationError("assetId is required", nil)
 	}
 
 	if p.VideoID == "" {
 		log.Error("Missing videoId in HLS transcode payload")
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing videoId in payload")
-		}
 		return apperrors.NewValidationError("videoId is required", nil)
 	}
 
 	if p.Input == "" {
 		log.Error("Missing input in HLS transcode payload")
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing input in payload")
-		}
 		return apperrors.NewValidationError("input is required", nil)
 	}
 
 	if p.OutputBucket == "" {
 		log.Error("Missing outputBucket in HLS transcode payload")
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputBucket in payload")
-		}
 		return apperrors.NewValidationError("outputBucket is required", nil)
 	}
 
 	if p.OutputFileName == "" {
 		log.Error("Missing outputFileName in HLS transcode payload")
-		if h.completionProducer != nil {
-			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "missing outputFileName in payload")
-		}
 		return apperrors.NewValidationError("outputFileName is required", nil)
 	}
 
@@ -109,6 +91,27 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 
 	log.Info("Starting HLS transcoding", "input", p.Input, "asset_id", p.AssetID, "video_id", p.VideoID, "output_bucket", p.OutputBucket, "output_file", p.OutputFileName)
 
+	err = apperrors.Retry(ctx, func(ctx context.Context) error {
+		return h.executeTranscoding(ctx, p)
+	}, apperrors.DefaultRetryConfig())
+
+	if err != nil {
+		log.WithError(err).Error("HLS transcoding failed after retries", "asset_id", p.AssetID, "video_id", p.VideoID, "format", p.Format)
+		if h.completionProducer != nil {
+			h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "transcoding failed after retries")
+		}
+		return err
+	}
+
+	if h.completionProducer != nil {
+		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
+	}
+
+	log.Info("HLS transcoding job completed successfully", "asset_id", p.AssetID, "video_id", p.VideoID, "format", p.Format)
+	return nil
+}
+
+func (h *TranscodeHLSRunner) executeTranscoding(ctx context.Context, p messages.TranscodePayload) error {
 	localInputPath, err := h.downloadInput(ctx, p)
 	if err != nil {
 		return err
@@ -130,11 +133,6 @@ func (h *TranscodeHLSRunner) Run(ctx context.Context, payload json.RawMessage) e
 		return err
 	}
 
-	if h.completionProducer != nil {
-		h.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, true, "")
-	}
-
-	log.Info("HLS transcoding job completed successfully", "asset_id", p.AssetID, "video_id", p.VideoID, "format", p.Format)
 	return nil
 }
 
@@ -280,7 +278,7 @@ func (h *TranscodeHLSRunner) sendTranscodeCompleted(ctx context.Context, assetID
 	if !success && errorMessage != "" {
 		payload.Error = errorMessage
 	}
-	
+
 	messageType := messages.MessageTypeTranscodeHLSCompleted
 
 	err := h.completionProducer.SendMessage(ctx, messageType, payload)
