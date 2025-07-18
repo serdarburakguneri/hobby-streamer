@@ -15,12 +15,16 @@ interface VideoSectionProps {
   onRefreshAsset: () => void;
 }
 
+type VideoFormatTab = 'raw' | 'hls' | 'dash';
+
 export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId, onUploadComplete, onRefreshAsset }: VideoSectionProps) {
   const [showMainUpload, setShowMainUpload] = useState(false);
   const [showTrailerUpload, setShowTrailerUpload] = useState(false);
   const [triggeringJobs, setTriggeringJobs] = useState<{[key: string]: boolean}>({});
   const [previewVideo, setPreviewVideo] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<VideoFormatTab>('raw');
+  const [activeTrailerTab, setActiveTrailerTab] = useState<VideoFormatTab>('raw');
   const { addVideo } = useAssetService();
 
   const handleTriggerTranscode = async (videoId: string, format: 'hls' | 'dash') => {
@@ -233,6 +237,12 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
   const renderVideoTypeSection = (videoType: VideoType, title: string, icon: string) => {
     const typeVideos = videos?.filter(v => v.type === videoType) || [];
     const hasVideos = typeVideos.length > 0;
+    const activeTab = videoType === VideoType.MAIN ? activeMainTab : activeTrailerTab;
+    const setActiveTab = videoType === VideoType.MAIN ? setActiveMainTab : setActiveTrailerTab;
+
+    const formatTabs: VideoFormatTab[] = ['raw', 'hls', 'dash'];
+    const formatVideos = typeVideos.filter(v => v.format.toLowerCase() === activeTab);
+    const hasFormatVideos = formatVideos.length > 0;
 
     return (
       <View style={styles.videoTypeContainer}>
@@ -262,9 +272,37 @@ export default function VideoSection({ videos, onDeleteVideo, onUpdate, assetId,
           </TouchableOpacity>
         </View>
         
+        {hasVideos && (
+          <View style={styles.tabContainer}>
+            {formatTabs.map((format) => {
+              const formatCount = typeVideos.filter(v => v.format.toLowerCase() === format).length;
+              const isActive = activeTab === format;
+              
+              return (
+                <TouchableOpacity
+                  key={format}
+                  style={[styles.tab, isActive && styles.activeTab]}
+                  onPress={() => setActiveTab(format)}
+                >
+                  <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                    {format.toUpperCase()} ({formatCount})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+        
         {hasVideos ? (
           <View style={styles.videosList}>
-            {typeVideos.map(renderVideoItem)}
+            {hasFormatVideos ? (
+              formatVideos.map(renderVideoItem)
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="videocam-outline" size={24} color="#ccc" />
+                <Text style={styles.emptyText}>No {activeTab.toUpperCase()} videos</Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -482,5 +520,29 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     textAlign: 'center',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingVertical: 4,
+  },
+  tab: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  activeTab: {
+    backgroundColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  activeTabText: {
+    color: '#fff',
   },
 }); 
