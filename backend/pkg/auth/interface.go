@@ -21,3 +21,8 @@ type ValidationResult struct {
 	User  *User
 	Error string
 }
+
+type ServiceClientInterface interface {
+	GetServiceToken(ctx context.Context) (string, error)
+	GetAuthorizationHeader(ctx context.Context) (string, error)
+}

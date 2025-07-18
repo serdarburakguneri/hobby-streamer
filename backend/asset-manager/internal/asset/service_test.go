@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 )
 
 type mockRepository struct {
@@ -105,6 +107,25 @@ func (m *mockRepository) GetAssetsByTypeAndGenre(ctx context.Context, assetType,
 	return []Asset{}, nil
 }
 
+func (m *mockRepository) GetAssetsByIDs(ctx context.Context, ids []string) ([]Asset, error) {
+	var assets []Asset
+	for _, id := range ids {
+		if asset, exists := m.assets[id]; exists {
+			assets = append(assets, *asset)
+		}
+	}
+	return assets, nil
+}
+
+func dummyDynamicConfig() *config.DynamicConfig {
+	base := &config.BaseConfig{
+		Environment: config.Test,
+		Service:     "asset-manager",
+		Components:  map[string]interface{}{},
+	}
+	return config.NewDynamicConfig(base)
+}
+
 func TestService_CreateAsset(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -130,7 +151,7 @@ func TestService_CreateAsset(t *testing.T) {
 				Type:  stringPtr(AssetTypeMovie),
 			},
 			wantErr: true,
-			errMsg:  ErrIDShouldNotBeSet,
+			errMsg:  "validation: asset ID should not be set during creation",
 		},
 		{
 			name: "invalid type should fail",
@@ -139,14 +160,14 @@ func TestService_CreateAsset(t *testing.T) {
 				Type:  stringPtr("invalid"),
 			},
 			wantErr: true,
-			errMsg:  "invalid type value",
+			errMsg:  "validation: invalid type value",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newMockRepository()
-			service := NewService(repo)
+			service := NewService(repo, dummyDynamicConfig())
 			ctx := context.Background()
 
 			result, err := service.CreateAsset(ctx, tt.asset)
@@ -212,14 +233,14 @@ func TestService_UpdateAsset(t *testing.T) {
 				Type:  stringPtr(AssetTypeMovie),
 			},
 			wantErr: true,
-			errMsg:  ErrIDMismatch,
+			errMsg:  "validation: asset ID mismatch",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newMockRepository()
-			service := NewService(repo)
+			service := NewService(repo, dummyDynamicConfig())
 			ctx := context.Background()
 
 			err := service.UpdateAsset(ctx, tt.id, tt.asset)
@@ -244,7 +265,7 @@ func TestService_UpdateAsset(t *testing.T) {
 
 func TestService_GetAssetByID(t *testing.T) {
 	repo := newMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, dummyDynamicConfig())
 	ctx := context.Background()
 
 	// Create a test asset
@@ -300,7 +321,7 @@ func TestService_GetAssetByID(t *testing.T) {
 
 func TestService_ListAssets(t *testing.T) {
 	repo := newMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, dummyDynamicConfig())
 	ctx := context.Background()
 
 	// Create test assets
@@ -361,7 +382,7 @@ func TestService_ListAssets(t *testing.T) {
 
 func TestService_DeleteAsset(t *testing.T) {
 	repo := newMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, dummyDynamicConfig())
 	ctx := context.Background()
 
 	// Create a test asset
@@ -410,7 +431,7 @@ func TestService_DeleteAsset(t *testing.T) {
 
 func TestService_AddImage(t *testing.T) {
 	repo := newMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, dummyDynamicConfig())
 	ctx := context.Background()
 
 	// Create a test asset
@@ -486,7 +507,7 @@ func TestService_AddImage(t *testing.T) {
 
 func TestService_AddVideo(t *testing.T) {
 	repo := newMockRepository()
-	service := NewService(repo)
+	service := NewService(repo, dummyDynamicConfig())
 	ctx := context.Background()
 
 	// Create a test asset
@@ -499,49 +520,44 @@ func TestService_AddVideo(t *testing.T) {
 	repo.assets["123"] = testAsset
 
 	tests := []struct {
-		name      string
-		id        string
-		videoType VideoType
-		video     *Video
-		wantErr   bool
+		name    string
+		id      string
+		video   *Video
+		wantErr bool
 	}{
 		{
-			name:      "add new video",
-			id:        "123",
-			videoType: VideoTypeMain,
+			name: "add new video",
+			id:   "123",
 			video: &Video{
-				Type: VideoTypeMain,
-				Raw: &VideoFormat{
-					StorageLocation: S3Object{
-						Bucket: "test-bucket",
-						Key:    "video.mp4",
-						URL:    "https://example.com/video.mp4",
-					},
-					Width:       1920,
-					Height:      1080,
-					Duration:    120.5,
-					ContentType: "video/mp4",
+				Type:   VideoTypeMain,
+				Format: "mp4",
+				StorageLocation: S3Object{
+					Bucket: "test-bucket",
+					Key:    "video.mp4",
+					URL:    "https://example.com/video.mp4",
 				},
+				Width:       1920,
+				Height:      1080,
+				Duration:    120.5,
+				ContentType: "video/mp4",
 			},
 			wantErr: false,
 		},
 		{
-			name:      "update existing video",
-			id:        "123",
-			videoType: VideoTypeMain,
+			name: "update existing video",
+			id:   "123",
 			video: &Video{
-				Type: VideoTypeMain,
-				Raw: &VideoFormat{
-					StorageLocation: S3Object{
-						Bucket: "test-bucket",
-						Key:    "video2.mp4",
-						URL:    "https://example.com/video2.mp4",
-					},
-					Width:       1920,
-					Height:      1080,
-					Duration:    125.0,
-					ContentType: "video/mp4",
+				Type:   VideoTypeMain,
+				Format: "mp4",
+				StorageLocation: S3Object{
+					Bucket: "test-bucket",
+					Key:    "video2.mp4",
+					URL:    "https://example.com/video2.mp4",
 				},
+				Width:       1920,
+				Height:      1080,
+				Duration:    125.0,
+				ContentType: "video/mp4",
 			},
 			wantErr: false,
 		},
@@ -549,7 +565,7 @@ func TestService_AddVideo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := service.AddVideo(ctx, tt.id, tt.videoType, tt.video)
+			err := service.AddVideo(ctx, tt.id, tt.video)
 
 			if tt.wantErr {
 				if err == nil {
@@ -567,13 +583,8 @@ func TestService_AddVideo(t *testing.T) {
 			asset, _ := repo.GetAssetByID(ctx, tt.id)
 			found := false
 			for _, video := range asset.Videos {
-				if video.Type == tt.videoType {
+				if video.Type == tt.video.Type && video.Format == tt.video.Format && video.StorageLocation.URL == tt.video.StorageLocation.URL {
 					found = true
-					if video.Raw != nil && tt.video.Raw != nil {
-						if video.Raw.StorageLocation.URL != tt.video.Raw.StorageLocation.URL {
-							t.Errorf("AddVideo() video URL mismatch, got %v, want %v", video.Raw.StorageLocation.URL, tt.video.Raw.StorageLocation.URL)
-						}
-					}
 					break
 				}
 			}

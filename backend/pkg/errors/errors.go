@@ -174,3 +174,15 @@ func IsExternal(err error) bool {
 	}
 	return false
 }
+
+func IsValidationError(err error) bool {
+	return GetErrorType(err) == ErrorTypeValidation
+}
+
+func IsNotFoundError(err error) bool {
+	return GetErrorType(err) == ErrorTypeNotFound
+}
+
+func IsConflictError(err error) bool {
+	return GetErrorType(err) == ErrorTypeConflict
+}

@@ -25,14 +25,14 @@ type ServiceInterface interface {
 }
 
 type Service struct {
-	cacheService    *cache.Service
+	cacheService    cache.CacheService
 	logger          *logger.Logger
 	assetManagerURL string
-	serviceClient   *auth.ServiceClient
+	serviceClient   auth.ServiceClientInterface
 	circuitBreaker  *errors.CircuitBreaker
 }
 
-func NewService(cacheService *cache.Service, assetManagerURL, keycloakURL, realm, clientID, clientSecret string) *Service {
+func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, realm, clientID, clientSecret string) *Service {
 	log := logger.Get().WithService("streaming-service")
 	log.Info("Initializing streaming service", "asset_manager_url", assetManagerURL, "keycloak_url", keycloakURL, "realm", realm, "client_id", clientID)
 
