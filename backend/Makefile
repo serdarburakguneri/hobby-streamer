@@ -29,33 +29,19 @@ install-tools:
 # Run linting
 lint:
 	@echo "Running golangci-lint..."
-	@for service in asset-manager auth-service streaming-api transcoder; do \
-		if [ -d "$$service" ]; then \
-			echo "Linting $$service..."; \
-			cd $$service && $(HOME)/go/bin/golangci-lint run ./... && cd ..; \
-		fi; \
-	done
-	@for pkg in pkg/*; do \
-		if [ -d "$$pkg" ]; then \
-			echo "Linting $$pkg..."; \
-			cd $$pkg && $(HOME)/go/bin/golangci-lint run ./... && cd ../..; \
-		fi; \
+	@for dir in $$(find . -name "go.mod" -type f); do \
+		module_dir=$$(dirname "$$dir"); \
+		echo "Linting $$module_dir..."; \
+		cd "$$module_dir" && $(HOME)/go/bin/golangci-lint run ./... && cd - > /dev/null; \
 	done
 
 # Run tests
 test:
 	@echo "Running tests..."
-	@for service in asset-manager auth-service streaming-api transcoder; do \
-		if [ -d "$$service" ]; then \
-			echo "Testing $$service..."; \
-			cd $$service && go test ./... -v && cd ..; \
-		fi; \
-	done
-	@for pkg in pkg/*; do \
-		if [ -d "$$pkg" ]; then \
-			echo "Testing $$pkg..."; \
-			cd $$pkg && go test ./... -v && cd ../..; \
-		fi; \
+	@for dir in $$(find . -name "go.mod" -type f); do \
+		module_dir=$$(dirname "$$dir"); \
+		echo "Testing $$module_dir..."; \
+		cd "$$module_dir" && go test ./... -v && cd - > /dev/null; \
 	done
 
 # Build all services
@@ -97,50 +83,25 @@ pre-commit: lint test
 # Format code
 fmt:
 	@echo "Formatting code..."
-	@for service in asset-manager auth-service streaming-api transcoder; do \
-		if [ -d "$$service" ]; then \
-			echo "Formatting $$service..."; \
-			cd $$service && go fmt ./... && cd ..; \
-		fi; \
-	done
-	@for pkg in pkg/*; do \
-		if [ -d "$$pkg" ]; then \
-			echo "Formatting $$pkg..."; \
-			cd $$pkg && go fmt ./... && cd ../..; \
-		fi; \
+	@for dir in $$(find . -name "go.mod" -type f); do \
+		module_dir=$$(dirname "$$dir"); \
+		echo "Formatting $$module_dir..."; \
+		cd "$$module_dir" && go fmt ./... && cd - > /dev/null; \
 	done
 
 # Vet code
 vet:
 	@echo "Running go vet..."
-	@for service in asset-manager auth-service streaming-api transcoder; do \
-		if [ -d "$$service" ]; then \
-			echo "Vetting $$service..."; \
-			cd $$service && go vet ./... && cd ..; \
-		fi; \
-	done
-	@for pkg in pkg/*; do \
-		if [ -d "$$pkg" ]; then \
-			echo "Vetting $$pkg..."; \
-			cd $$pkg && go vet ./... && cd ../..; \
-		fi; \
+	@for dir in $$(find . -name "go.mod" -type f); do \
+		module_dir=$$(dirname "$$dir"); \
+		echo "Vetting $$module_dir..."; \
+		cd "$$module_dir" && go vet ./... && cd - > /dev/null; \
 	done
 
 # Check for security issues
 security:
 	@echo "Running security checks..."
-	@for service in asset-manager auth-service streaming-api transcoder; do \
-		if [ -d "$$service" ]; then \
-			echo "Running security checks on $$service..."; \
-			cd $$service && $(HOME)/go/bin/gosec ./... && cd ..; \
-		fi; \
-	done
-	@for pkg in pkg/*; do \
-		if [ -d "$$pkg" ]; then \
-			echo "Running security checks on $$pkg..."; \
-			cd $$pkg && $(HOME)/go/bin/gosec ./... && cd ../..; \
-		fi; \
-	done
+	$(HOME)/go/bin/gosec ./...
 
 # Run all quality checks
 quality: fmt vet lint security test 
