@@ -115,35 +115,14 @@ func (h *AuthHandler) handleError(w http.ResponseWriter, err error, defaultMessa
 		appErr := err.(*apperrors.AppError)
 		h.logger.WithError(err).Error("Application error", "error_type", appErr.Type, "context", appErr.Context)
 
-		switch appErr.Type {
-		case apperrors.ErrorTypeValidation:
-			h.writeError(w, http.StatusBadRequest, appErr.Message)
-			return
-		case apperrors.ErrorTypeUnauthorized:
-			h.writeError(w, http.StatusUnauthorized, appErr.Message)
-			return
-		case apperrors.ErrorTypeForbidden:
-			h.writeError(w, http.StatusForbidden, appErr.Message)
-			return
-		case apperrors.ErrorTypeNotFound:
-			h.writeError(w, http.StatusNotFound, appErr.Message)
-			return
-		case apperrors.ErrorTypeConflict:
-			h.writeError(w, http.StatusConflict, appErr.Message)
-			return
-		case apperrors.ErrorTypeTransient:
-			h.writeError(w, http.StatusServiceUnavailable, appErr.Message)
-			return
-		case apperrors.ErrorTypeTimeout:
-			h.writeError(w, http.StatusGatewayTimeout, appErr.Message)
-			return
-		case apperrors.ErrorTypeExternal:
-			h.writeError(w, http.StatusBadGateway, appErr.Message)
-			return
-		default:
-			h.writeError(w, http.StatusInternalServerError, "Internal server error")
-			return
+		status := appErr.HTTPStatus()
+		message := appErr.Message
+		if appErr.Type == apperrors.ErrorTypeCircuitBreaker {
+			message = "Service temporarily unavailable"
 		}
+
+		h.writeError(w, status, message)
+		return
 	}
 
 	h.logger.WithError(err).Error("Unexpected error")

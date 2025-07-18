@@ -46,6 +46,31 @@ func (e *AppError) IsExternal() bool {
 	return e.Type == ErrorTypeExternal || e.Type == ErrorTypeCircuitBreaker
 }
 
+func (e *AppError) HTTPStatus() int {
+	switch e.Type {
+	case ErrorTypeValidation:
+		return 400
+	case ErrorTypeNotFound:
+		return 404
+	case ErrorTypeUnauthorized:
+		return 401
+	case ErrorTypeForbidden:
+		return 403
+	case ErrorTypeConflict:
+		return 409
+	case ErrorTypeTransient:
+		return 503
+	case ErrorTypeTimeout:
+		return 504
+	case ErrorTypeCircuitBreaker:
+		return 503
+	case ErrorTypeExternal:
+		return 502
+	default:
+		return 500
+	}
+}
+
 func NewValidationError(message string, cause error) *AppError {
 	return &AppError{
 		Type:    ErrorTypeValidation,
@@ -185,4 +210,19 @@ func IsNotFoundError(err error) bool {
 
 func IsConflictError(err error) bool {
 	return GetErrorType(err) == ErrorTypeConflict
+}
+
+func WrapWithContext(err error, context string) *AppError {
+	errorType := GetErrorType(err)
+
+	switch errorType {
+	case ErrorTypeValidation:
+		return NewValidationError(context, err)
+	case ErrorTypeNotFound:
+		return NewNotFoundError(context, err)
+	case ErrorTypeTransient:
+		return NewTransientError(context, err)
+	default:
+		return NewInternalError(context, err)
+	}
 }

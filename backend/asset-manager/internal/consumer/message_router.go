@@ -71,18 +71,7 @@ func (r *MessageRouter) HandleMessage(ctx context.Context, msgType string, paylo
 
 	if err != nil {
 		log.WithError(err).Error("Failed to handle message", "message_type", msgType)
-
-		errorType := apperrors.GetErrorType(err)
-		switch errorType {
-		case apperrors.ErrorTypeValidation:
-			return apperrors.NewValidationError("invalid message payload", err)
-		case apperrors.ErrorTypeNotFound:
-			return apperrors.NewNotFoundError("resource not found for message processing", err)
-		case apperrors.ErrorTypeTransient:
-			return apperrors.NewTransientError("temporary failure processing message", err)
-		default:
-			return apperrors.NewInternalError("failed to process message", err)
-		}
+		return apperrors.WrapWithContext(err, "failed to process message")
 	}
 
 	log.Info("Successfully routed and processed message", "message_type", msgType)

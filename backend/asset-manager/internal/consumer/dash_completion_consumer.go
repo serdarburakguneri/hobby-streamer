@@ -58,17 +58,7 @@ func (d *DASHCompletionConsumer) HandleMessage(ctx context.Context, msgType stri
 			"format", format,
 			"message_type", msgType)
 
-		errorType := apperrors.GetErrorType(err)
-		switch errorType {
-		case apperrors.ErrorTypeValidation:
-			return apperrors.NewValidationError("invalid DASH transcoding completion payload", err)
-		case apperrors.ErrorTypeNotFound:
-			return apperrors.NewNotFoundError("asset or video not found for DASH transcoding completion", err)
-		case apperrors.ErrorTypeTransient:
-			return apperrors.NewTransientError("temporary failure processing DASH transcoding completion", err)
-		default:
-			return apperrors.NewInternalError("failed to process DASH transcoding completion", err)
-		}
+		return apperrors.WrapWithContext(err, "failed to process DASH transcoding completion")
 	}
 
 	log.Info("Successfully processed DASH transcoding completion", "asset_id", assetID, "video_id", videoID, "format", format)

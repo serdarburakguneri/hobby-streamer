@@ -51,17 +51,7 @@ func (a *AnalyzeCompletionConsumer) HandleMessage(ctx context.Context, msgType s
 			"video_id", videoID,
 			"message_type", msgType)
 
-		errorType := apperrors.GetErrorType(err)
-		switch errorType {
-		case apperrors.ErrorTypeValidation:
-			return apperrors.NewValidationError("invalid analyze completion payload", err)
-		case apperrors.ErrorTypeNotFound:
-			return apperrors.NewNotFoundError("asset or video not found for analyze completion", err)
-		case apperrors.ErrorTypeTransient:
-			return apperrors.NewTransientError("temporary failure processing analyze completion", err)
-		default:
-			return apperrors.NewInternalError("failed to process analyze completion", err)
-		}
+		return apperrors.WrapWithContext(err, "failed to process analyze completion")
 	}
 
 	log.Info("Successfully processed analyze completion", "asset_id", assetID, "video_id", videoID)

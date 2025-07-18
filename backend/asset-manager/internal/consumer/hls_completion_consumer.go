@@ -58,17 +58,7 @@ func (h *HLSCompletionConsumer) HandleMessage(ctx context.Context, msgType strin
 			"format", format,
 			"message_type", msgType)
 
-		errorType := apperrors.GetErrorType(err)
-		switch errorType {
-		case apperrors.ErrorTypeValidation:
-			return apperrors.NewValidationError("invalid HLS transcoding completion payload", err)
-		case apperrors.ErrorTypeNotFound:
-			return apperrors.NewNotFoundError("asset or video not found for HLS transcoding completion", err)
-		case apperrors.ErrorTypeTransient:
-			return apperrors.NewTransientError("temporary failure processing HLS transcoding completion", err)
-		default:
-			return apperrors.NewInternalError("failed to process HLS transcoding completion", err)
-		}
+		return apperrors.WrapWithContext(err, "failed to process HLS transcoding completion")
 	}
 
 	log.Info("Successfully processed HLS transcoding completion", "asset_id", assetID, "video_id", videoID, "format", format)

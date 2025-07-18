@@ -169,32 +169,30 @@ func (h *Handler) GetAsset(w http.ResponseWriter, r *http.Request) {
     asset, err := h.service.GetAsset(ctx, slug)
 
     if err != nil {
-        if errors.IsAppError(err) {
-            appErr := err.(*errors.AppError)
-            switch appErr.Type {
-            case errors.ErrorTypeNotFound:
-                h.writeError(w, http.StatusNotFound, appErr.Message)
-                return
-            case errors.ErrorTypeValidation:
-                h.writeError(w, http.StatusBadRequest, appErr.Message)
-                return
-            case errors.ErrorTypeUnauthorized:
-                h.writeError(w, http.StatusUnauthorized, appErr.Message)
-                return
-            case errors.ErrorTypeForbidden:
-                h.writeError(w, http.StatusForbidden, appErr.Message)
-                return
-            case errors.ErrorTypeConflict:
-                h.writeError(w, http.StatusConflict, appErr.Message)
-                return
-            }
-        }
-
-        h.writeError(w, http.StatusInternalServerError, "Internal server error")
+        h.handleError(w, err, "Failed to get asset")
         return
     }
 
     h.writeJSON(w, http.StatusOK, asset)
+}
+
+func (h *Handler) handleError(w http.ResponseWriter, err error, defaultMessage string) {
+    if errors.IsAppError(err) {
+        appErr := err.(*errors.AppError)
+        h.logger.WithError(err).Error("Application error", "error_type", appErr.Type, "context", appErr.Context)
+
+        status := appErr.HTTPStatus()
+        message := appErr.Message
+        if appErr.Type == errors.ErrorTypeCircuitBreaker {
+            message = "Service temporarily unavailable"
+        }
+
+        h.writeError(w, status, message)
+        return
+    }
+
+    h.logger.WithError(err).Error("Unexpected error")
+    h.writeError(w, http.StatusInternalServerError, defaultMessage)
 }
 ```
 
@@ -215,3 +213,23 @@ if appErr, ok := err.(*errors.AppError); ok {
     }
 }
 ```
+
+## Message Consumer Integration
+
+```go
+func (c *Consumer) HandleMessage(ctx context.Context, payload map[string]interface{}) error {
+    err := c.service.ProcessMessage(ctx, payload)
+    if err != nil {
+        log.WithError(err).Error("Failed to process message")
+        return errors.WrapWithContext(err, "failed to process message")
+    }
+    return nil
+}
+```
+
+The `WrapWithContext` function intelligently wraps errors with appropriate context while preserving the original error type:
+
+- **Validation errors** → Wrapped as validation errors
+- **Not found errors** → Wrapped as not found errors  
+- **Transient errors** → Wrapped as transient errors
+- **Other errors** → Wrapped as internal errors
