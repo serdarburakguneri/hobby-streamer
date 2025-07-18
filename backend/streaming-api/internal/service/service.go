@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -29,7 +28,7 @@ type Service struct {
 	graphQLClient   *GraphQLClient
 }
 
-func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, realm, clientID, clientSecret string) *Service {
+func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, realm, clientID, clientSecret string, circuitBreakerConfig errors.CircuitBreakerConfig) *Service {
 	log := logger.Get().WithService("streaming-service")
 	log.Info("Initializing streaming service", "asset_manager_url", assetManagerURL, "keycloak_url", keycloakURL, "realm", realm, "client_id", clientID)
 
@@ -38,8 +37,8 @@ func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, r
 
 	circuitBreaker := errors.NewCircuitBreaker(errors.CircuitBreakerConfig{
 		Name:      "asset-manager",
-		Threshold: 5,
-		Timeout:   30 * time.Second,
+		Threshold: circuitBreakerConfig.Threshold,
+		Timeout:   circuitBreakerConfig.Timeout,
 		OnStateChange: func(name string, from, to errors.CircuitState) {
 			log.Info("Circuit breaker state changed", "name", name, "from", from, "to", to)
 		},

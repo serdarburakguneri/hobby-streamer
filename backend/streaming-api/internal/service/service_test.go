@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/model"
 )
 
@@ -117,22 +116,12 @@ func stringPtr(s string) *string {
 
 func createTestService() *Service {
 	mockCache := newMockCacheService()
-	circuitBreaker := errors.NewCircuitBreaker(errors.CircuitBreakerConfig{
-		Name:      "test-asset-manager",
+	circuitBreakerConfig := errors.CircuitBreakerConfig{
 		Threshold: 5,
 		Timeout:   30 * time.Second,
-		OnStateChange: func(name string, from, to errors.CircuitState) {
-		},
-	})
-
-	return &Service{
-		cacheService:    mockCache,
-		logger:          logger.Get().WithService("test"),
-		assetManagerURL: "http://localhost:8080",
-		serviceClient:   &mockServiceClient{},
-		circuitBreaker:  circuitBreaker,
-		graphQLClient:   NewGraphQLClient(&mockServiceClient{}),
 	}
+
+	return NewService(mockCache, "http://localhost:8080", "http://localhost:8081", "test", "test-client", "test-secret", circuitBreakerConfig)
 }
 
 func TestService_GetBucket_FromCache(t *testing.T) {
