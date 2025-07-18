@@ -131,14 +131,14 @@ func (h *TranscodeHLSRunner) downloadInput(ctx context.Context, p messages.Trans
 func (h *TranscodeHLSRunner) prepareOutputDirectory() (string, error) {
 	tempDir := os.TempDir()
 	hlsDir := filepath.Join(tempDir, "hls_output")
-	if err := os.MkdirAll(hlsDir, 0755); err != nil {
+	if err := os.MkdirAll(hlsDir, 0750); err != nil {
 		h.logger.WithError(err).Error("Failed to create HLS output directory", "dir", hlsDir)
 		return "", apperrors.NewInternalError("failed to create output directory", err)
 	}
 
 	baseFileName := strings.TrimSuffix(h.outputFileName, ".m3u8")
 	segmentDir := filepath.Join(hlsDir, baseFileName)
-	if err := os.MkdirAll(segmentDir, 0755); err != nil {
+	if err := os.MkdirAll(segmentDir, 0750); err != nil {
 		h.logger.WithError(err).Error("Failed to create HLS segment directory", "dir", segmentDir)
 		return "", apperrors.NewInternalError("failed to create segment directory", err)
 	}

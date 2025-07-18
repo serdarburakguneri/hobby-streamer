@@ -91,14 +91,18 @@ func (c *Client) Download(ctx context.Context, s3URL string) (string, error) {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		os.Remove(localPath)
+		if removeErr := os.Remove(localPath); removeErr != nil {
+			log.WithError(removeErr).Error("Failed to remove local file after S3 download error")
+		}
 		return "", fmt.Errorf("failed to get object from S3: %w", err)
 	}
 	defer result.Body.Close()
 
 	_, err = io.Copy(file, result.Body)
 	if err != nil {
-		os.Remove(localPath)
+		if removeErr := os.Remove(localPath); removeErr != nil {
+			log.WithError(removeErr).Error("Failed to remove local file after copy error")
+		}
 		return "", fmt.Errorf("failed to write file to disk: %w", err)
 	}
 

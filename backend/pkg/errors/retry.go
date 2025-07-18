@@ -2,8 +2,9 @@ package errors
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"math"
-	"math/rand"
 	"time"
 )
 
@@ -56,10 +57,14 @@ func (c *RetryConfig) calculateDelay(attempt int) time.Duration {
 	}
 
 	if c.JitterFactor > 0 {
-		jitter := delay * c.JitterFactor * (rand.Float64()*2 - 1)
-		delay += jitter
-		if delay < 0 {
-			delay = 0
+		var buf [8]byte
+		if _, err := rand.Read(buf[:]); err == nil {
+			randomFloat := float64(binary.BigEndian.Uint64(buf[:])) / float64(^uint64(0))
+			jitter := delay * c.JitterFactor * (randomFloat*2 - 1)
+			delay += jitter
+			if delay < 0 {
+				delay = 0
+			}
 		}
 	}
 

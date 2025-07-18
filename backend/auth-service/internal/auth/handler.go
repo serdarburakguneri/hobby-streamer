@@ -104,7 +104,10 @@ func (h *AuthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	log.Debug("Health check requested")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "auth-service"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "auth-service"}); err != nil {
+		log.WithError(err).Error("Failed to encode health check response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
 func (h *AuthHandler) handleError(w http.ResponseWriter, err error, defaultMessage string) {

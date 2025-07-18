@@ -116,7 +116,7 @@ func (d *TranscodeDASHRunner) Run(ctx context.Context, payload json.RawMessage) 
 
 	tempDir := os.TempDir()
 	dashDir := filepath.Join(tempDir, "dash_output")
-	if err := os.MkdirAll(dashDir, 0755); err != nil {
+	if err := os.MkdirAll(dashDir, 0750); err != nil {
 		log.WithError(err).Error("Failed to create DASH output directory", "dir", dashDir, "asset_id", p.AssetID, "video_id", p.VideoID)
 		if d.analyzeProducer != nil {
 			d.sendTranscodeCompleted(ctx, p.AssetID, p.VideoID, p.Format, false, "failed to create output directory")
