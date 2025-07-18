@@ -45,13 +45,6 @@ For a closer look at the media pipeline, see the [Upload & Transcode Sequence Di
 - [Transcoder](backend/transcoder/README.md): Worker for FFmpeg-based transcoding
 - [Streaming API](backend/streaming-api/README.md): REST API with Redis caching
 
-### Development Tools
-
-- **Linting**: golangci-lint configuration with comprehensive rules
-- **Code Generation**: Templates for repetitive patterns (errors, GraphQL responses)
-- **Quality Checks**: Pre-commit hooks and Makefile targets
-- **Refactored Code**: Long functions broken down into smaller, focused methods
-
 ### Lambdas
 
 - [Generate Presigned Upload URL](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Generates temporary S3 upload URLs
