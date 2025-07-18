@@ -34,4 +34,4 @@ func NewSecurityConfig(configManager *config.Manager, log *logger.Logger) *Secur
 	return &SecurityConfig{
 		Middleware: securityMiddleware,
 	}
-} 
+}

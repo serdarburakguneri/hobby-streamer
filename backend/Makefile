@@ -11,6 +11,11 @@ help:
 	@echo "  generate-graphql - Generate GraphQL code only"
 	@echo "  generate-mocks - Generate mock files for testing"
 	@echo "  install-tools  - Install development tools"
+	@echo "  fmt            - Format code with go fmt"
+	@echo "  vet            - Run go vet on all packages"
+	@echo "  security       - Run security checks with gosec"
+	@echo "  quality        - Run all quality checks (fmt, vet, lint, security, test)"
+	@echo "  pre-commit     - Run pre-commit checks (lint, test)"
 
 # Install development tools
 install-tools:
@@ -92,17 +97,50 @@ pre-commit: lint test
 # Format code
 fmt:
 	@echo "Formatting code..."
-	go fmt ./...
+	@for service in asset-manager auth-service streaming-api transcoder; do \
+		if [ -d "$$service" ]; then \
+			echo "Formatting $$service..."; \
+			cd $$service && go fmt ./... && cd ..; \
+		fi; \
+	done
+	@for pkg in pkg/*; do \
+		if [ -d "$$pkg" ]; then \
+			echo "Formatting $$pkg..."; \
+			cd $$pkg && go fmt ./... && cd ../..; \
+		fi; \
+	done
 
 # Vet code
 vet:
 	@echo "Running go vet..."
-	go vet ./...
+	@for service in asset-manager auth-service streaming-api transcoder; do \
+		if [ -d "$$service" ]; then \
+			echo "Vetting $$service..."; \
+			cd $$service && go vet ./... && cd ..; \
+		fi; \
+	done
+	@for pkg in pkg/*; do \
+		if [ -d "$$pkg" ]; then \
+			echo "Vetting $$pkg..."; \
+			cd $$pkg && go vet ./... && cd ../..; \
+		fi; \
+	done
 
 # Check for security issues
 security:
 	@echo "Running security checks..."
-	$(HOME)/go/bin/gosec ./...
+	@for service in asset-manager auth-service streaming-api transcoder; do \
+		if [ -d "$$service" ]; then \
+			echo "Running security checks on $$service..."; \
+			cd $$service && $(HOME)/go/bin/gosec ./... && cd ..; \
+		fi; \
+	done
+	@for pkg in pkg/*; do \
+		if [ -d "$$pkg" ]; then \
+			echo "Running security checks on $$pkg..."; \
+			cd $$pkg && $(HOME)/go/bin/gosec ./... && cd ../..; \
+		fi; \
+	done
 
 # Run all quality checks
 quality: fmt vet lint security test 
