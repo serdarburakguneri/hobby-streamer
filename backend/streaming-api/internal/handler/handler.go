@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/model"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/service"
 )
 
@@ -50,10 +51,12 @@ func (h *Handler) GetBuckets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, map[string]interface{}{
-		"buckets": buckets,
-		"count":   len(buckets),
-	})
+	response := model.BucketsResponse{
+		Buckets: buckets,
+		Count:   len(buckets),
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) GetBucket(w http.ResponseWriter, r *http.Request) {
@@ -87,10 +90,12 @@ func (h *Handler) GetAssetsInBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, map[string]interface{}{
-		"assets": assets,
-		"count":  len(assets),
-	})
+	response := model.AssetsResponse{
+		Assets: assets,
+		Count:  len(assets),
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) GetAssets(w http.ResponseWriter, r *http.Request) {
@@ -102,10 +107,12 @@ func (h *Handler) GetAssets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeJSON(w, http.StatusOK, map[string]interface{}{
-		"assets": assets,
-		"count":  len(assets),
-	})
+	response := model.AssetsResponse{
+		Assets: assets,
+		Count:  len(assets),
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) GetAsset(w http.ResponseWriter, r *http.Request) {
@@ -128,10 +135,12 @@ func (h *Handler) GetAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	h.writeJSON(w, http.StatusOK, map[string]string{
-		"status":  "healthy",
-		"service": "streaming-api",
-	})
+	response := model.HealthResponse{
+		Status:  "healthy",
+		Service: "streaming-api",
+	}
+
+	h.writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) handleError(w http.ResponseWriter, err error, defaultMessage string) {
@@ -164,7 +173,9 @@ func (h *Handler) writeJSON(w http.ResponseWriter, status int, data interface{})
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, status int, message string) {
-	h.writeJSON(w, status, map[string]string{
-		"error": message,
-	})
+	response := model.ErrorResponse{
+		Error: message,
+	}
+
+	h.writeJSON(w, status, response)
 }
