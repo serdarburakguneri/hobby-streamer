@@ -85,15 +85,8 @@ Automatically adds essential security headers:
 - **Service-to-service authentication**
 - **Token expiration handling**
 
-### 7. API Gateway Security
 
-**Implementation**: `local/setup-api-gateway.sh`
-
-- **Restricted CORS origins** (no wildcards)
-- **Proper CORS headers** configuration
-- **Method and header restrictions**
-
-### 8. Lambda Function Security
+### 7. Lambda Function Security
 
 **Implementation**: `backend/lambdas/`
 
@@ -101,43 +94,6 @@ Automatically adds essential security headers:
 - **Path traversal protection**
 - **Proper error handling** without information leakage
 - **Restricted CORS headers**
-
-## Configuration
-
-### Development Environment
-
-```yaml
-security:
-  rate_limit:
-    requests: 100
-    window: "1m"
-  max_request_size: 10485760  # 10MB
-  cors:
-    allowed_origins:
-      - "http://localhost:3000"
-      - "http://localhost:8081"
-      - "http://localhost:8080"
-    allowed_methods:
-      - "GET"
-      - "POST"
-      - "PUT"
-      - "DELETE"
-      - "OPTIONS"
-    allowed_headers:
-      - "Content-Type"
-      - "Authorization"
-      - "X-Requested-With"
-```
-
-### Production Considerations
-
-For production deployment, consider:
-
-1. **HTTPS only** - All endpoints should use HTTPS
-2. **Strict CORS** - Limit origins to production domains only
-3. **Higher rate limits** - Adjust based on expected traffic
-4. **Monitoring** - Implement security event logging
-5. **Secrets management** - Use proper secrets management for sensitive data
 
 ## Security Headers Explained
 
@@ -168,25 +124,3 @@ The rate limiting uses a **sliding window** algorithm:
 3. **Count valid requests** within the window
 4. **Reject requests** when limit is exceeded
 5. **Return 429 Too Many Requests** for rate-limited requests
-
-## Monitoring & Logging
-
-Security events are logged with:
-
-- **Request details** (IP, method, path, user agent)
-- **Rate limiting events** (when limits are exceeded)
-- **Authentication failures** (invalid tokens, missing auth)
-- **Input validation failures** (malformed requests)
-
-## Future Enhancements
-
-Consider implementing:
-
-1. **IP whitelisting/blacklisting**
-2. **Advanced threat detection**
-3. **Request fingerprinting**
-4. **Bot detection**
-5. **DDoS protection**
-6. **API key management**
-7. **Audit logging**
-8. **Security metrics collection** 

@@ -45,6 +45,13 @@ For a closer look at the media pipeline, see the [Upload & Transcode Sequence Di
 - [Transcoder](backend/transcoder/README.md): Worker for FFmpeg-based transcoding
 - [Streaming API](backend/streaming-api/README.md): REST API with Redis caching
 
+### Development Tools
+
+- **Linting**: golangci-lint configuration with comprehensive rules
+- **Code Generation**: Templates for repetitive patterns (errors, GraphQL responses)
+- **Quality Checks**: Pre-commit hooks and Makefile targets
+- **Refactored Code**: Long functions broken down into smaller, focused methods
+
 ### Lambdas
 
 - [Generate Presigned Upload URL](backend/lambdas/cmd/generate_presigned_upload_url/README.md): Generates temporary S3 upload URLs
@@ -107,3 +114,42 @@ This will:
 - Launch the CMS and streaming UIs
 - Set up Redis, Neo4j, Keycloak, and LocalStack
 - Configure the logging pipeline
+
+### Development Workflow
+
+For development and code quality:
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install development tools
+make install-tools
+
+# Run quality checks
+make lint
+make test
+
+# Run pre-commit checks (alternatively, add a git hook)
+./scripts/pre-commit.sh
+
+# Generate code
+make generate
+
+# Build all services
+make build
+```
+
+### Available Makefile Targets
+- `make help` - Show available targets
+- `make install-tools` - Install development tools
+- `make lint` - Run golangci-lint on all Go files
+- `make test` - Run tests for all packages
+- `make build` - Build all services
+- `make clean` - Clean build artifacts
+- `make generate` - Generate code (GraphQL, etc.)
+- `make generate-graphql` - Generate GraphQL code only
+- `make generate-mocks` - Generate mock files for testing
+- `make fmt` - Format code
+- `make vet` - Run go vet
+- `make security` - Run security checks with gosec

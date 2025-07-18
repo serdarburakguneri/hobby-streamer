@@ -3,11 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strings"
 	"time"
-
-	"encoding/json"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -30,6 +26,7 @@ type Service struct {
 	assetManagerURL string
 	serviceClient   auth.ServiceClientInterface
 	circuitBreaker  *errors.CircuitBreaker
+	graphQLClient   *GraphQLClient
 }
 
 func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, realm, clientID, clientSecret string) *Service {
@@ -54,6 +51,7 @@ func NewService(cacheService cache.CacheService, assetManagerURL, keycloakURL, r
 		assetManagerURL: assetManagerURL,
 		serviceClient:   serviceClient,
 		circuitBreaker:  circuitBreaker,
+		graphQLClient:   NewGraphQLClient(serviceClient),
 	}
 }
 
@@ -234,9 +232,7 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 		} `json:"errors,omitempty"`
 	}
 
-	err := s.circuitBreaker.Execute(ctx, func() error {
-		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
-	})
+	err := s.graphQLClient.ExecuteQueryWithCircuitBreaker(ctx, s.circuitBreaker, s.assetManagerURL+"/graphql", query, &response)
 
 	if err != nil {
 		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
@@ -245,8 +241,8 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 		return nil, errors.NewExternalError("failed to fetch bucket from asset-manager", err)
 	}
 
-	if len(response.Errors) > 0 {
-		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	if err := s.graphQLClient.HandleGraphQLErrors(&response); err != nil {
+		return nil, err
 	}
 
 	return response.Data.Bucket, nil
@@ -282,9 +278,7 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 		} `json:"errors,omitempty"`
 	}
 
-	err := s.circuitBreaker.Execute(ctx, func() error {
-		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
-	})
+	err := s.graphQLClient.ExecuteQueryWithCircuitBreaker(ctx, s.circuitBreaker, s.assetManagerURL+"/graphql", query, &response)
 
 	if err != nil {
 		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
@@ -293,8 +287,8 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 		return nil, errors.NewExternalError("failed to fetch buckets from asset-manager", err)
 	}
 
-	if len(response.Errors) > 0 {
-		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	if err := s.graphQLClient.HandleGraphQLErrors(&response); err != nil {
+		return nil, err
 	}
 
 	return response.Data.Buckets.Items, nil
@@ -340,9 +334,7 @@ func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (
 		} `json:"errors,omitempty"`
 	}
 
-	err := s.circuitBreaker.Execute(ctx, func() error {
-		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
-	})
+	err := s.graphQLClient.ExecuteQueryWithCircuitBreaker(ctx, s.circuitBreaker, s.assetManagerURL+"/graphql", query, &response)
 
 	if err != nil {
 		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
@@ -351,8 +343,8 @@ func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (
 		return nil, errors.NewExternalError("failed to fetch asset from asset-manager", err)
 	}
 
-	if len(response.Errors) > 0 {
-		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	if err := s.graphQLClient.HandleGraphQLErrors(&response); err != nil {
+		return nil, err
 	}
 
 	return response.Data.Asset, nil
@@ -415,9 +407,7 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 		} `json:"errors,omitempty"`
 	}
 
-	err := s.circuitBreaker.Execute(ctx, func() error {
-		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
-	})
+	err := s.graphQLClient.ExecuteQueryWithCircuitBreaker(ctx, s.circuitBreaker, s.assetManagerURL+"/graphql", query, &response)
 
 	if err != nil {
 		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
@@ -426,8 +416,8 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 		return nil, errors.NewExternalError("failed to fetch assets from asset-manager", err)
 	}
 
-	if len(response.Errors) > 0 {
-		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	if err := s.graphQLClient.HandleGraphQLErrors(&response); err != nil {
+		return nil, err
 	}
 
 	return response.Data.Assets.Items, nil
@@ -472,9 +462,7 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 		} `json:"errors,omitempty"`
 	}
 
-	err := s.circuitBreaker.Execute(ctx, func() error {
-		return s.makeGraphQLRequest(ctx, s.assetManagerURL+"/graphql", query, &response)
-	})
+	err := s.graphQLClient.ExecuteQueryWithCircuitBreaker(ctx, s.circuitBreaker, s.assetManagerURL+"/graphql", query, &response)
 
 	if err != nil {
 		if errors.IsAppError(err) && errors.GetErrorType(err) == errors.ErrorTypeCircuitBreaker {
@@ -483,55 +471,9 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 		return nil, errors.NewExternalError("failed to fetch asset from asset-manager", err)
 	}
 
-	if len(response.Errors) > 0 {
-		return nil, errors.NewExternalError(fmt.Sprintf("GraphQL errors: %v", response.Errors), nil)
+	if err := s.graphQLClient.HandleGraphQLErrors(&response); err != nil {
+		return nil, err
 	}
 
 	return response.Data.Asset, nil
-}
-
-func (s *Service) makeGraphQLRequest(ctx context.Context, url, query string, response interface{}) error {
-	requestBody := map[string]string{
-		"query": query,
-	}
-
-	jsonBody, err := json.Marshal(requestBody)
-	if err != nil {
-		return errors.NewInternalError("failed to marshal request body", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return errors.NewInternalError("failed to create request", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	s.logger.Info("Getting service token for request", "url", url)
-	authHeader, err := s.serviceClient.GetAuthorizationHeader(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("Failed to get service token")
-		return errors.NewExternalError("failed to get service token", err)
-	}
-
-	s.logger.Info("Service token obtained successfully", "auth_header_length", len(authHeader))
-	req.Header.Set("Authorization", authHeader)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return errors.NewTransientError("failed to make request", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		s.logger.Error("GraphQL request failed", "status_code", resp.StatusCode, "url", url)
-		return errors.NewExternalError(fmt.Sprintf("unexpected status code: %d", resp.StatusCode), nil)
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
-		return errors.NewInternalError("failed to decode response", err)
-	}
-
-	return nil
 }
