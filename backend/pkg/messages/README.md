@@ -1,54 +1,61 @@
 # Messages Package
 
-Shared message definitions used for SQS communication between backend services. Provides a central place for defining job and completion message types to ensure consistency across services.
+Central definitions for messages passed between services over SQS. Keeps job and completion message types consistent across services — especially for things like transcoding, analysis, and async workflows.
+
+---
 
 ## Message Types
 
-### Job Messages (To Transcoder)
+###  Job Messages (→ Transcoder)
 
-| Type               | Payload Type           | Purpose                  |
-|--------------------|------------------------|--------------------------|
-| `analyze`          | `AnalyzePayload`       | Trigger video analysis   |
-| `transcode-hls`    | `TranscodePayload`     | Trigger HLS transcoding  |
-| `transcode-dash`   | `TranscodePayload`     | Trigger DASH transcoding |
+| Type             | Payload Type     | Purpose                 |
+|------------------|------------------|--------------------------|
+| `analyze`        | `AnalyzePayload` | Start video analysis     |
+| `transcode-hls`  | `TranscodePayload` | Transcode to HLS format |
+| `transcode-dash` | `TranscodePayload` | Transcode to DASH format |
 
-### Completion Messages (From Transcoder)
+---
 
-| Type                      | Payload Type               | Purpose                          |
-|---------------------------|----------------------------|----------------------------------|
-| `analyze-completed`       | `AnalyzeCompletionPayload` | Notify that analysis is complete |
-| `transcode-hls-completed` | `TranscodeCompletionPayload` | Notify HLS transcoding complete |
-| `transcode-dash-completed`| `TranscodeCompletionPayload` | Notify DASH transcoding complete |
+###  Completion Messages (← Transcoder)
+
+| Type                      | Payload Type                | Purpose                        |
+|---------------------------|-----------------------------|--------------------------------|
+| `analyze-completed`       | `AnalyzeCompletionPayload`  | Video analysis done            |
+| `transcode-hls-completed` | `TranscodeCompletionPayload`| HLS transcoding finished       |
+| `transcode-dash-completed`| `TranscodeCompletionPayload`| DASH transcoding finished      |
 
 ---
 
 ## Usage Example
 
+### Sending a Job Message
+
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 
-// Create an analyze job payload
 payload := messages.AnalyzePayload{
     Input:     "s3://bucket/video.mp4",
     AssetID:   "asset-123",
     VideoType: "main",
 }
 
-// Send to SQS using a producer
 err := producer.SendMessage(ctx, messages.MessageTypeAnalyze, payload)
 ```
 
-### Handling Completion
+---
+
+### Handling a Completion Message
 
 ```go
 func handleAnalyzeCompletion(payload messages.AnalyzeCompletionPayload) {
     if payload.Success {
-        // Process successful analysis
+        // Do something with analysis results
     } else {
-        // Handle failure
         log.Error("Analysis failed", "error", payload.Error)
     }
 }
 ```
 
 ---
+
+> 📨 Keeping message formats centralized helps reduce bugs when services talk to each other — and avoids mismatches during refactors.

@@ -1,51 +1,50 @@
 # Logger Package
 
-A structured logging package built on top of Go's `slog` with support for both synchronous and asynchronous logging.
+A structured logging helper built on top of Go’s `slog`. Supports both sync and async logging, and includes middleware for tracking requests and compressing responses. Meant to keep logs clean, contextual, and useful — without getting in your way.
+
+---
 
 ## Features
 
-- Structured logging with JSON and text formats
-- Request tracking with unique IDs
-- HTTP request logging middleware
-- Compression middleware
-- **Async logging support** for improved performance
-- Context-aware logging
-- Service and error context
+- JSON and text output formats
+- Async logging (optional, but handy under load)
+- Request logging middleware with trace IDs
+- Gzip compression middleware
+- Context-aware logging (user ID, service name, etc.)
+- Works well with structured error handling
 
-## Usage
+---
 
-### Basic Usage
+## Quick Start
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 
-// Initialize synchronous logger
+// Set up sync logger (stdout)
 logger.Init(slog.LevelInfo, "text")
 
-// Log messages
-logger.Info("Application started")
-logger.Error("Something went wrong", "error", err)
+logger.Info("App started")
+logger.Error("Something broke", "error", err)
 ```
 
-### Async Logging
+---
 
-For high-throughput applications, use async logging to avoid blocking:
+## Async Logging
+
+For higher-throughput scenarios, async logging helps avoid blocking on log writes:
 
 ```go
-// Initialize async logger with buffer size
+// Use async logger with a buffer size
 logger.InitAsync(slog.LevelInfo, "json", 1000)
 
-// Log messages (non-blocking)
-logger.Info("High-volume logging")
-logger.Error("Error occurred", "error", err)
+logger.Info("This log is non-blocking")
+logger.Error("Async error", "error", err)
 
-// Clean shutdown
+// Make sure logs flush before shutdown
 defer logger.Close()
 ```
 
-### Configuration
-
-Enable async logging in your config:
+### Config Sample
 
 ```yaml
 log:
@@ -56,31 +55,47 @@ log:
     buffer_size: 1000
 ```
 
+---
 
 ## Middleware
 
 ### Request Logging
 
+Adds trace IDs and logs incoming HTTP requests:
+
 ```go
-handler := logger.RequestLoggingMiddleware(logger.Get())(yourHandler)
+router.Use(logger.RequestLoggingMiddleware(logger.Get()))
 ```
 
 ### Compression
 
+Adds gzip compression when the client supports it:
+
 ```go
-handler := logger.CompressionMiddleware(yourHandler)
+router.Use(logger.CompressionMiddleware)
 ```
+
+---
 
 ## Context Support
 
+Add context to log entries:
+
 ```go
-// Add context to logger
-ctx := context.WithValue(context.Background(), "user_id", "123")
+ctx := context.WithValue(context.Background(), "user_id", "abc123")
 logger.WithContext(ctx).Info("User action")
 ```
 
-## Service Context
+---
+
+## Add Service Info
+
+Tag logs with your service name:
 
 ```go
-logger.WithService("my-service").Info("Service started")
-``` 
+logger.WithService("streaming-api").Info("Service is up")
+```
+
+---
+
+> ℹ️ This logger is meant to be lightweight and flexible — good defaults, with room to grow if you need more control.

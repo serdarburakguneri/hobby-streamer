@@ -1,18 +1,20 @@
 # SQS Package
 
-A shared library for working with AWS SQS. Includes producer and consumer utilities, along with a registry system for managing multiple consumers in one place.
-
-## Features
-
-- **Producer** – Send structured messages to SQS queues
-- **Consumer** – Process messages with handler functions
-- **Consumer Registry** – Register and run multiple consumers centrally
-- **Message Format** – Consistent message schema with `type` and `payload` fields
-- **Context-Aware** – All operations support cancellation and shutdown via `context.Context`
+A shared library for working with AWS SQS in Go. Wraps producer/consumer logic and adds a simple registry to manage multiple consumers in one place. Built for structured messages and clean handler patterns.
 
 ---
 
-## Components
+## Features
+
+-  **Producer** – Send typed messages to SQS queues  
+-  **Consumer** – Receive and process messages via handler functions  
+-  **Registry** – Register and run multiple consumers together  
+-  **Consistent message format** – Every message has a `type` and a `payload`  
+-  **Context-aware** – Supports cancellation and clean shutdown
+
+---
+
+## Core Components
 
 ### Producer
 
@@ -24,7 +26,7 @@ if err != nil {
     return err
 }
 
-err = producer.SendMessage(ctx, "message-type", payload)
+err = producer.SendMessage(ctx, "transcode-hls", payload)
 ```
 
 ---
@@ -38,7 +40,7 @@ if err != nil {
 }
 
 consumer.Start(ctx, func(msg sqs.Message) error {
-    // Handle the message
+    // Handle message
     return nil
 })
 ```
@@ -47,21 +49,25 @@ consumer.Start(ctx, func(msg sqs.Message) error {
 
 ### Consumer Registry
 
+Use the registry to run multiple consumers from one place:
+
 ```go
-consumerRegistry := sqs.NewConsumerRegistry()
+registry := sqs.NewConsumerRegistry()
 
-consumerRegistry.Register("queue-url-1", handler1)
-consumerRegistry.Register("queue-url-2", handler2)
+registry.Register("queue-url-1", handler1)
+registry.Register("queue-url-2", handler2)
 
-consumerRegistry.Start(context.Background())
+registry.Start(context.Background())
 
 // On shutdown
-consumerRegistry.Stop()
+registry.Stop()
 ```
 
 ---
 
 ## Custom Message Handlers
+
+You can define a single handler for multiple message types using `msgType`:
 
 ```go
 type MyHandler struct {
@@ -69,7 +75,7 @@ type MyHandler struct {
 }
 
 func (h *MyHandler) HandleMessage(ctx context.Context, msgType string, payload map[string]interface{}) error {
-    h.logger.Info("Handling message", "type", msgType)
+    h.logger.Info("Handling", "type", msgType)
 
     switch msgType {
     case "my-event":
@@ -86,30 +92,33 @@ func (h *MyHandler) handleMyEvent(ctx context.Context, payload map[string]interf
 
 // Register the handler
 myHandler := &MyHandler{logger: logger.Get().WithService("my-handler")}
-consumerRegistry.Register("my-queue-url", myHandler.HandleMessage)
+registry.Register("my-queue-url", myHandler.HandleMessage)
 ```
 
 ---
 
 ## Message Format
 
-All messages follow the same structure:
+All messages use a consistent envelope:
 
 ```json
 {
-  "type": "message-type",
+  "type": "event-name",
   "payload": {
     "key": "value"
   }
 }
 ```
 
+This makes it easier to share messages across services without version drift.
+
 ---
 
 ## Error Handling
 
-- Consumer continues running even if message processing fails
-- Failed messages are logged (SQS handles retries)
+- Failed message processing is logged (SQS handles retries via visibility timeout)
+- Consumers keep running even if a message fails
+- You can plug in custom logging or DLQ handling later
 
 ---
 

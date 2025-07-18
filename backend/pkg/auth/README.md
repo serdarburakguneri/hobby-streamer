@@ -1,61 +1,76 @@
 # Auth Package
 
-A shared authentication and authorization library for backend services. Integrates with Keycloak and provides middleware for validating user and service tokens.
+A shared authentication and authorization package used across backend services. Integrates with Keycloak and provides middleware for validating user and service tokens, along with support for role-based access control.
+
+---
 
 ## Quick Start
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 
-// Create a token validator
+// Create a validator instance
 validator := auth.NewKeycloakValidator(
     "http://localhost:8080",  // Keycloak base URL
-    "hobby",                  // Realm
+    "hobby",                  // Realm name
     "asset-manager",          // Client ID
 )
 
-// Create middleware
+// Build middleware
 middleware := auth.NewAuthMiddleware(validator)
 
-// Apply to routes using builder
+// Apply to routes
 router.Use(func(next http.Handler) http.Handler {
-    return middleware.RequireUserAuth().RequireServiceAuth().Build()(next.ServeHTTP)
+    return middleware.
+        RequireUserAuth().
+        RequireServiceAuth().
+        Build()(next.ServeHTTP)
 })
 ```
 
-## Builder Usage
+---
 
-The middleware supports flexible composition:
+## Middleware Composition
+
+You can configure the middleware depending on your route requirements:
 
 ```go
-// Only require user authentication
+// Require user token only
 middleware.RequireUserAuth().Build()
 
-// Only require service authentication
+// Require service token only
 middleware.RequireServiceAuth().Build()
 
-// Require both
+// Require both user and service tokens
 middleware.RequireUserAuth().RequireServiceAuth().Build()
 ```
 
+---
+
 ## Role-Based Authorization
 
-Handlers can be restricted by roles:
+Handlers can be gated based on user roles:
 
 ```go
-// Require a specific role
+// Require a single role
 middleware.RequireRole("admin")(handler)
 
-// Require any one of the given roles
+// Require any one of the listed roles
 middleware.RequireAnyRole([]string{"admin", "editor"})(handler)
 
-// Require all listed roles
+// Require all specified roles
 middleware.RequireAllRoles([]string{"admin", "moderator"})(handler)
 ```
 
-## Context Keys
+---
 
-When authentication is successful, the following keys are set in the request context:
+## Context Values
 
-- `"user"` – Authenticated user (JWT subject and claims)
-- `"service_user"` – Service-level identity for internal communication
+When authentication succeeds, the middleware injects the following into the request context:
+
+- `"user"` – The authenticated user’s JWT payload
+- `"service_user"` – Identity of the calling service (if applicable)
+
+---
+
+> ⚠️ This package is designed for internal use within Hobby Streamer services. It's not meant for external use or production deployment without review.

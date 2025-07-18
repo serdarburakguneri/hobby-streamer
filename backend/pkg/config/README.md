@@ -1,20 +1,24 @@
 # Dynamic Configuration System
 
-A flexible configuration loader that supports both static and dynamic service configurations. Allows each service to define its own custom structure without requiring hardcoded types.
+A flexible configuration loader designed for services that need both static and dynamic config structures. Each service can define its own custom configuration blocks without tight coupling or hardcoded types.
+
+---
 
 ## Key Features
 
-- **Dynamic Components** – Each service defines its own configuration blocks under `components`
-- **Typed Core Config** – Core fields like server, logging, and feature flags are fully typed
-- **Environment Support** – Separate configurations for development, staging, and production
-- **Secrets Management** – Built-in support for secure values
-- **Feature Flags** – Toggle features at runtime without code changes
-- **Hot Reloading** – Reload configuration without restarting the service
-- **Flexible Access** – Read dynamic config values as strings, ints, bools, maps, etc.
+- **Dynamic components** – Add service-specific config under `components`
+- **Typed core config** – Common fields like logging, timeouts, and feature flags are fully typed
+- **Environment support** – Separate configs for development, staging, production
+- **Secrets support** – Secure value placeholders supported in YAML
+- **Feature flags** – Toggle behavior at runtime without redeploying
+- **Hot reloading** – Supports live config reload without restarting
+- **Flexible access API** – Read values as strings, ints, maps, or unmarshal into structs
 
-## Base Configuration (Typed)
+---
 
-The common fields shared across all services are defined with strict types:
+## Base Configuration (Static & Typed)
+
+These fields are available in all services by default:
 
 ```yaml
 environment: development
@@ -50,9 +54,11 @@ cache:
   ttl: "30m"
 ```
 
+---
+
 ## Dynamic Components
 
-Each service can define custom sections under the `components` field:
+Custom configuration blocks live under the `components` field. These can be tailored to each service’s needs.
 
 ```yaml
 components:
@@ -60,12 +66,10 @@ components:
     region: "us-east-1"
     endpoint: "http://localstack:4566"
     force_path_style: true
-    custom_setting: "value"
 
   sqs:
     transcoder_queue_url: "http://localstack:4566/000000000000/transcoder-jobs"
     analyze_queue_url: "http://localstack:4566/000000000000/analyze-completed"
-    custom_event_queue: "http://localstack:4566/000000000000/custom-events"
     batch_size: 10
     visibility_timeout: 30
 
@@ -77,6 +81,13 @@ components:
     max_connections: 10
     connection_timeout: "5s"
 
+  external_api:
+    base_url: "https://api.example.com"
+    api_key: "your-api-key"
+    rate_limit: 100
+    timeout: "10s"
+    retry_on_failure: true
+
   my_custom_service:
     url: "http://my-service:8080"
     timeout: "30s"
@@ -85,28 +96,30 @@ components:
     features:
       - "feature1"
       - "feature2"
-
-  external_api:
-    base_url: "https://api.example.com"
-    api_key: "your-api-key"
-    rate_limit: 100
-    timeout: "10s"
-    retry_on_failure: true
 ```
+
+---
 
 ## Accessing Configuration in Code
 
-Static configuration is mapped to typed structs. Dynamic components can be accessed using helper functions:
+### Typed fields (core config):
 
 ```go
-// Get a value as string
-cfg.Components.Get("aws").GetString("region")
+cfg.Server.Port             // → "8080"
+cfg.Features.EnableCaching // → true
+```
 
-// Get a nested value as int
-cfg.Components.Get("sqs").GetInt("batch_size")
+### Dynamic fields (components):
 
-// Get a map
-cfg.Components.Get("external_api").AsMap()
+```go
+// Get a single string
+region := cfg.Components.Get("aws").GetString("region")
+
+// Get an int
+batchSize := cfg.Components.Get("sqs").GetInt("batch_size")
+
+// Get as map[string]interface{}
+apiConfig := cfg.Components.Get("external_api").AsMap()
 
 // Unmarshal into custom struct
 var dbConfig struct {
@@ -115,3 +128,7 @@ var dbConfig struct {
 }
 cfg.Components.Unmarshal("database", &dbConfig)
 ```
+
+---
+
+> ⚠️ This system is designed for internal service configuration — not intended as a general-purpose config loader.

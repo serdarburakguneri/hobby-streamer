@@ -1,21 +1,23 @@
 # S3 Package
 
-A shared Go library for working with S3-compatible storage. Simplifies common file operations and supports LocalStack for local development.
-
-## Features
-
-- Download S3 objects to local temporary files
-- Upload local files to S3
-- Upload entire directories to S3 with prefix support
-- Context-aware operations with cancellation support
-- Built-in LocalStack compatibility
-- Structured logging and consistent error handling
+A shared helper library for working with S3-compatible storage in Go. Wraps common upload/download operations with built-in support for LocalStack, structured logging, and context handling.
 
 ---
 
-## Usage
+## Features
 
-### Create Client
+- Download S3 objects to local temp files  
+- Upload single files or entire directories  
+- Prefix support for organizing uploads  
+- Context-aware operations (with cancel support)  
+- Fully compatible with LocalStack  
+- Consistent error handling and logging
+
+---
+
+## Quick Usage
+
+### Create an S3 Client
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
@@ -23,41 +25,41 @@ import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 ctx := context.Background()
 client, err := s3.NewClient(ctx)
 if err != nil {
-    // handle error
+    // Handle init error
 }
 ```
 
 ---
 
-### Download a File from S3
+### Download a File
 
 ```go
 localPath, err := client.Download(ctx, "s3://bucket-name/path/to/file.mp4")
 if err != nil {
-    // handle error
+    // Handle download error
 }
-defer os.Remove(localPath) // Clean up after use
+defer os.Remove(localPath) // Clean up temp file when done
 ```
 
 ---
 
-### Upload a File to S3
+### Upload a File
 
 ```go
 err := client.Upload(ctx, "/local/path/file.mp4", "bucket-name", "path/to/file.mp4")
 if err != nil {
-    // handle error
+    // Handle upload error
 }
 ```
 
 ---
 
-### Upload a Directory to S3
+### Upload a Directory
 
 ```go
 err := client.UploadDirectory(ctx, "/local/dir", "bucket-name", "path/prefix")
 if err != nil {
-    // handle error
+    // Handle upload error
 }
 ```
 
@@ -65,17 +67,20 @@ if err != nil {
 
 ## Environment Variables
 
-| Variable               | Description                            | Default                  |
-|------------------------|----------------------------------------|--------------------------|
-| `AWS_ENDPOINT`         | Custom AWS endpoint (for LocalStack)   | `http://localstack:4566` |
-| `AWS_REGION`           | AWS region                             | `us-east-1`              |
-| `AWS_ACCESS_KEY_ID`    | AWS access key                         | `test`                   |
-| `AWS_SECRET_ACCESS_KEY`| AWS secret key                         | `test`                   |
+| Variable                 | Purpose                                | Default                  |
+|--------------------------|----------------------------------------|--------------------------|
+| `AWS_ENDPOINT`           | Custom endpoint (e.g. LocalStack)      | `http://localstack:4566` |
+| `AWS_REGION`             | AWS region                             | `us-east-1`              |
+| `AWS_ACCESS_KEY_ID`      | S3 access key                          | `test`                   |
+| `AWS_SECRET_ACCESS_KEY`  | S3 secret key                          | `test`                   |
 
 ---
 
 ## Notes
 
-- Downloaded files are saved to the system’s temporary directory
-- The package handles AWS session creation internally
-- All operations support `context.Context` for cancellation
+- Temp files are stored in the system’s default temporary directory
+- AWS sessions and config are handled internally — no setup needed
+- All operations respect `context.Context`, so cancellation and timeouts work as expected
+
+---
+

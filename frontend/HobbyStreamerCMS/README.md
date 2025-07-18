@@ -1,98 +1,124 @@
-# Hobby Streamer CMS - React Native Web App
+# Hobby Streamer CMS – React Native (Web)
 
-React Native CMS interface for managing assets, built with Expo and running on the web.
+This is a simple CMS frontend built with React Native (via Expo), mainly for experimenting with asset management flows. It runs in the browser using Expo for Web — handy for local testing and quick iterations.
 
 ## Features
 
-- Asset listing with pagination
-- Asset creation and editing
-- File upload functionality
-- Authentication integration
-- Modern UI with React Navigation
+- Paginated asset list view  
+- Asset creation and edit forms  
+- File upload support (via presigned S3 URLs)  
+- Basic auth integration (Keycloak)  
+- Clean UI built with React Navigation
+
+---
 
 ## Prerequisites
 
-- Node.js >= 18
-- npm or yarn
-- Expo CLI (installed automatically with dependencies)
+Before running the app, make sure you have:
 
-## Installation
+- **Node.js** (v18 or higher)
+- **npm** or **yarn**
+- **Expo CLI** (installed as part of dependencies)
+
+---
+
+## Getting Started
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
-2. Start the development server (web):
+2. Start the dev server (for web):
+
 ```bash
 npm run web
 ```
 
-3. Open your browser and go to:
+3. Then open your browser at:
+
 ```
-http://localhost:19006
+http://localhost:8001
 ```
+
+---
 
 ## Project Structure
 
 ```
 src/
-├── components/     # Reusable UI components
-├── screens/        # Screen components
-├── services/       # API services
-├── types/          # TypeScript type definitions
-└── utils/          # Utility functions
+├── components/     # Shared/reusable UI pieces
+├── screens/        # Page-level components
+├── services/       # API calls and backend integration
+├── types/          # TypeScript definitions
+└── utils/          # Helpers and utilities
 ```
+
+---
 
 ## Backend Integration
 
-The app connects to the following backend services:
+The CMS connects to locally running backend services:
 
-- Asset Manager: `http://localhost:8082` - Asset CRUD operations
-- Auth Service: `http://localhost:8080` - Authentication
+- **Asset Manager** – `http://localhost:8082`  
+- **Auth Service** – `http://localhost:8080`
 
-## Development
+These are expected to be running via Docker Compose (see main project root).
 
-### Hot Reload Development
-This project uses Expo with hot reloading enabled. Most UI changes will update instantly without restarting:
+---
+
+## Development Notes
+
+### Hot Reloading
+
+This project uses Expo with hot reload, so changes to most frontend code should reflect instantly:
 
 ```bash
-# Start development server with hot reload
-npm run web
-
-# For iOS simulator
-npm run ios
-
-# For Android emulator  
-npm run android
+npm run web       # Launch web version with hot reload
+npm run ios       # Run on iOS simulator (if available)
+npm run android   # Run on Android emulator
 ```
 
-**What updates automatically:**
-- Style changes
-- Component JSX structure  
-- Props changes
-- Most state management changes
+What **updates automatically**:
+- UI styling changes
+- Component structure (JSX)
+- Props and local state
 
-**What requires restart:**
-- Native module changes
-- Expo config changes
-- Package.json dependencies
+What **needs restart**:
+- Native modules
+- `expo.config.js`
+- Dependency changes
 
-### Manual Reload Options
-If hot reload isn't working:
-- Browser refresh (F5 or Cmd+R)
-- Press `r` in terminal
-- Shake device and tap "Reload" (mobile)
+---
+
+### Manual Refresh (if needed)
+
+If things get stuck, try:
+
+- Browser refresh (`F5` or `Cmd+R`)
+- Terminal shortcut (`r` when Metro is running)
+- Mobile: shake device and select "Reload"
+
+---
 
 ### Adding New Screens
-1. Create a new screen component in `src/screens/`
-2. Add navigation routes in the main App component
-3. Update the navigation types if needed
+
+1. Create a file under `src/screens/`
+2. Register the screen in the main navigator (in `App.tsx`)
+3. Update type definitions if needed (in `types/navigation.ts`)
+
+---
 
 ### API Integration
-- API services are defined in `src/services/api.ts`
-- Use the `assetService` for asset operations
-- Use the `authService` for authentication
 
+All API logic lives in `src/services/api.ts`:
 
+- `assetService`: handles upload, fetch, update, delete
+- `authService`: login and token management
 
+No global state yet — this is intentionally minimal and modular while exploring things.
+
+---
+
+> ⚠️ This project is part of the broader Hobby Streamer playground. It's not production-ready, but serves as a testing ground for UI and API patterns during local dev.

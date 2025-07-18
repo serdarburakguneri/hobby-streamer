@@ -1,68 +1,75 @@
 # Asset Manager Service
 
-A GraphQL API for managing media assets and buckets. Stores asset metadata in Neo4j and supports parent-child relationships between assets. Includes basic integration with video processing workflows and authentication via Keycloak.
+GraphQL API for managing media assets and buckets in the Hobby Streamer project. It stores asset metadata in Neo4j and supports parent-child relationships (e.g. series → season → episode). Also handles integration with video workflows and authentication via Keycloak.
+
+---
 
 ## Features
 
-- GraphQL API for querying and managing assets and buckets
-- Support for hierarchical asset types (e.g. series → season → episode)
-- SQS integration for publishing transcode jobs and receiving status updates
-- JWT authentication using Keycloak
-- Typed error handling for better debugging
+- GraphQL API for asset and bucket management
+- Hierarchical asset support (Movie, Series, Episode, etc.)
+- SQS integration for triggering transcode jobs and receiving updates
+- JWT-based authentication (via Keycloak)
+- Typed error handling for more informative responses
 
+---
 
-### Run Locally
+## Running Locally
 
 ```bash
 cd backend/asset-manager
 go run ./cmd/main.go
 ```
 
-### Run with Docker
+---
+
+## Docker
 
 ```bash
 docker build -t asset-manager .
 docker run -p 8080:8080 asset-manager
 ```
 
-## API
+---
 
-### Endpoints
+## API Endpoints
 
-- `POST /graphql` – Main GraphQL endpoint
-- `GET /playground` – GraphQL Playground UI (enabled in development)
+- `POST /graphql` — GraphQL query endpoint  
+- `GET /playground` — Interactive GraphQL Playground (dev only)
 
-## GraphQL Schema Overview
+---
+
+## GraphQL Schema
 
 ### Asset Types
 
-- Movie
-- Series / Season / Episode
-- Documentary
-- Music
-- Podcast
-- Trailer
-- BehindTheScenes
-- Interview
+- `Movie`
+- `Series`, `Season`, `Episode`
+- `Documentary`
+- `Music`
+- `Podcast`
+- `Trailer`
+- `BehindTheScenes`
+- `Interview`
 
 ### Asset Status
 
-- `draft` – Unpublished content
-- `scheduled` – Scheduled to be published later
-- `published` – Publicly available
-- `expired` – Previously published, now expired
+- `draft` — Not yet published  
+- `scheduled` — Set to be published later  
+- `published` — Publicly available  
+- `expired` — No longer available
 
 ### Video Status
 
-- `pending` – Waiting to be processed
-- `analyzing` – Being analyzed for format, resolution, etc.
-- `transcoding` – In the process of being transcoded
-- `ready` – Fully processed and available
-- `failed` – Processing failed
+- `pending` — Awaiting processing  
+- `analyzing` — Format/resolution check  
+- `transcoding` — Actively being processed  
+- `ready` — Available for playback  
+- `failed` — Processing failed
+
+---
 
 ## Example Query
-
-### List Assets
 
 ```graphql
 query {
@@ -79,6 +86,8 @@ query {
   }
 }
 ```
+
+---
 
 ## Development
 
@@ -99,3 +108,7 @@ go build ./...
 ```bash
 go test ./...
 ```
+
+---
+
+> ⚠️ This service is still evolving — primarily used for local development and exploring asset modeling patterns.

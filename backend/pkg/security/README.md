@@ -1,28 +1,33 @@
 # Security Package
 
-Middleware package for backend services that adds essential security protections, including rate limiting, security headers, CORS handling, and input validation.
-
-## Features
-
-- **Rate Limiting** – Per-IP rate limiting with sliding window
-- **Security Headers** – Adds common headers for browser security
-- **CORS Protection** – Configurable CORS with strict origin control
-- **Input Validation** – Enforces request size and content-type rules
+Middleware for backend services that adds essential security protections — including rate limiting, CORS controls, security headers, and input validation. Helps you cover the basics without a ton of boilerplate.
 
 ---
 
-## Usage Example
+## Features
+
+-  **Rate limiting** — Per-IP limits using a sliding window
+-  **Security headers** — Sensible defaults to protect against common browser threats
+-  **CORS** — Strict, configurable cross-origin rules
+-  **Input validation** — Enforces max body size and content type
+
+---
+
+## Quick Example
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/security"
 
 router.Use(security.SecurityHeadersMiddleware())
+
 router.Use(security.RateLimitMiddleware(100, time.Minute))
+
 router.Use(security.CORSMiddleware(
     []string{"http://localhost:3000", "https://yourdomain.com"},
     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
     []string{"Content-Type", "Authorization", "X-Requested-With"},
 ))
+
 router.Use(security.InputValidationMiddleware())
 ```
 
@@ -30,10 +35,10 @@ router.Use(security.InputValidationMiddleware())
 
 ## Rate Limiting
 
-Limit incoming requests by client IP:
+Limit requests per IP using a sliding time window:
 
 ```go
-// Allow 100 requests per minute
+// Max 100 requests per minute per client IP
 router.Use(security.RateLimitMiddleware(100, time.Minute))
 ```
 
@@ -41,31 +46,31 @@ router.Use(security.RateLimitMiddleware(100, time.Minute))
 
 ## CORS Configuration
 
-Control allowed origins, methods, and headers:
+Set allowed origins, methods, and headers:
 
 ```go
-allowedOrigins := []string{
-    "http://localhost:3000",
-    "https://yourdomain.com",
-}
-
-allowedMethods := []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-allowedHeaders := []string{"Content-Type", "Authorization", "X-Requested-With"}
-
-router.Use(security.CORSMiddleware(allowedOrigins, allowedMethods, allowedHeaders))
+router.Use(security.CORSMiddleware(
+    []string{
+        "http://localhost:3000",
+        "https://yourdomain.com",
+    },
+    []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+    []string{"Content-Type", "Authorization", "X-Requested-With"},
+))
 ```
 
 ---
 
 ## Security Headers
 
-The middleware adds the following headers by default:
+The middleware automatically applies these:
 
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `X-XSS-Protection: 1; mode=block`
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Content-Security-Policy` – Defaults to safe inline and script policies
+- `Content-Security-Policy` — Conservative defaults with inline/script restrictions
 
 ---
 
+>  This package is built for internal use — lightweight and flexible enough to work in both local and containerized environments.

@@ -1,43 +1,52 @@
 # Hobby Streamer UI
 
-A streaming interface for the Hobby Streamer platform. This React Native app provides a modern, responsive interface for browsing and viewing content.
+A simple React Native frontend for browsing and watching videos in the Hobby Streamer project. Built with Expo, runs on web and mobile.
 
 ## Features
 
-- **Layout**: Horizontal scrolling rows of content organized by buckets/categories
-- **Asset Cards**: Beautiful cards showing thumbnails, titles, and genres
-- **Responsive Design**: Works on web, mobile, and tablet
-- **Real-time Data**: Fetches content from the Streaming API
-- **Pull-to-Refresh**: Refresh content by pulling down
+- Horizontal scrolling rows grouped by bucket/category
+- Thumbnail cards with title and genre info
+- Pull-to-refresh support
+- Responsive layout (web, mobile, tablet)
+- Fetches content from the local Streaming API
 
-## Quick Start
+---
+
+## Getting Started
 
 ### Prerequisites
-- Node.js (version 18+)
-- npm or yarn
-- Expo CLI (optional but recommended)
 
-### Installation
+- Node.js (v18+)
+- npm or yarn
+- Expo CLI (optional, but helpful)
+
+### Install & Run
 
 ```bash
 # Install dependencies
 npm install
 
-# Start the development server
+# Start dev server
 npm run streaming-ui
 ```
 
-The app will be available at: http://localhost:8085
+Open in browser: [http://localhost:8085](http://localhost:8085)
 
-### Development
+---
+
+## Development
 
 ```bash
-# Start on web
+# Run in browser
 npm run web
 
-# Start on iOS simulator
+# Run on iOS
 npm run ios
 
-# Start on Android emulator
+# Run on Android
 npm run android
 ```
+
+---
+
+> ⚠️ This is a dev UI for local testing — not optimized for production.
