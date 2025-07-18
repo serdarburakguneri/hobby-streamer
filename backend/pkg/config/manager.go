@@ -54,6 +54,12 @@ func NewManager(serviceName string) (*Manager, error) {
 	v.SetDefault("retry.base_delay", "100ms")
 	v.SetDefault("retry.max_delay", "5s")
 	v.SetDefault("cache.ttl", "30m")
+	v.SetDefault("security.rate_limit.requests", 100)
+	v.SetDefault("security.rate_limit.window", "1m")
+	v.SetDefault("security.max_request_size", 10485760)
+	v.SetDefault("security.cors.allowed_origins", []string{"http://localhost:3000", "http://localhost:8081"})
+	v.SetDefault("security.cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
+	v.SetDefault("security.cors.allowed_headers", []string{"Content-Type", "Authorization", "X-Requested-With"})
 
 	manager := &Manager{
 		viper:     v,

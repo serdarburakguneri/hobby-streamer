@@ -116,7 +116,7 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
             --http-method $http_method \
             --status-code 200 \
             --response-parameters '{
-              "method.response.header.Access-Control-Allow-Origin": "'\''*'\''",
+              "method.response.header.Access-Control-Allow-Origin": "'\''http://localhost:8081'\''",
               "method.response.header.Access-Control-Allow-Headers": "'\''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'\''",
               "method.response.header.Access-Control-Allow-Methods": "'\''GET,POST,PUT,DELETE,OPTIONS'\''"
             }'
@@ -163,7 +163,7 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
         --response-parameters '{
           "method.response.header.Access-Control-Allow-Headers": "'\''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'\''",
           "method.response.header.Access-Control-Allow-Methods": "'\''GET,POST,PUT,DELETE,OPTIONS'\''",
-          "method.response.header.Access-Control-Allow-Origin": "'\''*'\''"
+          "method.response.header.Access-Control-Allow-Origin": "'\''http://localhost:8081'\''"
         }' \
         --response-templates '{"application/json": ""}'
   }

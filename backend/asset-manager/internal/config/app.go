@@ -11,7 +11,7 @@ type AppConfig struct {
 	Database *DatabaseConfig
 	SQS      *SQSConfig
 	Auth     *AuthConfig
-	CORS     *CORSConfig
+	Security *SecurityConfig
 	Logging  *LoggingConfig
 	GraphQL  *GraphQLConfig
 	Services *ServicesConfig
@@ -29,7 +29,7 @@ func NewAppConfig(ctx context.Context, configManager *config.Manager, secretsMan
 		return nil, err
 	}
 
-	corsConfig := NewCORSConfig()
+	securityConfig := NewSecurityConfig(configManager, log)
 	loggingConfig := NewLoggingConfig(log)
 
 	dynamicCfg := configManager.GetDynamicConfig()
@@ -49,7 +49,7 @@ func NewAppConfig(ctx context.Context, configManager *config.Manager, secretsMan
 		Database: databaseConfig,
 		SQS:      sqsConfig,
 		Auth:     authConfig,
-		CORS:     corsConfig,
+		Security: securityConfig,
 		Logging:  loggingConfig,
 		GraphQL:  graphQLConfig,
 		Services: servicesConfig,

@@ -15,6 +15,7 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs v0.0.0
 	github.com/vektah/gqlparser/v2 v2.5.30
 )
@@ -70,5 +71,6 @@ replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../pkg/messages
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security => ../pkg/security
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs => ../pkg/sqs
 )

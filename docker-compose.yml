@@ -59,9 +59,9 @@ services:
     environment:
       - SERVICES=dynamodb,sqs,s3,lambda,apigateway
       - PERSISTENCE=0
-      - ENABLE_CORS_ALLOW_ALL=1
-      - CORS_ALLOW_ORIGINS=http://localhost:8081,http://localhost:3000,http://localhost:8080
-      - S3_CORS_ALLOW_ORIGINS=http://localhost:8081,http://localhost:3000,http://localhost:8080
+      - ENABLE_CORS_ALLOW_ALL=0
+      - CORS_ALLOW_ORIGINS=http://localhost:8081
+      - S3_CORS_ALLOW_ORIGINS=http://localhost:8081
       - S3_CORS_ALLOW_METHODS=GET,PUT,POST,DELETE,HEAD,OPTIONS
       - S3_CORS_ALLOW_HEADERS=*
       - S3_SKIP_SIGNATURE_VALIDATION=1

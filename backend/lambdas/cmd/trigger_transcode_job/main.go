@@ -55,7 +55,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
 			Headers: map[string]string{
-				"Access-Control-Allow-Origin":      "*",
+				"Access-Control-Allow-Origin":      "http://localhost:8081",
 				"Access-Control-Allow-Methods":     "GET, POST, PUT, DELETE, OPTIONS",
 				"Access-Control-Allow-Headers":     "Content-Type, Authorization, X-Requested-With",
 				"Access-Control-Allow-Credentials": "true",

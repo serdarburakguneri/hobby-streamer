@@ -191,7 +191,7 @@ func respondJSON(status int, payload interface{}) (events.APIGatewayProxyRespons
 		Body:       string(body),
 		Headers: map[string]string{
 			"Content-Type":                     "application/json",
-			"Access-Control-Allow-Origin":      "*",
+			"Access-Control-Allow-Origin":      "http://localhost:8081",
 			"Access-Control-Allow-Methods":     "GET, POST, PUT, DELETE, OPTIONS",
 			"Access-Control-Allow-Headers":     "Content-Type, Authorization, X-Requested-With",
 			"Access-Control-Allow-Credentials": "true",

@@ -6,10 +6,10 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 };
 
 export const API_CONFIG = {
-  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', 'duxxbaptvy'),
-  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/duxxbaptvy/dev'),
-  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/duxxbaptvy/dev/auth'),
-  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/duxxbaptvy/dev/graphql'),
-  TRANSCODE_BASE_URL: getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/duxxbaptvy/dev/transcode'),
+  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', '3tikibvube'),
+  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/3tikibvube/dev'),
+  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/3tikibvube/dev/auth'),
+  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/3tikibvube/dev/graphql'),
+  TRANSCODE_BASE_URL: getEnvVar('REACT_APP_TRANSCODE_BASE_URL', 'http://localhost:4566/_aws/execute-api/3tikibvube/dev/transcode'),
   LOCALSTACK_BASE_URL: getEnvVar('REACT_APP_LOCALSTACK_BASE_URL', 'http://localhost:4566')
 }; 

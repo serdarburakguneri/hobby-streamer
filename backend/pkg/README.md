@@ -53,3 +53,7 @@ Helpers for uploading, downloading, and managing files in S3-compatible storage 
 ### [sqs](sqs/README.md)
 
 Producer and consumer utilities for SQS. Includes a consumer registry, retry logic, and message routing support.
+
+### [security](security/README.md)
+
+Comprehensive security middleware including rate limiting, CORS protection, security headers, and input validation. Applied across all web-facing services.

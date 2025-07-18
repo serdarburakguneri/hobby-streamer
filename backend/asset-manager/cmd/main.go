@@ -40,8 +40,7 @@ func main() {
 
 	router := appConfig.GraphQL.Router
 	router.Use(logger.CompressionMiddleware)
-	router.Use(appConfig.CORS.Middleware)
-	router.Use(appConfig.Logging.Middleware)
+	router.Use(appConfig.Security.Middleware)
 	router.Use(appConfig.Auth.Middleware)
 
 	server := &http.Server{

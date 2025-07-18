@@ -10,6 +10,7 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/config v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security v0.0.0
 )
 
 require (
@@ -36,4 +37,5 @@ replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants => ../pkg/constants
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security => ../pkg/security
 )

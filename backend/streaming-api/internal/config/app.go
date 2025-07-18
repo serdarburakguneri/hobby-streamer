@@ -6,9 +6,10 @@ import (
 )
 
 type AppConfig struct {
-	Cache   *CacheConfig
-	Service *ServiceConfig
-	HTTP    *HTTPConfig
+	Cache    *CacheConfig
+	Service  *ServiceConfig
+	HTTP     *HTTPConfig
+	Security *SecurityConfig
 }
 
 func NewAppConfig(configManager *config.Manager, secretsManager *config.SecretsManager, log *logger.Logger) (*AppConfig, error) {
@@ -19,11 +20,13 @@ func NewAppConfig(configManager *config.Manager, secretsManager *config.SecretsM
 
 	serviceConfig := NewServiceConfig(cacheConfig.Service, configManager, secretsManager)
 	httpConfig := NewHTTPConfig(serviceConfig.StreamingService)
+	securityConfig := NewSecurityConfig(configManager, log)
 
 	return &AppConfig{
-		Cache:   cacheConfig,
-		Service: serviceConfig,
-		HTTP:    httpConfig,
+		Cache:    cacheConfig,
+		Service:  serviceConfig,
+		HTTP:     httpConfig,
+		Security: securityConfig,
 	}, nil
 }
 

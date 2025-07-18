@@ -67,11 +67,16 @@ See [Shared Libraries Documentation](backend/pkg/README.md) for details.
 - [logger](backend/pkg/logger): Centralized structured logging
 - [messages](backend/pkg/messages): Shared message structures for SQS
 - [s3](backend/pkg/s3): File management utilities for S3/LocalStack
+- [security](backend/pkg/security): Rate limiting, CORS protection, and security headers
 - [sqs](backend/pkg/sqs): Client utilities for producing and consuming SQS events
 
 ### Observability
 
 See [Logging Setup](local/LOGGING.md) for details on how Fluentd, Elasticsearch, and Kibana are integrated into the stack.
+
+### Security
+
+See [Security Implementation](docs/SECURITY.md) for comprehensive details on rate limiting, CORS protection, input validation, and security headers implemented across all services.
 
 ## Getting Started
 

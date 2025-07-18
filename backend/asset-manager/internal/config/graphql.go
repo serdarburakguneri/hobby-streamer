@@ -28,7 +28,16 @@ func NewGraphQLConfig(assetService *asset.Service, bucketService *bucket.Service
 
 	gqlHandler.AddTransport(&transport.Websocket{
 		Upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool { return true },
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				allowedOrigins := []string{"http://localhost:8081", "http://localhost:3000", "http://localhost:8080"}
+				for _, allowed := range allowedOrigins {
+					if origin == allowed {
+						return true
+					}
+				}
+				return false
+			},
 		},
 		KeepAlivePingInterval: 10 * time.Second,
 	})

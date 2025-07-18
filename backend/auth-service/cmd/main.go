@@ -33,6 +33,7 @@ func main() {
 	appConfig := appconfig.NewAppConfig(configManager, secretsManager, log)
 
 	router := appConfig.HTTP.Handler
+	router = appConfig.Security.Middleware(router)
 	router = logger.CompressionMiddleware(router)
 
 	server := &http.Server{

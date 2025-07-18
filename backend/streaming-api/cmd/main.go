@@ -37,9 +37,11 @@ func main() {
 	}
 	defer appConfig.Close()
 
+	handler := appConfig.Security.Middleware(appConfig.HTTP.Handler)
+
 	server := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
-		Handler:      appConfig.HTTP.Handler,
+		Handler:      handler,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,

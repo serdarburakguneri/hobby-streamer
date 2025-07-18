@@ -30,6 +30,27 @@ retry:
 cache:
   ttl: "30m"
 
+security:
+  rate_limit:
+    requests: 200
+    window: "1m"
+  max_request_size: 10485760
+  cors:
+    allowed_origins:
+      - "http://localhost:8081"
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+
 components:
   redis:
     host: "redis"

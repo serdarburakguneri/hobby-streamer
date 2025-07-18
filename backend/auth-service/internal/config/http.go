@@ -14,7 +14,7 @@ type HTTPConfig struct {
 
 func NewHTTPConfig(authService *auth.Service, log *logger.Logger) *HTTPConfig {
 	router := httphandler.NewRouter(authService)
-	handler := logger.RequestLoggingMiddleware(log)(httphandler.CORS(router))
+	handler := logger.RequestLoggingMiddleware(log)(router)
 
 	return &HTTPConfig{
 		Handler: handler,

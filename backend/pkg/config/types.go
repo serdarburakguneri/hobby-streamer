@@ -25,6 +25,19 @@ type ServerConfig struct {
 	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
 }
 
+type SecurityConfig struct {
+	RateLimit struct {
+		Requests int           `mapstructure:"requests" validate:"min=1"`
+		Window   time.Duration `mapstructure:"window" validate:"min=1s"`
+	} `mapstructure:"rate_limit"`
+	CORS struct {
+		AllowedOrigins []string `mapstructure:"allowed_origins"`
+		AllowedMethods []string `mapstructure:"allowed_methods"`
+		AllowedHeaders []string `mapstructure:"allowed_headers"`
+	} `mapstructure:"cors"`
+	MaxRequestSize int64 `mapstructure:"max_request_size" validate:"min=1"`
+}
+
 type FeatureFlags struct {
 	EnableCircuitBreaker bool `mapstructure:"enable_circuit_breaker"`
 	EnableRetry          bool `mapstructure:"enable_retry"`
@@ -49,18 +62,16 @@ type CacheConfig struct {
 }
 
 type BaseConfig struct {
-	Environment Environment `mapstructure:"environment" validate:"required,oneof=development staging production test"`
-	Service     string      `mapstructure:"service" validate:"required"`
-
-	Log      LogConfig    `mapstructure:"log"`
-	Server   ServerConfig `mapstructure:"server"`
-	Features FeatureFlags `mapstructure:"features"`
-
-	CircuitBreaker CircuitBreakerConfig `mapstructure:"circuit_breaker"`
-	Retry          RetryConfig          `mapstructure:"retry"`
-	Cache          CacheConfig          `mapstructure:"cache"`
-
-	Components map[string]interface{} `mapstructure:"components"`
+	Environment    Environment            `mapstructure:"environment" validate:"required,oneof=development staging production test"`
+	Service        string                 `mapstructure:"service" validate:"required"`
+	Log            LogConfig              `mapstructure:"log"`
+	Server         ServerConfig           `mapstructure:"server"`
+	Security       SecurityConfig         `mapstructure:"security"`
+	Features       FeatureFlags           `mapstructure:"features"`
+	CircuitBreaker CircuitBreakerConfig   `mapstructure:"circuit_breaker"`
+	Retry          RetryConfig            `mapstructure:"retry"`
+	Cache          CacheConfig            `mapstructure:"cache"`
+	Components     map[string]interface{} `mapstructure:"components"`
 }
 
 type ServiceConfig interface {

@@ -26,8 +26,6 @@ func (h *Handler) SetupRoutes() *mux.Router {
 	router := mux.NewRouter()
 
 	router.Use(logger.CompressionMiddleware)
-	router.Use(h.corsMiddleware)
-	router.Use(h.loggingMiddleware)
 
 	api := router.PathPrefix("/api/v1").Subrouter()
 
@@ -192,33 +190,5 @@ func (h *Handler) writeJSON(w http.ResponseWriter, status int, data interface{})
 func (h *Handler) writeError(w http.ResponseWriter, status int, message string) {
 	h.writeJSON(w, status, map[string]string{
 		"error": message,
-	})
-}
-
-func (h *Handler) corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (h *Handler) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.logger.Info("HTTP request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"remote_addr", r.RemoteAddr,
-			"user_agent", r.UserAgent(),
-		)
-
-		next.ServeHTTP(w, r)
 	})
 }
