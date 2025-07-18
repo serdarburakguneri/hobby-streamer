@@ -19,6 +19,14 @@ type Client struct {
 
 type Service struct {
 	client *Client
+	ttl    TTLConfig
+}
+
+type TTLConfig struct {
+	Bucket      time.Duration
+	BucketsList time.Duration
+	Asset       time.Duration
+	AssetsList  time.Duration
 }
 
 func NewRedisClientWithConfig(host string, port int, db int, password string) (*Client, error) {
@@ -61,8 +69,8 @@ func (c *Client) Close() error {
 	return c.client.Close()
 }
 
-func NewService(client *Client) *Service {
-	return &Service{client: client}
+func NewService(client *Client, ttl TTLConfig) *Service {
+	return &Service{client: client, ttl: ttl}
 }
 
 func (s *Service) GetBucket(ctx context.Context, key string) (*model.Bucket, error) {
@@ -92,12 +100,11 @@ func (s *Service) SetBucket(ctx context.Context, bucket *model.Bucket) error {
 		return errors.NewInternalError("failed to marshal bucket", err)
 	}
 
-	ttl := 30 * time.Minute
-	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+	if err := s.client.client.Set(ctx, cacheKey, data, s.ttl.Bucket).Err(); err != nil {
 		return errors.NewTransientError("failed to set bucket in cache", err)
 	}
 
-	if err := s.client.client.Set(ctx, "bucket:keys", bucket.Key, ttl).Err(); err != nil {
+	if err := s.client.client.Set(ctx, "bucket:keys", bucket.Key, s.ttl.Bucket).Err(); err != nil {
 		s.client.logger.WithError(err).Warn("Failed to cache bucket key for invalidation")
 	}
 
@@ -131,8 +138,7 @@ func (s *Service) SetBuckets(ctx context.Context, buckets []model.Bucket) error 
 		return errors.NewInternalError("failed to marshal buckets", err)
 	}
 
-	ttl := 30 * time.Minute
-	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+	if err := s.client.client.Set(ctx, cacheKey, data, s.ttl.BucketsList).Err(); err != nil {
 		return errors.NewTransientError("failed to set buckets in cache", err)
 	}
 
@@ -166,8 +172,7 @@ func (s *Service) SetAsset(ctx context.Context, asset *model.Asset) error {
 		return errors.NewInternalError("failed to marshal asset", err)
 	}
 
-	ttl := 30 * time.Minute
-	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+	if err := s.client.client.Set(ctx, cacheKey, data, s.ttl.Asset).Err(); err != nil {
 		return errors.NewTransientError("failed to set asset in cache", err)
 	}
 
@@ -201,8 +206,7 @@ func (s *Service) SetAssets(ctx context.Context, assets []model.Asset) error {
 		return errors.NewInternalError("failed to marshal assets", err)
 	}
 
-	ttl := 30 * time.Minute
-	if err := s.client.client.Set(ctx, cacheKey, data, ttl).Err(); err != nil {
+	if err := s.client.client.Set(ctx, cacheKey, data, s.ttl.AssetsList).Err(); err != nil {
 		return errors.NewTransientError("failed to set assets in cache", err)
 	}
 

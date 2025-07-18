@@ -21,7 +21,7 @@ type GraphQLConfig struct {
 	Router  *mux.Router
 }
 
-func NewGraphQLConfig(assetService *asset.Service, bucketService *bucket.Service) *GraphQLConfig {
+func NewGraphQLConfig(assetService *asset.Service, bucketService *bucket.Service, allowedOrigins []string) *GraphQLConfig {
 	resolver := graph.NewResolver(assetService, bucketService)
 	schema := graph.NewExecutableSchema(graph.Config{Resolvers: resolver})
 	gqlHandler := handler.New(schema)
@@ -30,7 +30,6 @@ func NewGraphQLConfig(assetService *asset.Service, bucketService *bucket.Service
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				origin := r.Header.Get("Origin")
-				allowedOrigins := []string{"http://localhost:8081", "http://localhost:3000", "http://localhost:8080"}
 				for _, allowed := range allowedOrigins {
 					if origin == allowed {
 						return true

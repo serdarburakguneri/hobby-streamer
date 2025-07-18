@@ -176,3 +176,16 @@ func (dc *DynamicConfig) GetFloatFromComponent(componentName, key string) float6
 	}
 	return 0.0
 }
+
+func (dc *DynamicConfig) GetDurationFromComponent(componentName, key string, defaultValue time.Duration) time.Duration {
+	if componentMap := dc.GetComponentAsMap(componentName); componentMap != nil {
+		if value, exists := componentMap[key]; exists {
+			if strValue, ok := value.(string); ok {
+				if duration, err := time.ParseDuration(strValue); err == nil {
+					return duration
+				}
+			}
+		}
+	}
+	return defaultValue
+}

@@ -199,6 +199,12 @@ func TestDynamicConfigAccessors(t *testing.T) {
 		t.Error("GetFloatFromComponent should return 0.0 for non-existent component")
 	}
 
+	// Test duration accessor
+	defaultDuration := 30 * time.Minute
+	if dynamicCfg.GetDurationFromComponent("nonexistent", "key", defaultDuration) != defaultDuration {
+		t.Error("GetDurationFromComponent should return default value for non-existent component")
+	}
+
 	// Test map accessors
 	if dynamicCfg.GetComponentAsMap("nonexistent") != nil {
 		t.Error("GetComponentAsMap should return nil for non-existent component")

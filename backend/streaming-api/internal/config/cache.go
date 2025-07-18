@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/cache"
@@ -29,7 +31,21 @@ func NewCacheConfig(configManager *config.Manager, log *logger.Logger) (*CacheCo
 
 	log.Info("Redis connection established", "host", host, "port", port, "db", db)
 
-	cacheService := cache.NewService(redisClient)
+	bucketTTL := dynamicCfg.GetDurationFromComponent("redis", "ttl.bucket", 30*time.Minute)
+	bucketsListTTL := dynamicCfg.GetDurationFromComponent("redis", "ttl.buckets_list", 15*time.Minute)
+	assetTTL := dynamicCfg.GetDurationFromComponent("redis", "ttl.asset", 45*time.Minute)
+	assetsListTTL := dynamicCfg.GetDurationFromComponent("redis", "ttl.assets_list", 20*time.Minute)
+
+	ttlConfig := cache.TTLConfig{
+		Bucket:      bucketTTL,
+		BucketsList: bucketsListTTL,
+		Asset:       assetTTL,
+		AssetsList:  assetsListTTL,
+	}
+
+	log.Info("Cache TTL config", "bucket", bucketTTL, "buckets_list", bucketsListTTL, "asset", assetTTL, "assets_list", assetsListTTL)
+
+	cacheService := cache.NewService(redisClient, ttlConfig)
 
 	return &CacheConfig{
 		Service: cacheService,

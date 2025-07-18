@@ -41,7 +41,7 @@ func NewAppConfig(ctx context.Context, configManager *config.Manager, secretsMan
 		return nil, err
 	}
 
-	graphQLConfig := NewGraphQLConfig(servicesConfig.AssetService, servicesConfig.BucketService)
+	graphQLConfig := NewGraphQLConfig(servicesConfig.AssetService, servicesConfig.BucketService, configManager.GetConfig().Security.CORS.AllowedOrigins)
 
 	return &AppConfig{
 		Database: databaseConfig,
