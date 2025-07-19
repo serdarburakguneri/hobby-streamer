@@ -53,23 +53,13 @@ export default function ImageUpload({ asset, onImageAdded }: ImageUploadProps) {
       
       const response = await assetService.getImageUploadUrl(fileName, asset.id, imageType);
       
-      const formData = new FormData();
-      formData.append('file', {
-        uri: imageAsset.uri,
-        type: 'image/jpeg',
-        name: fileName,
-      } as any);
+      const imageResponse = await fetch(imageAsset.uri);
+      const imageBlob = await imageResponse.blob();
 
-      await fetch(response.url, {
-        method: 'PUT',
-        body: formData,
-        headers: {
-          'Content-Type': 'image/jpeg',
-        },
-      });
+      await assetService.uploadFile(response.url, imageBlob);
 
       const imageData = {
-        url: response.url.split('?')[0],
+        url: `http://localhost:8083/cdn/${asset.id}/images/${imageType.toLowerCase()}/${fileName}`,
         type: imageType,
         fileName,
       };

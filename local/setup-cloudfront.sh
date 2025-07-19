@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-source ./setup-environment.sh
+source "setup-environment.sh"
 
 echo "[INFO] Setting up CloudFront distributions for streaming buckets..."
 

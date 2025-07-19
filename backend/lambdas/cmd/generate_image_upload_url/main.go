@@ -118,7 +118,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	bucket := os.Getenv("BUCKET_NAME")
 	if bucket == "" {
-		bucket = "images-storage"
+		bucket = "content-east"
 	}
 
 	region := os.Getenv("BUCKET_REGION")
@@ -144,7 +144,7 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	svc := s3.New(sess)
 
-	s3Key := fmt.Sprintf("%s/%s/%s", req.AssetID, strings.ToLower(req.ImageType), req.FileName)
+	s3Key := fmt.Sprintf("%s/images/%s/%s", req.AssetID, strings.ToLower(req.ImageType), req.FileName)
 
 	reqObj, _ := svc.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: aws.String(bucket),

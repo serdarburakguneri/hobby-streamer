@@ -168,7 +168,7 @@ func (d *TranscodeDASHRunner) executeTranscoding(ctx context.Context, p messages
 		name := entry.Name()
 		if strings.HasSuffix(name, ".mpd") || strings.HasSuffix(name, ".m4s") {
 			localPath := filepath.Join(dashDir, name)
-			s3Key := filepath.Join(p.AssetID, p.VideoID, name)
+			s3Key := filepath.Join(p.AssetID, p.Format, p.Quality, name)
 			if upErr := d.s3Client.Upload(ctx, localPath, d.outputBucket, s3Key); upErr != nil {
 				d.logger.WithError(upErr).Error("Failed to upload file to S3", "bucket", d.outputBucket, "key", s3Key, "asset_id", p.AssetID, "video_id", p.VideoID)
 				uploadErrors++

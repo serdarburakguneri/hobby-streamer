@@ -243,7 +243,7 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 						streamInfo {
 							downloadUrl
 							cdnPrefix
-							playUrl
+							url
 						}
 						thumbnail {
 							fileName
@@ -252,7 +252,29 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 							height
 							size
 							contentType
+							streamInfo {
+								downloadUrl
+								cdnPrefix
+								url
+							}
 						}
+					}
+					images {
+						id
+						fileName
+						url
+						type
+						width
+						height
+						size
+						contentType
+						streamInfo {
+							downloadUrl
+							cdnPrefix
+							url
+						}
+						createdAt
+						updatedAt
 					}
 				}
 			}
@@ -333,7 +355,7 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 							streamInfo {
 								downloadUrl
 								cdnPrefix
-								playUrl
+								url
 							}
 							thumbnail {
 								fileName
@@ -343,6 +365,23 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 								size
 								contentType
 							}
+						}
+						images {
+							id
+							fileName
+							url
+							type
+							width
+							height
+							size
+							contentType
+							streamInfo {
+								downloadUrl
+								cdnPrefix
+								url
+							}
+							createdAt
+							updatedAt
 						}
 					}
 				}
@@ -399,16 +438,52 @@ func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (
 				}
 				videos {
 					id
-					filename
-					status
+					type
 					format
-					url
-					thumbnailUrl
-					duration
+					storageLocation {
+						bucket
+						key
+						url
+					}
 					width
 					height
+					duration
 					bitrate
-					filesize
+					size
+					contentType
+					status
+					thumbnail {
+						fileName
+						url
+						width
+						height
+						size
+						contentType
+						streamInfo {
+							downloadUrl
+							cdnPrefix
+							url
+						}
+					}
+					createdAt
+					updatedAt
+				}
+				images {
+					id
+					fileName
+					url
+					type
+					width
+					height
+					size
+					contentType
+					streamInfo {
+						downloadUrl
+						cdnPrefix
+						url
+					}
+					createdAt
+					updatedAt
 				}
 			}
 		}
@@ -442,7 +517,7 @@ func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (
 func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asset, error) {
 	query := `
 		query {
-			assets {
+			assets(limit: 100) {
 				items {
 					id
 					slug
@@ -483,6 +558,28 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 							height
 							size
 							contentType
+							streamInfo {
+								downloadUrl
+								cdnPrefix
+								url
+							}
+						}
+						createdAt
+						updatedAt
+					}
+					images {
+						id
+						fileName
+						url
+						type
+						width
+						height
+						size
+						contentType
+						streamInfo {
+							downloadUrl
+							cdnPrefix
+							url
 						}
 						createdAt
 						updatedAt
@@ -541,16 +638,52 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 				}
 				videos {
 					id
-					filename
-					status
+					type
 					format
-					url
-					thumbnailUrl
-					duration
+					storageLocation {
+						bucket
+						key
+						url
+					}
 					width
 					height
+					duration
 					bitrate
-					filesize
+					size
+					contentType
+					status
+					thumbnail {
+						fileName
+						url
+						width
+						height
+						size
+						contentType
+						streamInfo {
+							downloadUrl
+							cdnPrefix
+							url
+						}
+					}
+					createdAt
+					updatedAt
+				}
+				images {
+					id
+					fileName
+					url
+					type
+					width
+					height
+					size
+					contentType
+					streamInfo {
+						downloadUrl
+						cdnPrefix
+						url
+					}
+					createdAt
+					updatedAt
 				}
 			}
 		}

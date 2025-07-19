@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-source ./setup-environment.sh
+source "setup-environment.sh"
 
 pushd ../backend/lambdas/cmd/generate_video_upload_url > /dev/null
 echo "[INFO] Building video upload URL Lambda..."
@@ -24,7 +24,7 @@ else
     --handler main \
     --zip-file fileb://function.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={BUCKET_NAME=raw-storage,BUCKET_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
+    --environment "Variables={BUCKET_NAME=content-east,BUCKET_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
     --region $AWS_REGION > /dev/null
 fi
 
@@ -76,7 +76,7 @@ else
     --handler main \
     --zip-file fileb://function.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment "Variables={BUCKET_NAME=images-storage,BUCKET_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
+    --environment "Variables={BUCKET_NAME=content-east,BUCKET_REGION=$AWS_REGION,AWS_ENDPOINT=$LOCALSTACK_ENDPOINT}" \
     --region $AWS_REGION > /dev/null
 fi
 

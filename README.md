@@ -10,7 +10,9 @@ Video upload/transcoding, stream delivery (HLS/DASH), asset metadata, auth with 
 
 ## Architecture
 
-![Architecture Diagram](docs/arch.png) | [Sequence Diagram](docs/video-upload-transcode-sequence.md)
+![Architecture Diagram](docs/arch.png) 
+[Transcoding Sequence Diagram](docs/video-upload-transcode-sequence.md) 
+[CDN Proposal](docs/cdn-proposal.md)
 
 ## Tech Stack
 

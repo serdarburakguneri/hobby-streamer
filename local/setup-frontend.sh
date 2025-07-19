@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-source ./setup-environment.sh
+source "setup-environment.sh"
 
 echo "[INFO] Stopping any existing frontend processes..."
 

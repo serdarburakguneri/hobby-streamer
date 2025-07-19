@@ -29,21 +29,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ asset, visible, onClos
 
     const videos = asset.videos;
     
-    const hlsVideo = videos.find(v => v.format === 'hls' && v.status === 'ready');
+    const hlsVideo = videos.find(v => v.format === 'hls');
     if (hlsVideo) return hlsVideo;
     
-    const dashVideo = videos.find(v => v.format === 'dash' && v.status === 'ready');
+    const dashVideo = videos.find(v => v.format === 'dash');
     if (dashVideo) return dashVideo;
     
-    const rawVideo = videos.find(v => v.format === 'raw' && v.status === 'ready');
-    if (rawVideo) return rawVideo;
-    
-    return videos[0];
+    return null;
   };
 
   const getVideoUrl = (video: any) => {
-    if (video.streamInfo?.playUrl) {
-      return video.streamInfo.playUrl;
+      if (video.streamInfo?.url) {
+    return video.streamInfo.url;
     }
     if (video.storageLocation?.url) {
       return video.storageLocation.url;
@@ -147,15 +144,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ asset, visible, onClos
         setIsLoading(false);
       });
     } else {
-      videoElement.src = videoUrl;
-      videoElement.addEventListener('loadedmetadata', () => {
-        setIsLoading(false);
-        setIsPlaying(true);
-      });
-      videoElement.addEventListener('error', () => {
-        setError('Failed to load video');
-        setIsLoading(false);
-      });
+      setError('Unsupported video format. Only HLS and DASH formats are supported.');
+      setIsLoading(false);
     }
     
     return () => {

@@ -396,6 +396,7 @@ func mapImageToGraphQL(img *asset.Image) *model.Image {
 		Height:      &img.Height,
 		Size:        &[]int{int(img.Size)}[0],
 		ContentType: &img.ContentType,
+		StreamInfo:  mapStreamInfoToGraphQL(img.StreamInfo),
 		CreatedAt:   img.CreatedAt,
 		UpdatedAt:   img.UpdatedAt,
 	}
@@ -435,6 +436,6 @@ func mapStreamInfoToGraphQL(info *asset.StreamInfo) *model.StreamInfo {
 	return &model.StreamInfo{
 		DownloadURL: info.DownloadURL,
 		CdnPrefix:   info.CdnPrefix,
-		PlayURL:     info.PlayURL,
+		URL:         info.URL,
 	}
 }

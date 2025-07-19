@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	apperrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -18,6 +19,7 @@ type AnalyzeRunner struct {
 	logger             *logger.Logger
 	completionProducer *sqs.Producer
 	s3Client           *s3.Client
+	metadata           *VideoMetadata
 }
 
 func NewAnalyzeRunner() *AnalyzeRunner {
@@ -87,6 +89,16 @@ func (a *AnalyzeRunner) Run(ctx context.Context, payload json.RawMessage) error 
 	return nil
 }
 
+type VideoMetadata struct {
+	Width       int     `json:"width"`
+	Height      int     `json:"height"`
+	Duration    float64 `json:"duration"`
+	Bitrate     int     `json:"bitrate"`
+	Codec       string  `json:"codec"`
+	Size        int64   `json:"size"`
+	ContentType string  `json:"contentType"`
+}
+
 func (a *AnalyzeRunner) executeAnalysis(ctx context.Context, p messages.AnalyzePayload) error {
 	var localPath string
 	var err error
@@ -106,6 +118,14 @@ func (a *AnalyzeRunner) executeAnalysis(ctx context.Context, p messages.AnalyzeP
 		}
 	}
 
+	metadata, err := a.extractVideoMetadata(ctx, localPath)
+	if err != nil {
+		a.logger.WithError(err).Error("Failed to extract video metadata", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID)
+		return apperrors.NewInternalError("failed to extract video metadata", err)
+	}
+
+	a.metadata = metadata
+
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", localPath, "-f", "null", "-")
 	out, err := cmd.CombinedOutput()
 
@@ -114,10 +134,77 @@ func (a *AnalyzeRunner) executeAnalysis(ctx context.Context, p messages.AnalyzeP
 		return apperrors.NewInternalError("ffmpeg analysis failed", err)
 	}
 
-	a.logger.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out))
+	a.logger.Info("Video analysis completed successfully", "input", localPath, "asset_id", p.AssetID, "video_id", p.VideoID, "output_length", len(out), "metadata", metadata)
 	a.logger.Debug("FFmpeg analysis output", "output", string(out))
 
 	return nil
+}
+
+func (a *AnalyzeRunner) extractVideoMetadata(ctx context.Context, filePath string) (*VideoMetadata, error) {
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		"-show_streams",
+		filePath)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var probeResult struct {
+		Format struct {
+			Duration string `json:"duration"`
+			BitRate  string `json:"bit_rate"`
+			Size     string `json:"size"`
+		} `json:"format"`
+		Streams []struct {
+			CodecType string `json:"codec_type"`
+			CodecName string `json:"codec_name"`
+			Width     int    `json:"width"`
+			Height    int    `json:"height"`
+		} `json:"streams"`
+	}
+
+	if err := json.Unmarshal(out, &probeResult); err != nil {
+		return nil, err
+	}
+
+	metadata := &VideoMetadata{}
+
+	for _, stream := range probeResult.Streams {
+		if stream.CodecType == "video" {
+			metadata.Width = stream.Width
+			metadata.Height = stream.Height
+			metadata.Codec = stream.CodecName
+			break
+		}
+	}
+
+	if probeResult.Format.Duration != "" {
+		if duration, err := strconv.ParseFloat(probeResult.Format.Duration, 64); err == nil {
+			metadata.Duration = duration
+		}
+	}
+
+	if probeResult.Format.BitRate != "" {
+		if bitrate, err := strconv.Atoi(probeResult.Format.BitRate); err == nil {
+			metadata.Bitrate = bitrate
+		}
+	}
+
+	if probeResult.Format.Size != "" {
+		if size, err := strconv.ParseInt(probeResult.Format.Size, 10, 64); err == nil {
+			metadata.Size = size
+		}
+	}
+
+	if _, err := os.Stat(filePath); err == nil {
+		metadata.ContentType = "video/mp4"
+	}
+
+	return metadata, nil
 }
 
 func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, videoID string, success bool, errorMessage string) {
@@ -127,6 +214,16 @@ func (a *AnalyzeRunner) sendAnalyzeCompleted(ctx context.Context, assetID, video
 		AssetID: assetID,
 		VideoID: videoID,
 		Success: success,
+	}
+
+	if success && a.metadata != nil {
+		payload.Width = a.metadata.Width
+		payload.Height = a.metadata.Height
+		payload.Duration = a.metadata.Duration
+		payload.Bitrate = a.metadata.Bitrate
+		payload.Codec = a.metadata.Codec
+		payload.Size = a.metadata.Size
+		payload.ContentType = a.metadata.ContentType
 	}
 
 	if !success && errorMessage != "" {

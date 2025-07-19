@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -17,18 +18,14 @@ import (
 )
 
 type DeleteRequest struct {
-	AssetID string   `json:"assetId"`
-	Files   []S3File `json:"files"`
-}
-
-type S3File struct {
-	Bucket string `json:"bucket"`
-	Key    string `json:"key"`
+	AssetID string `json:"assetId"`
+	Folder  string `json:"folder"`
 }
 
 type DeleteResponse struct {
 	Message string   `json:"message"`
-	Deleted []S3File `json:"deleted"`
+	Folder  string   `json:"folder"`
+	Deleted int      `json:"deleted"`
 	Errors  []string `json:"errors,omitempty"`
 }
 
@@ -76,37 +73,12 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 		})
 	}
 
-	if req.Files == nil {
-		log.Error("Files array is nil", "asset_id", req.AssetID)
+	if req.Folder == "" {
+		log.Error("Missing folder in request", "asset_id", req.AssetID)
 		return respondJSON(http.StatusBadRequest, ErrorResponse{
-			Message: "files array is required",
+			Message: "folder is required",
 			Type:    "validation",
 		})
-	}
-
-	if len(req.Files) == 0 {
-		log.Info("No files to delete", "asset_id", req.AssetID)
-		return respondJSON(http.StatusOK, DeleteResponse{
-			Message: "No files to delete",
-			Deleted: []S3File{},
-		})
-	}
-
-	for i, file := range req.Files {
-		if file.Bucket == "" {
-			log.Error("Missing bucket in file", "asset_id", req.AssetID, "file_index", i)
-			return respondJSON(http.StatusBadRequest, ErrorResponse{
-				Message: fmt.Sprintf("bucket is required for file at index %d", i),
-				Type:    "validation",
-			})
-		}
-		if file.Key == "" {
-			log.Error("Missing key in file", "asset_id", req.AssetID, "file_index", i, "bucket", file.Bucket)
-			return respondJSON(http.StatusBadRequest, ErrorResponse{
-				Message: fmt.Sprintf("key is required for file at index %d", i),
-				Type:    "validation",
-			})
-		}
 	}
 
 	endpoint := os.Getenv("AWS_ENDPOINT")
@@ -131,58 +103,98 @@ func handler(ctx context.Context, event events.APIGatewayProxyRequest) (events.A
 
 	svc := s3.New(sess)
 
-	bucketFiles := make(map[string][]string)
-	for _, file := range req.Files {
-		bucketFiles[file.Bucket] = append(bucketFiles[file.Bucket], file.Key)
+	// Parse bucket and prefix from folder path
+	parts := strings.SplitN(req.Folder, "/", 2)
+	if len(parts) != 2 {
+		log.Error("Invalid folder format", "folder", req.Folder, "asset_id", req.AssetID)
+		return respondJSON(http.StatusBadRequest, ErrorResponse{
+			Message: "Invalid folder format. Expected: bucket/prefix",
+			Type:    "validation",
+		})
 	}
 
-	var deleted []S3File
+	bucket := parts[0]
+	prefix := parts[1] + "/"
+
+	log.Info("Starting folder deletion", "asset_id", req.AssetID, "bucket", bucket, "prefix", prefix)
+
+	var allObjects []*s3.ObjectIdentifier
 	var errors []string
 
-	for bucket, keys := range bucketFiles {
-		if len(keys) == 0 {
-			continue
+	// List all objects in the folder
+	listInput := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	}
+
+	err = svc.ListObjectsV2PagesWithContext(ctx, listInput, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+		for _, obj := range page.Contents {
+			allObjects = append(allObjects, &s3.ObjectIdentifier{
+				Key: obj.Key,
+			})
+		}
+		return !lastPage
+	})
+
+	if err != nil {
+		log.WithError(err).Error("Failed to list objects in folder", "bucket", bucket, "prefix", prefix, "asset_id", req.AssetID)
+		return respondJSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Failed to list objects in folder",
+			Type:    "internal",
+		})
+	}
+
+	if len(allObjects) == 0 {
+		log.Info("No objects found in folder", "asset_id", req.AssetID, "bucket", bucket, "prefix", prefix)
+		return respondJSON(http.StatusOK, DeleteResponse{
+			Message: "No objects found in folder",
+			Folder:  req.Folder,
+			Deleted: 0,
+		})
+	}
+
+	// Delete objects in batches (S3 allows max 1000 objects per request)
+	batchSize := 1000
+	totalDeleted := 0
+
+	for i := 0; i < len(allObjects); i += batchSize {
+		end := i + batchSize
+		if end > len(allObjects) {
+			end = len(allObjects)
 		}
 
-		var objects []*s3.ObjectIdentifier
-		for _, key := range keys {
-			objects = append(objects, &s3.ObjectIdentifier{Key: aws.String(key)})
-		}
+		batch := allObjects[i:end]
 
 		input := &s3.DeleteObjectsInput{
 			Bucket: aws.String(bucket),
 			Delete: &s3.Delete{
-				Objects: objects,
+				Objects: batch,
 				Quiet:   aws.Bool(false),
 			},
 		}
 
 		result, err := svc.DeleteObjectsWithContext(ctx, input)
 		if err != nil {
-			log.WithError(err).Error("Failed to delete objects from bucket", "bucket", bucket, "file_count", len(keys), "asset_id", req.AssetID)
-			errors = append(errors, fmt.Sprintf("Failed to delete from bucket %s: %v", bucket, err))
+			log.WithError(err).Error("Failed to delete batch of objects", "bucket", bucket, "batch_size", len(batch), "asset_id", req.AssetID)
+			errors = append(errors, fmt.Sprintf("Failed to delete batch: %v", err))
 			continue
 		}
 
-		for _, deletedObj := range result.Deleted {
-			deleted = append(deleted, S3File{
-				Bucket: bucket,
-				Key:    *deletedObj.Key,
-			})
-		}
+		totalDeleted += len(result.Deleted)
 
 		for _, err := range result.Errors {
-			errorMsg := fmt.Sprintf("Failed to delete %s from %s: %s", *err.Key, bucket, *err.Message)
+			errorMsg := fmt.Sprintf("Failed to delete %s: %s", *err.Key, *err.Message)
 			errors = append(errors, errorMsg)
 			log.Error("Delete error", "bucket", bucket, "key", *err.Key, "error", *err.Message, "asset_id", req.AssetID)
 		}
 	}
 
-	log.Info("File deletion completed", "asset_id", req.AssetID, "deleted_count", len(deleted), "error_count", len(errors))
+	log.Info("Folder deletion completed", "asset_id", req.AssetID, "deleted_count", totalDeleted, "error_count", len(errors))
 
 	response := DeleteResponse{
-		Message: fmt.Sprintf("Deleted %d files for asset %s", len(deleted), req.AssetID),
-		Deleted: deleted,
+		Message: fmt.Sprintf("Deleted %d objects from folder %s", totalDeleted, req.Folder),
+		Folder:  req.Folder,
+		Deleted: totalDeleted,
 	}
 
 	if len(errors) > 0 {

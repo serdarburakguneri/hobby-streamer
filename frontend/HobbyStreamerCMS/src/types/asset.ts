@@ -49,6 +49,7 @@ export interface S3Object {
 export interface StreamInfo {
   downloadUrl?: string;
   cdnPrefix?: string;
+  url?: string;
 }
 
 export interface Video {

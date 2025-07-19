@@ -60,6 +60,7 @@ type Image {
   height: Int
   size: Int
   contentType: String
+  streamInfo: StreamInfo
   metadata: String
   createdAt: Time!
   updatedAt: Time!
@@ -74,7 +75,7 @@ type S3Object {
 type StreamInfo {
   downloadUrl: String
   cdnPrefix: String
-  playUrl: String
+  url: String
 }
 
 enum VideoType {

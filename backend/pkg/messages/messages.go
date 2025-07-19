@@ -11,16 +11,24 @@ type TranscodePayload struct {
 	AssetID        string `json:"assetId"`
 	VideoID        string `json:"videoId"`
 	Format         string `json:"format"`
+	Quality        string `json:"quality"`
 	OutputBucket   string `json:"outputBucket"`
 	OutputKey      string `json:"outputKey"`
 	OutputFileName string `json:"outputFileName"`
 }
 
 type AnalyzeCompletionPayload struct {
-	AssetID string `json:"assetId"`
-	VideoID string `json:"videoId"`
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
+	AssetID     string  `json:"assetId"`
+	VideoID     string  `json:"videoId"`
+	Success     bool    `json:"success"`
+	Error       string  `json:"error,omitempty"`
+	Width       int     `json:"width,omitempty"`
+	Height      int     `json:"height,omitempty"`
+	Duration    float64 `json:"duration,omitempty"`
+	Bitrate     int     `json:"bitrate,omitempty"`
+	Codec       string  `json:"codec,omitempty"`
+	Size        int64   `json:"size,omitempty"`
+	ContentType string  `json:"contentType,omitempty"`
 }
 
 type TranscodeCompletionPayload struct {

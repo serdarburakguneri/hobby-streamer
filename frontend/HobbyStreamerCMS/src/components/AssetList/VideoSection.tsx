@@ -24,7 +24,18 @@ const VIDEO_FORMATS: { key: VideoFormat; label: string; icon: string }[] = [
 
 export default function VideoSection({ asset, onVideoAdded }: VideoSectionProps) {
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>(VideoType.MAIN);
-  const [selectedFormat, setSelectedFormat] = useState<VideoFormat>(VideoFormat.RAW);
+  
+  const getDefaultFormat = () => {
+    const mainVideos = asset.videos?.filter(video => video.type === VideoType.MAIN) || [];
+    const dashVideo = mainVideos.find(video => video.format === VideoFormat.DASH && video.status === 'ready');
+    const hlsVideo = mainVideos.find(video => video.format === VideoFormat.HLS && video.status === 'ready');
+    
+    if (dashVideo) return VideoFormat.DASH;
+    if (hlsVideo) return VideoFormat.HLS;
+    return VideoFormat.RAW;
+  };
+  
+  const [selectedFormat, setSelectedFormat] = useState<VideoFormat>(getDefaultFormat());
   const [showUpload, setShowUpload] = useState(false);
   const [previewVideo, setPreviewVideo] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -58,13 +69,15 @@ export default function VideoSection({ asset, onVideoAdded }: VideoSectionProps)
         return;
       }
 
+      const bucket = 'content-east';
+
       await assetService.addVideo(
         asset.id,
         videoType,
         format,
-        rawVideo.storageLocation.bucket,
-        rawVideo.storageLocation.key,
-        rawVideo.storageLocation.url,
+        bucket,
+        `${asset.id}/${rawVideo.id}/${format}/playlist.${format === VideoFormat.HLS ? 'm3u8' : 'mpd'}`,
+        `s3://${rawVideo.storageLocation.bucket}/${rawVideo.storageLocation.key}`,
         rawVideo.contentType || 'video/mp4',
         rawVideo.size || 0
       );
@@ -276,6 +289,12 @@ export default function VideoSection({ asset, onVideoAdded }: VideoSectionProps)
                      <Ionicons name="eye" size={14} color="#007AFF" />
                      <Text style={styles.actionButtonText}>View</Text>
                    </TouchableOpacity>
+                 )}
+                 {video.format === 'raw' && (
+                   <View style={styles.actionButton}>
+                     <Ionicons name="information-circle" size={14} color="#666" />
+                     <Text style={[styles.actionButtonText, { color: '#666' }]}>Raw</Text>
+                   </View>
                  )}
                  <TouchableOpacity
                    style={[styles.actionButton, styles.deleteActionButton]}

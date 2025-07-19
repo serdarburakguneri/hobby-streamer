@@ -7,37 +7,34 @@ chmod +x setup-*
 
 echo "[INFO] Starting Hobby Streamer build process..."
 
-echo "[INFO] Phase 1: Setting up environment..."
+echo "[INFO] Setting up environment..."
 ./setup-environment.sh
 
-echo "[INFO] Phase 2: Setting up infrastructure..."
+echo "[INFO] Setting up infrastructure..."
 ./setup-infrastructure.sh
 
-echo "[INFO] Phase 3: Setting up AWS resources..."
-./setup-aws-resources.sh
+echo "[INFO] Setting up SQS queues..."
+./setup-sqs-queues.sh
 
-echo "[INFO] Phase 4: Setting up kibana dashboard..."
-./setup-kibana-dashboard.sh
+echo "[INFO] Setting up S3 buckets..."
+./setup-s3-buckets.sh
 
-#echo "[INFO] Phase 4: Setting up CloudFront distributions..."
-#./setup-cloudfront.sh
-
-echo "[INFO] Phase 5: Setting up Lambda functions..."
+echo "[INFO] Setting up Lambda functions..."
 ./setup-lambdas.sh
 
-echo "[INFO] Phase 6: Setting up API Gateway..."
+echo "[INFO] Setting up API Gateway..."
 ./setup-api-gateway.sh
 
-echo "[INFO] Phase 7: Starting Redis..."
+echo "[INFO] Starting Redis..."
 ./setup-redis.sh
 
-echo "[INFO] Phase 8: Setting up backend services..."
+echo "[INFO] Setting up kibana dashboard..."
+./setup-kibana-dashboard.sh
+
+echo "[INFO] Setting up backend services..."
 ./setup-backend-services.sh
 
-echo "[INFO] Phase 9: Setting up nginx proxy..."
-./setup-nginx.sh
-
-echo "[INFO] Phase 10: Setting up frontend..."
+echo "[INFO] Setting up frontend..."
 ./setup-frontend.sh
 
 echo ""

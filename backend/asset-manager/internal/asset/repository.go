@@ -356,7 +356,7 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 		"id":        id,
 		"updatedAt": time.Now().UTC(),
 	}
-	
+
 	var parentIdUpdated bool
 	var newParentId string
 
@@ -364,7 +364,7 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 		paramKey := fmt.Sprintf("param_%s", key)
 		setClause += fmt.Sprintf(", a.%s = $%s", key, paramKey)
 		params[paramKey] = value
-		
+
 		if key == "parentId" {
 			parentIdUpdated = true
 			if value != nil {

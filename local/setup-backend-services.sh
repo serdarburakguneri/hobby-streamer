@@ -3,9 +3,10 @@ set -e
 
 cd "$(dirname "$0")"
 
-source ./setup-environment.sh
+source "setup-environment.sh"
 
 echo "[INFO] Starting backend services (auth-service, asset-manager, transcoder, streaming-api)..."
+docker-compose build auth-service asset-manager transcoder streaming-api
 docker-compose up -d auth-service asset-manager transcoder streaming-api
 
 echo "[INFO] All services are running successfully!"

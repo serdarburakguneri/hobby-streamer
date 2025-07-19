@@ -264,7 +264,7 @@ const GET_ASSETS = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
-            playUrl
+            url
           }
           metadata
           status
@@ -295,6 +295,11 @@ const GET_ASSETS = gql`
           size
           contentType
           metadata
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            url
+          }
           createdAt
           updatedAt
         }
@@ -350,7 +355,7 @@ const GET_BUCKETS = gql`
             streamInfo {
               downloadUrl
               cdnPrefix
-              playUrl
+              url
             }
             metadata
             status
@@ -423,7 +428,7 @@ const GET_BUCKET = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
-            playUrl
+            url
           }
           metadata
           status
@@ -496,7 +501,7 @@ const GET_ASSETS_BY_PARENT = gql`
           streamInfo {
             downloadUrl
             cdnPrefix
-            playUrl
+            url
           }
           metadata
           status
@@ -569,7 +574,7 @@ const GET_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -654,7 +659,7 @@ const CREATE_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -725,7 +730,7 @@ const PATCH_ASSET = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -795,7 +800,7 @@ const PATCH_PUBLISH_RULE = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -860,7 +865,7 @@ const DELETE_VIDEO = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -921,7 +926,7 @@ const ADD_VIDEO = gql`
         streamInfo {
           downloadUrl
           cdnPrefix
-          playUrl
+          url
         }
         metadata
         status
@@ -1135,7 +1140,12 @@ const ADD_IMAGE = gql`
         metadata
         createdAt
         updatedAt
-      }
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            url
+          }
+        }
     }
   }
 `;
@@ -1168,7 +1178,12 @@ const DELETE_IMAGE = gql`
         metadata
         createdAt
         updatedAt
-      }
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            url
+          }
+        }
     }
   }
 `;
@@ -1612,8 +1627,8 @@ export const useAssetService = () => {
         assetId, 
         type: imageData.type,
         fileName: imageData.fileName,
-        bucket: 'images-storage',
-        key: `${assetId}/${imageData.type?.toLowerCase()}/${imageData.fileName}`,
+        bucket: 'content-east',
+        key: `${assetId}/images/${imageData.type?.toLowerCase()}/${imageData.fileName}`,
         url: imageData.url,
         contentType: 'image/jpeg',
         size: 0,

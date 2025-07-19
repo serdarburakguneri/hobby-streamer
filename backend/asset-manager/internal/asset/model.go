@@ -62,6 +62,7 @@ type Image struct {
 	Height          int               `json:"height,omitempty"`
 	Size            int64             `json:"size,omitempty"`
 	ContentType     string            `json:"contentType,omitempty"`
+	StreamInfo      *StreamInfo       `json:"streamInfo,omitempty"`
 	Metadata        map[string]string `json:"metadata,omitempty"`
 	CreatedAt       time.Time         `json:"createdAt"`
 	UpdatedAt       time.Time         `json:"updatedAt"`
@@ -76,7 +77,7 @@ type S3Object struct {
 type StreamInfo struct {
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	CdnPrefix   *string `json:"cdnPrefix,omitempty"`
-	PlayURL     *string `json:"playUrl,omitempty"`
+	URL         *string `json:"url,omitempty"`
 }
 
 type Credit struct {

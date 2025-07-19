@@ -2,13 +2,10 @@ package asset
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -57,33 +54,6 @@ type DeleteFilesRequest struct {
 	Files   []S3File `json:"files"`
 }
 
-func generateID() string {
-	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000_000))
-	if err != nil {
-		return "000000000"
-	}
-	return strconv.Itoa(int(n.Int64()))
-}
-
-func generateSlug(title string) string {
-	if title == "" {
-		return generateID()
-	}
-
-	slug := strings.ToLower(title)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = regexp.MustCompile(`[^a-z0-9-_]`).ReplaceAllString(slug, "")
-	slug = regexp.MustCompile(`-+`).ReplaceAllString(slug, "-")
-	slug = regexp.MustCompile(`_+`).ReplaceAllString(slug, "_")
-	slug = strings.Trim(slug, "-_")
-
-	if slug == "" {
-		return generateID()
-	}
-
-	return slug
-}
-
 func (s *Service) GetAssetByID(ctx context.Context, id string) (*Asset, error) {
 	return s.Repo.GetAssetByID(ctx, id)
 }
@@ -112,20 +82,16 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 		return nil, apperrors.NewValidationError("asset ID should not be set during creation", nil)
 	}
 
+	if a.Slug == "" {
+		return nil, apperrors.NewValidationError("slug is required", nil)
+	}
+
 	if err := s.validateAsset(a); err != nil {
 		log.WithError(err).Error("Asset validation failed")
 		return nil, err
 	}
 
 	a.ID = generateID()
-
-	if a.Slug == "" {
-		title := ""
-		if a.Title != nil {
-			title = *a.Title
-		}
-		a.Slug = generateSlug(title)
-	}
 
 	if a.PublishRule == nil {
 		a.PublishRule = &PublishRule{}
@@ -181,58 +147,26 @@ func (s *Service) DeleteAsset(ctx context.Context, id string) error {
 		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
-	var filesToDelete []S3File
-
-	for _, video := range asset.Videos {
-		filesToDelete = append(filesToDelete, S3File{
-			Bucket: video.StorageLocation.Bucket,
-			Key:    video.StorageLocation.Key,
-		})
-		if video.Thumbnail != nil && video.Thumbnail.StorageLocation != nil {
-			filesToDelete = append(filesToDelete, S3File{
-				Bucket: video.Thumbnail.StorageLocation.Bucket,
-				Key:    video.Thumbnail.StorageLocation.Key,
-			})
-		}
-	}
-
 	if err := s.Repo.DeleteAsset(ctx, id); err != nil {
 		return err
 	}
 
-	if len(filesToDelete) > 0 {
-		go func() {
-			bgCtx := context.Background()
-			if err := s.deleteAssetFiles(bgCtx, asset); err != nil {
-				log.WithError(err).Error("Failed to delete asset files", "asset_id", id)
-			} else {
-				log.Debug("Asset files deleted successfully", "asset_id", id, "file_count", len(filesToDelete))
-			}
-		}()
-	}
+	go func() {
+		bgCtx := context.Background()
+		if err := s.deleteAssetFolder(bgCtx, asset.ID); err != nil {
+			log.WithError(err).Error("Failed to delete asset folder", "asset_id", id)
+		} else {
+			log.Debug("Asset folder deleted successfully", "asset_id", id)
+		}
+	}()
 
 	return nil
 }
 
-func (s *Service) deleteAssetFiles(ctx context.Context, asset *Asset) error {
-	if len(asset.Videos) == 0 {
-		return nil
-	}
-
+func (s *Service) deleteAssetFolder(ctx context.Context, assetID string) error {
 	deleteRequest := map[string]interface{}{
-		"assetId": asset.ID,
-		"files":   []string{},
-	}
-
-	for _, video := range asset.Videos {
-		if video.StorageLocation.Bucket != "" && video.StorageLocation.Key != "" {
-			filePath := fmt.Sprintf("%s/%s", video.StorageLocation.Bucket, video.StorageLocation.Key)
-			deleteRequest["files"] = append(deleteRequest["files"].([]string), filePath)
-		}
-	}
-
-	if len(deleteRequest["files"].([]string)) == 0 {
-		return nil
+		"assetId": assetID,
+		"folder":  fmt.Sprintf("content-east/%s", assetID),
 	}
 
 	lambdaURL := s.Config.GetStringFromComponent("lambda", "delete_files_endpoint")
@@ -285,6 +219,18 @@ func (s *Service) AddImage(ctx context.Context, id string, img *Image) error {
 		}
 	}
 
+	//TODO: gonna give this responsibility to somewhere else
+	if img.StorageLocation != nil {
+		cdnPrefix := s.getCDNPrefixForBucket(img.StorageLocation.Bucket)
+		if cdnPrefix != "" {
+			url := cdnPrefix + "/" + img.StorageLocation.Key
+			img.StreamInfo = &StreamInfo{
+				CdnPrefix: &cdnPrefix,
+				URL:       &url,
+			}
+		}
+	}
+
 	asset.Images = append(asset.Images, *img)
 	return s.Repo.SaveAsset(ctx, asset)
 }
@@ -312,7 +258,6 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
-	// Check if a video with the same format already exists
 	for i, existingVideo := range asset.Videos {
 		if existingVideo.Format == video.Format {
 
@@ -325,7 +270,7 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 				}
 
 				if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
-					jobSent := s.sendTranscodeJob(ctx, asset.ID, existingVideo.ID, existingVideo.StorageLocation, string(video.Format))
+					jobSent := s.sendTranscodeJob(ctx, asset.ID, existingVideo.ID, existingVideo.StorageLocation, string(video.Format), existingVideo)
 					if !jobSent {
 						// If job couldn't be sent, set status to failed
 						asset.Videos[i].Status = VideoStatusFailed
@@ -374,7 +319,30 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 			}
 		}
 	} else if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
-		jobSent := s.sendTranscodeJob(ctx, asset.ID, video.ID, video.StorageLocation, string(video.Format))
+		var rawVideo *Video
+		for _, v := range asset.Videos {
+			if v.Type == video.Type && v.Format == VideoFormatRaw {
+				rawVideo = &v
+				break
+			}
+		}
+
+		if rawVideo == nil {
+			log := logger.Get().WithService("asset-service")
+			log.Error("No raw video found for transcoding", "asset_id", asset.ID, "video_id", video.ID, "video_type", video.Type)
+
+			for i, v := range asset.Videos {
+				if v.ID == video.ID {
+					asset.Videos[i].Status = VideoStatusFailed
+					asset.Videos[i].UpdatedAt = time.Now()
+					s.Repo.SaveAsset(ctx, asset)
+					break
+				}
+			}
+			return nil
+		}
+
+		jobSent := s.sendTranscodeJob(ctx, asset.ID, video.ID, rawVideo.StorageLocation, string(video.Format), *rawVideo)
 		if !jobSent {
 
 			for i, v := range asset.Videos {
@@ -422,7 +390,20 @@ func (s *Service) sendAnalyzeJob(ctx context.Context, assetID string, videoID st
 	return true
 }
 
-func (s *Service) sendTranscodeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object, format string) bool {
+func getQualityFromDimensions(width, height int) string {
+	if width >= 1920 && height >= 1080 {
+		return "1080p"
+	} else if width >= 1280 && height >= 720 {
+		return "720p"
+	} else if width >= 854 && height >= 480 {
+		return "480p"
+	} else if width >= 640 && height >= 360 {
+		return "360p"
+	}
+	return "720p"
+}
+
+func (s *Service) sendTranscodeJob(ctx context.Context, assetID string, videoID string, storageLocation S3Object, format string, video Video) bool {
 	log := logger.Get().WithService("asset-service")
 
 	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket, storageLocation.Key)
@@ -447,17 +428,29 @@ func (s *Service) sendTranscodeJob(ctx context.Context, assetID string, videoID 
 		return false
 	}
 
-	outputBucket := fmt.Sprintf("%s-storage", format)
-	outputKey := fmt.Sprintf("%s/%s/playlist.%s", assetID, videoID, getFileExtension(format))
+	outputBucket := "content-east"
+	quality := getQualityFromDimensions(video.Width, video.Height)
+
+	var outputKey string
+	var outputFileName string
+
+	if format == "dash" {
+		outputKey = fmt.Sprintf("%s/%s/%s/manifest.mpd", assetID, format, quality)
+		outputFileName = "manifest.mpd"
+	} else {
+		outputKey = fmt.Sprintf("%s/%s/%s/playlist.%s", assetID, format, quality, getFileExtension(format))
+		outputFileName = fmt.Sprintf("playlist.%s", getFileExtension(format))
+	}
 
 	payload := messages.TranscodePayload{
 		Input:          input,
 		AssetID:        assetID,
 		VideoID:        videoID,
 		Format:         format,
+		Quality:        quality,
 		OutputBucket:   outputBucket,
 		OutputKey:      outputKey,
-		OutputFileName: fmt.Sprintf("playlist.%s", getFileExtension(format)),
+		OutputFileName: outputFileName,
 	}
 
 	producer, err := sqs.NewProducer(ctx, queueURL)
@@ -474,17 +467,6 @@ func (s *Service) sendTranscodeJob(ctx context.Context, assetID string, videoID 
 
 	log.Info("Transcode job sent successfully", "asset_id", assetID, "video_id", videoID, "format", format, "input", input)
 	return true
-}
-
-func getFileExtension(format string) string {
-	switch format {
-	case "hls":
-		return "m3u8"
-	case "dash":
-		return "mpd"
-	default:
-		return "mp4"
-	}
 }
 
 func (s *Service) DeleteVideo(ctx context.Context, assetID string, videoID string) error {
@@ -550,6 +532,16 @@ func (s *Service) HandleAnalyzeCompletion(ctx context.Context, payload map[strin
 		if video.ID == analyzePayload.VideoID {
 			asset.Videos[i].Status = status
 			asset.Videos[i].UpdatedAt = time.Now()
+
+			if analyzePayload.Success {
+				asset.Videos[i].Width = analyzePayload.Width
+				asset.Videos[i].Height = analyzePayload.Height
+				asset.Videos[i].Duration = analyzePayload.Duration
+				asset.Videos[i].Bitrate = analyzePayload.Bitrate
+				asset.Videos[i].Codec = analyzePayload.Codec
+				asset.Videos[i].Size = analyzePayload.Size
+				asset.Videos[i].ContentType = analyzePayload.ContentType
+			}
 			break
 		}
 	}
@@ -615,10 +607,10 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 
 				cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
 				if cdnPrefix != "" {
-					playURL := cdnPrefix + "/" + transcodePayload.Key
+					url := cdnPrefix + "/" + transcodePayload.Key
 					asset.Videos[i].StreamInfo = &StreamInfo{
 						CdnPrefix: &cdnPrefix,
-						PlayURL:   &playURL,
+						URL:       &url,
 					}
 				}
 			}
@@ -652,10 +644,10 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 
 		cdnPrefix := s.getCDNPrefixForBucket(transcodePayload.Bucket)
 		if cdnPrefix != "" {
-			playURL := cdnPrefix + "/" + transcodePayload.Key
+			url := cdnPrefix + "/" + transcodePayload.Key
 			video.StreamInfo = &StreamInfo{
 				CdnPrefix: &cdnPrefix,
-				PlayURL:   &playURL,
+				URL:       &url,
 			}
 		}
 
@@ -679,12 +671,8 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 
 func (s *Service) getCDNPrefixForBucket(bucket string) string {
 	switch bucket {
-	case "hls-storage":
-		return s.Config.GetStringFromComponent("cdn", "hls_prefix")
-	case "dash-storage":
-		return s.Config.GetStringFromComponent("cdn", "dash_prefix")
-	case "images-storage":
-		return s.Config.GetStringFromComponent("cdn", "images_prefix")
+	case "content-east", "content-west":
+		return s.Config.GetStringFromComponent("cdn", "prefix")
 	default:
 		return ""
 	}

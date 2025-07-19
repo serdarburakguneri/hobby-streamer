@@ -235,7 +235,7 @@ func (h *TranscodeHLSRunner) uploadOutput(ctx context.Context, hlsDir string, p 
 		name := entry.Name()
 		if strings.HasSuffix(name, ".m3u8") || strings.HasSuffix(name, ".ts") {
 			localPath := filepath.Join(hlsDir, name)
-			s3Key := filepath.Join(p.AssetID, p.VideoID, name)
+			s3Key := filepath.Join(p.AssetID, p.Format, p.Quality, name)
 			if upErr := h.s3Client.Upload(ctx, localPath, h.outputBucket, s3Key); upErr != nil {
 				log.WithError(upErr).Error("Failed to upload file to S3", "bucket", h.outputBucket, "key", s3Key, "asset_id", p.AssetID, "video_id", p.VideoID)
 				uploadErrors++

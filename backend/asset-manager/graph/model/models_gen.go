@@ -78,18 +78,19 @@ type BucketPage struct {
 }
 
 type Image struct {
-	ID              string    `json:"id"`
-	FileName        string    `json:"fileName"`
-	URL             string    `json:"url"`
-	Type            ImageType `json:"type"`
-	StorageLocation *S3Object `json:"storageLocation,omitempty"`
-	Width           *int      `json:"width,omitempty"`
-	Height          *int      `json:"height,omitempty"`
-	Size            *int      `json:"size,omitempty"`
-	ContentType     *string   `json:"contentType,omitempty"`
-	Metadata        *string   `json:"metadata,omitempty"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID              string      `json:"id"`
+	FileName        string      `json:"fileName"`
+	URL             string      `json:"url"`
+	Type            ImageType   `json:"type"`
+	StorageLocation *S3Object   `json:"storageLocation,omitempty"`
+	Width           *int        `json:"width,omitempty"`
+	Height          *int        `json:"height,omitempty"`
+	Size            *int        `json:"size,omitempty"`
+	ContentType     *string     `json:"contentType,omitempty"`
+	StreamInfo      *StreamInfo `json:"streamInfo,omitempty"`
+	Metadata        *string     `json:"metadata,omitempty"`
+	CreatedAt       time.Time   `json:"createdAt"`
+	UpdatedAt       time.Time   `json:"updatedAt"`
 }
 
 type JSONPatch struct {
@@ -120,7 +121,7 @@ type S3Object struct {
 type StreamInfo struct {
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	CdnPrefix   *string `json:"cdnPrefix,omitempty"`
-	PlayURL     *string `json:"playUrl,omitempty"`
+	URL         *string `json:"url,omitempty"`
 }
 
 type UpdateBucketInput struct {

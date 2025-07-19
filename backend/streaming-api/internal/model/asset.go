@@ -17,6 +17,7 @@ type Asset struct {
 	Metadata    *string      `json:"metadata,omitempty"`
 	OwnerID     *string      `json:"ownerId,omitempty"`
 	Videos      []Video      `json:"videos,omitempty"`
+	Images      []Image      `json:"images,omitempty"`
 	PublishRule *PublishRule `json:"publishRule,omitempty"`
 }
 
@@ -41,14 +42,19 @@ type Video struct {
 }
 
 type Image struct {
-	FileName        string    `json:"fileName"`
-	URL             string    `json:"url"`
-	StorageLocation *S3Object `json:"storageLocation,omitempty"`
-	Width           *int      `json:"width,omitempty"`
-	Height          *int      `json:"height,omitempty"`
-	Size            *int      `json:"size,omitempty"`
-	ContentType     *string   `json:"contentType,omitempty"`
-	Metadata        *string   `json:"metadata,omitempty"`
+	ID              string      `json:"id"`
+	FileName        string      `json:"fileName"`
+	URL             string      `json:"url"`
+	Type            string      `json:"type"`
+	StorageLocation *S3Object   `json:"storageLocation,omitempty"`
+	Width           *int        `json:"width,omitempty"`
+	Height          *int        `json:"height,omitempty"`
+	Size            *int        `json:"size,omitempty"`
+	ContentType     *string     `json:"contentType,omitempty"`
+	StreamInfo      *StreamInfo `json:"streamInfo,omitempty"`
+	Metadata        *string     `json:"metadata,omitempty"`
+	CreatedAt       time.Time   `json:"createdAt"`
+	UpdatedAt       time.Time   `json:"updatedAt"`
 }
 
 type S3Object struct {
@@ -60,7 +66,7 @@ type S3Object struct {
 type StreamInfo struct {
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	CDNPrefix   *string `json:"cdnPrefix,omitempty"`
-	PlayURL     *string `json:"playUrl,omitempty"`
+	URL         *string `json:"url,omitempty"`
 }
 
 type PublishRule struct {

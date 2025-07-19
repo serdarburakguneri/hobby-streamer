@@ -61,8 +61,8 @@ export default function VideoUpload({ assetId, videoType, onUploadComplete, onCa
       
       await uploadFile(uploadUrl, blob);
       
-      const bucket = 'raw-storage';
-      const key = `${assetId}/${videoType.toLowerCase()}/${file.name}`;
+      const bucket = 'content-east';
+      const key = `${assetId}/source/${file.name}`;
       const url = `${API_CONFIG.LOCALSTACK_BASE_URL}/${bucket}/${key}`;
       
       await addVideo(assetId, videoType, 'raw', bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);

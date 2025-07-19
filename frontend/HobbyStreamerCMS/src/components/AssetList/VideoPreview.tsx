@@ -22,8 +22,8 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
   const dashRef = useRef<dashjs.MediaPlayerClass | null>(null);
 
   const getVideoUrl = () => {
-    if (video.streamInfo?.playUrl) {
-      return video.streamInfo.playUrl;
+      if (video.streamInfo?.url) {
+    return video.streamInfo.url;
     }
     if (video.storageLocation?.url) {
       return video.storageLocation.url;
@@ -184,6 +184,28 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
         return type;
     }
   };
+
+  if (video.format === 'raw') {
+    return (
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Video Preview</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.errorContainer}>
+              <Ionicons name="warning" size={48} color="#ff6b6b" />
+              <Text style={styles.errorText}>Raw video cannot be previewed</Text>
+              <Text style={styles.errorSubtext}>Please transcode to DASH or HLS format first</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   if (!videoUrl) {
     return (

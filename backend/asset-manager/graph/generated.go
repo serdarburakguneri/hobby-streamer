@@ -104,6 +104,7 @@ type ComplexityRoot struct {
 		Metadata        func(childComplexity int) int
 		Size            func(childComplexity int) int
 		StorageLocation func(childComplexity int) int
+		StreamInfo      func(childComplexity int) int
 		Type            func(childComplexity int) int
 		URL             func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
@@ -154,7 +155,7 @@ type ComplexityRoot struct {
 	StreamInfo struct {
 		CdnPrefix   func(childComplexity int) int
 		DownloadURL func(childComplexity int) int
-		PlayURL     func(childComplexity int) int
+		URL         func(childComplexity int) int
 	}
 
 	Video struct {
@@ -514,6 +515,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Image.StorageLocation(childComplexity), true
 
+	case "Image.streamInfo":
+		if e.complexity.Image.StreamInfo == nil {
+			break
+		}
+
+		return e.complexity.Image.StreamInfo(childComplexity), true
+
 	case "Image.type":
 		if e.complexity.Image.Type == nil {
 			break
@@ -869,12 +877,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StreamInfo.DownloadURL(childComplexity), true
 
-	case "StreamInfo.playUrl":
-		if e.complexity.StreamInfo.PlayURL == nil {
+	case "StreamInfo.url":
+		if e.complexity.StreamInfo.URL == nil {
 			break
 		}
 
-		return e.complexity.StreamInfo.PlayURL(childComplexity), true
+		return e.complexity.StreamInfo.URL(childComplexity), true
 
 	case "Video.bitrate":
 		if e.complexity.Video.Bitrate == nil {
@@ -3210,6 +3218,8 @@ func (ec *executionContext) fieldContext_Asset_images(_ context.Context, field g
 				return ec.fieldContext_Image_size(ctx, field)
 			case "contentType":
 				return ec.fieldContext_Image_contentType(ctx, field)
+			case "streamInfo":
+				return ec.fieldContext_Image_streamInfo(ctx, field)
 			case "metadata":
 				return ec.fieldContext_Image_metadata(ctx, field)
 			case "createdAt":
@@ -4583,6 +4593,55 @@ func (ec *executionContext) fieldContext_Image_contentType(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_streamInfo(ctx context.Context, field graphql.CollectedField, obj *model.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_streamInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StreamInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.StreamInfo)
+	fc.Result = res
+	return ec.marshalOStreamInfo2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋgraphᚋmodelᚐStreamInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_streamInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "downloadUrl":
+				return ec.fieldContext_StreamInfo_downloadUrl(ctx, field)
+			case "cdnPrefix":
+				return ec.fieldContext_StreamInfo_cdnPrefix(ctx, field)
+			case "url":
+				return ec.fieldContext_StreamInfo_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StreamInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -6950,8 +7009,8 @@ func (ec *executionContext) fieldContext_StreamInfo_cdnPrefix(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _StreamInfo_playUrl(ctx context.Context, field graphql.CollectedField, obj *model.StreamInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StreamInfo_playUrl(ctx, field)
+func (ec *executionContext) _StreamInfo_url(ctx context.Context, field graphql.CollectedField, obj *model.StreamInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StreamInfo_url(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6964,7 +7023,7 @@ func (ec *executionContext) _StreamInfo_playUrl(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PlayURL, nil
+		return obj.URL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6978,7 +7037,7 @@ func (ec *executionContext) _StreamInfo_playUrl(ctx context.Context, field graph
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StreamInfo_playUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StreamInfo_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StreamInfo",
 		Field:      field,
@@ -7502,8 +7561,8 @@ func (ec *executionContext) fieldContext_Video_streamInfo(_ context.Context, fie
 				return ec.fieldContext_StreamInfo_downloadUrl(ctx, field)
 			case "cdnPrefix":
 				return ec.fieldContext_StreamInfo_cdnPrefix(ctx, field)
-			case "playUrl":
-				return ec.fieldContext_StreamInfo_playUrl(ctx, field)
+			case "url":
+				return ec.fieldContext_StreamInfo_url(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StreamInfo", field.Name)
 		},
@@ -7647,6 +7706,8 @@ func (ec *executionContext) fieldContext_Video_thumbnail(_ context.Context, fiel
 				return ec.fieldContext_Image_size(ctx, field)
 			case "contentType":
 				return ec.fieldContext_Image_contentType(ctx, field)
+			case "streamInfo":
+				return ec.fieldContext_Image_streamInfo(ctx, field)
 			case "metadata":
 				return ec.fieldContext_Image_metadata(ctx, field)
 			case "createdAt":
@@ -10261,6 +10322,8 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Image_size(ctx, field, obj)
 		case "contentType":
 			out.Values[i] = ec._Image_contentType(ctx, field, obj)
+		case "streamInfo":
+			out.Values[i] = ec._Image_streamInfo(ctx, field, obj)
 		case "metadata":
 			out.Values[i] = ec._Image_metadata(ctx, field, obj)
 		case "createdAt":
@@ -10744,8 +10807,8 @@ func (ec *executionContext) _StreamInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._StreamInfo_downloadUrl(ctx, field, obj)
 		case "cdnPrefix":
 			out.Values[i] = ec._StreamInfo_cdnPrefix(ctx, field, obj)
-		case "playUrl":
-			out.Values[i] = ec._StreamInfo_playUrl(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._StreamInfo_url(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

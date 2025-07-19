@@ -19,14 +19,19 @@ export interface Video {
 }
 
 export interface Image {
+  id: string;
   fileName: string;
   url: string;
+  type: string;
   storageLocation?: S3Object;
   width?: number;
   height?: number;
   size?: number;
   contentType?: string;
   metadata?: string;
+  streamInfo?: StreamInfo;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface S3Object {
@@ -38,7 +43,7 @@ export interface S3Object {
 export interface StreamInfo {
   downloadUrl?: string;
   cdnPrefix?: string;
-  playUrl?: string;
+  url?: string;
 }
 
 export interface PublishRule {
@@ -63,6 +68,7 @@ export interface Asset {
   metadata?: string;
   ownerId?: string;
   videos: Video[];
+  images?: Image[];
   publishRule?: PublishRule;
 }
 

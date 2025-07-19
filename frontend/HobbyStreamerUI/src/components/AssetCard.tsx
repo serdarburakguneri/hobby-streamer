@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity, Dimensions, Text } from 'react-native';
 import { Asset } from '../types/asset';
 import { VideoPlayer } from './VideoPlayer';
 
@@ -16,11 +16,18 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, onPress }) => {
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   
   const hasVideos = Array.isArray(asset.videos) && asset.videos.length > 0;
+  
+  // Try to get poster image first, then fall back to video thumbnail
+  const posterImage = asset.images?.find(img => img.type?.toLowerCase() === 'poster');
   const thumbnailUrl = hasVideos
     ? asset.videos[0]?.thumbnail?.url || asset.videos[0]?.thumbnail?.storageLocation?.url
     : undefined;
 
-  const imageSource = thumbnailUrl ? { uri: thumbnailUrl } : require('../../assets/video-placeholder.png');
+  const imageSource = posterImage?.url 
+    ? { uri: posterImage.url } 
+    : thumbnailUrl 
+    ? { uri: thumbnailUrl } 
+    : require('../../assets/video-placeholder.png');
 
   const handlePress = () => {
     if (hasVideos) {
@@ -49,7 +56,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, onPress }) => {
         <View style={styles.overlay} />
         {hasVideos && (
           <View style={styles.playButton}>
-            <View style={styles.playIcon}>▶</View>
+            <Text style={styles.playIcon}>▶</Text>
           </View>
         )}
       </TouchableOpacity>

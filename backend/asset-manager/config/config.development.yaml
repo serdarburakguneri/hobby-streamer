@@ -69,14 +69,10 @@ components:
     dash_completed_queue_url: "http://localstack:4566/000000000000/dash-completed"
 
   s3:
-    raw_storage_bucket: "raw-storage"
-    transcoded_storage_bucket: "transcoded-storage"
-    thumbnails_storage_bucket: "thumbnails-storage"
+    content_bucket: "content-east"
 
   cdn:
-    hls_prefix: "http://localhost:8083/hls-storage"
-    dash_prefix: "http://localhost:8083/dash-storage"
-    thumbnails_prefix: "http://localhost:4566/thumbnails-storage"
+    prefix: "http://localhost:8083/cdn"
 
   neo4j:
     uri: "bolt://neo4j:7687"
