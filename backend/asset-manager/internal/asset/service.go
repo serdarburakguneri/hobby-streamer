@@ -127,6 +127,12 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 		a.Slug = generateSlug(title)
 	}
 
+	if a.PublishRule == nil {
+		a.PublishRule = &PublishRule{
+			IsPublic: false,
+		}
+	}
+
 	existingAsset, err := s.Repo.GetAssetBySlug(ctx, a.Slug)
 	if err == nil && existingAsset != nil {
 		log.Error("Slug already exists", "slug", a.Slug, "existing_asset_id", existingAsset.ID)
@@ -144,6 +150,15 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 func (s *Service) UpdateAsset(ctx context.Context, id string, a *Asset) error {
 	if a.ID != id {
 		return apperrors.NewValidationError("asset ID mismatch", nil)
+	}
+
+	existingAsset, err := s.Repo.GetAssetByID(ctx, id)
+	if err != nil {
+		return apperrors.NewNotFoundError("asset not found", err)
+	}
+
+	if a.PublishRule == nil && existingAsset.PublishRule != nil {
+		a.PublishRule = existingAsset.PublishRule
 	}
 
 	if err := s.validateAsset(a); err != nil {
@@ -578,14 +593,14 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 		log.WithError(err).Error("Failed to get asset for transcode completion", "asset_id", transcodePayload.AssetID)
 		return err
 	}
-	
+
 	videoUpdated := false
 	for i, video := range asset.Videos {
 		if video.Format == VideoFormat(transcodePayload.Format) {
 			asset.Videos[i].Status = status
 			asset.Videos[i].UpdatedAt = time.Now()
 
-			if transcodePayload.Success {				
+			if transcodePayload.Success {
 				asset.Videos[i].StorageLocation = S3Object{
 					Bucket: transcodePayload.Bucket,
 					Key:    transcodePayload.Key,
@@ -612,7 +627,7 @@ func (s *Service) HandleTranscodeCompletion(ctx context.Context, payload map[str
 			break
 		}
 	}
-	
+
 	if !videoUpdated && transcodePayload.Success {
 		s3Object := S3Object{
 			Bucket: transcodePayload.Bucket,
@@ -721,6 +736,15 @@ func (s *Service) validateAsset(a *Asset) error {
 			if !contains(validGenres, genre) {
 				log.Error("Invalid additional genre", "genre", genre, "valid_genres", validGenres)
 				return apperrors.NewValidationError("invalid genre value in genres array", nil)
+			}
+		}
+	}
+
+	if a.PublishRule != nil {
+		if !a.PublishRule.PublishAt.IsZero() && !a.PublishRule.UnpublishAt.IsZero() {
+			if a.PublishRule.PublishAt.After(a.PublishRule.UnpublishAt) {
+				log.Error("Publish date cannot be after unpublish date")
+				return apperrors.NewValidationError("publish date cannot be after unpublish date", nil)
 			}
 		}
 	}

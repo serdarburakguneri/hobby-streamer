@@ -162,6 +162,17 @@ func TestService_CreateAsset(t *testing.T) {
 			wantErr: true,
 			errMsg:  "validation: invalid type value",
 		},
+		{
+			name: "asset with custom PublishRule",
+			asset: &Asset{
+				Title: stringPtr("Test Movie"),
+				Type:  stringPtr(AssetTypeMovie),
+				PublishRule: &PublishRule{
+					IsPublic: true,
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -196,6 +207,25 @@ func TestService_CreateAsset(t *testing.T) {
 
 			if result.CreatedAt.IsZero() {
 				t.Errorf("CreateAsset() expected CreatedAt to be set")
+			}
+
+			if result.PublishRule == nil {
+				t.Errorf("CreateAsset() expected PublishRule to be set")
+			}
+
+			if tt.asset.PublishRule == nil {
+				if result.PublishRule.IsPublic {
+					t.Errorf("CreateAsset() expected default PublishRule.IsPublic to be false")
+				}
+			} else if tt.asset.PublishRule.IsPublic {
+				if !result.PublishRule.IsPublic {
+					t.Errorf("CreateAsset() expected custom PublishRule.IsPublic to be preserved")
+				}
+			}
+
+			status := result.Status()
+			if status == "" {
+				t.Errorf("CreateAsset() expected Status() to return a non-empty value")
 			}
 
 			if result.UpdatedAt.IsZero() {

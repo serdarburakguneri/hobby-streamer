@@ -312,9 +312,15 @@ func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (
 				type
 				genre
 				status
-				bucketKey
 				createdAt
 				updatedAt
+				publishRule {
+					isPublic
+					publishAt
+					unpublishAt
+					regions
+					ageRating
+				}
 				videos {
 					id
 					filename
@@ -371,6 +377,13 @@ func (s *Service) fetchAssetsFromAssetManager(ctx context.Context) ([]model.Asse
 					status
 					createdAt
 					updatedAt
+					publishRule {
+						isPublic
+						publishAt
+						unpublishAt
+						regions
+						ageRating
+					}
 					videos {
 						id
 						type
@@ -443,6 +456,13 @@ func (s *Service) fetchAssetByIDFromAssetManager(ctx context.Context, id string)
 				status
 				createdAt
 				updatedAt
+				publishRule {
+					isPublic
+					publishAt
+					unpublishAt
+					regions
+					ageRating
+				}
 				videos {
 					id
 					filename

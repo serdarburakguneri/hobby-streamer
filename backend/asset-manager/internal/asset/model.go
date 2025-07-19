@@ -92,6 +92,10 @@ func (a *Asset) Status() string {
 		return "draft"
 	}
 
+	if !a.PublishRule.IsPublic {
+		return "draft"
+	}
+
 	now := time.Now().UTC()
 
 	if !a.PublishRule.PublishAt.IsZero() && now.Before(a.PublishRule.PublishAt) {
