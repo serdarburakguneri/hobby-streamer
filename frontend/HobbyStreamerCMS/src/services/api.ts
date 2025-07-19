@@ -393,67 +393,28 @@ const GET_BUCKET = gql`
         metadata
         ownerId
         videos {
+          id
           type
-          raw {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
+          format
+          storageLocation {
+            bucket
+            key
+            url
           }
-          hls {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
+          width
+          height
+          duration
+          bitrate
+          codec
+          size
+          contentType
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            playUrl
           }
-          dash {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
-          }
+          metadata
+          status
           thumbnail {
             fileName
             url
@@ -467,8 +428,9 @@ const GET_BUCKET = gql`
             size
             contentType
             metadata
-            status
           }
+          createdAt
+          updatedAt
         }
       }
     }
@@ -505,67 +467,28 @@ const GET_ASSETS_BY_PARENT = gql`
           ageRating
         }
         videos {
+          id
           type
-          raw {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
+          format
+          storageLocation {
+            bucket
+            key
+            url
           }
-          hls {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
+          width
+          height
+          duration
+          bitrate
+          codec
+          size
+          contentType
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            playUrl
           }
-          dash {
-            storageLocation {
-              bucket
-              key
-              url
-            }
-            width
-            height
-            duration
-            bitrate
-            codec
-            size
-            contentType
-            streamInfo {
-              downloadUrl
-              cdnPrefix
-              playUrl
-            }
-            metadata
-          }
+          metadata
+          status
           thumbnail {
             fileName
             url
@@ -580,6 +503,8 @@ const GET_ASSETS_BY_PARENT = gql`
             contentType
             metadata
           }
+          createdAt
+          updatedAt
         }
       }
       nextKey
@@ -845,70 +770,28 @@ const PATCH_PUBLISH_RULE = gql`
         ageRating
       }
       videos {
+        id
         type
-        raw {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-            playUrl
-          }
-          metadata
-          status
+        format
+        storageLocation {
+          bucket
+          key
+          url
         }
-        hls {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-            playUrl
-          }
-          metadata
-          status
+        width
+        height
+        duration
+        bitrate
+        codec
+        size
+        contentType
+        streamInfo {
+          downloadUrl
+          cdnPrefix
+          playUrl
         }
-        dash {
-          storageLocation {
-            bucket
-            key
-            url
-          }
-          width
-          height
-          duration
-          bitrate
-          codec
-          size
-          contentType
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-            playUrl
-          }
-          metadata
-          status
-        }
+        metadata
+        status
         thumbnail {
           fileName
           url
@@ -923,6 +806,8 @@ const PATCH_PUBLISH_RULE = gql`
           contentType
           metadata
         }
+        createdAt
+        updatedAt
       }
     }
   }
