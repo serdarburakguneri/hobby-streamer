@@ -186,31 +186,13 @@ func (s *Service) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]mo
 		return nil, errors.NewNotFoundError(fmt.Sprintf("bucket not found: %s", bucketKey), nil)
 	}
 
-	if len(bucket.AssetIDs) == 0 {
+	if bucket.Assets == nil {
 		return []model.Asset{}, nil
 	}
 
-	allAssets, err := s.GetAssets(ctx)
-	if err != nil {
-		s.logger.WithError(err).Error("Failed to fetch all assets for bucket filtering", "bucket_key", bucketKey)
-		return nil, errors.NewExternalError("failed to fetch assets", err)
-	}
+	s.logger.Debug("Returning assets from bucket", "bucket_key", bucketKey, "asset_count", len(bucket.Assets))
 
-	var bucketAssets []model.Asset
-	assetIDSet := make(map[string]bool)
-	for _, id := range bucket.AssetIDs {
-		assetIDSet[id] = true
-	}
-
-	for _, asset := range allAssets {
-		if assetIDSet[asset.ID] {
-			bucketAssets = append(bucketAssets, asset)
-		}
-	}
-
-	s.logger.Debug("Filtered assets for bucket", "bucket_key", bucketKey, "total_assets", len(allAssets), "bucket_asset_ids", len(bucket.AssetIDs), "filtered_assets", len(bucketAssets))
-
-	return bucketAssets, nil
+	return bucket.Assets, nil
 }
 
 func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (*model.Bucket, error) {
@@ -226,6 +208,53 @@ func (s *Service) fetchBucketFromAssetManager(ctx context.Context, key string) (
 				assetIds
 				createdAt
 				updatedAt
+				assets {
+					id
+					slug
+					title
+					description
+					type
+					genre
+					status
+					createdAt
+					updatedAt
+					publishRule {
+						publishAt
+						unpublishAt
+						regions
+						ageRating
+					}
+					videos {
+						id
+						type
+						format
+						storageLocation {
+							bucket
+							key
+							url
+						}
+						width
+						height
+						duration
+						bitrate
+						codec
+						size
+						contentType
+						streamInfo {
+							downloadUrl
+							cdnPrefix
+							playUrl
+						}
+						thumbnail {
+							fileName
+							url
+							width
+							height
+							size
+							contentType
+						}
+					}
+				}
 			}
 		}
 	`, key)
@@ -269,6 +298,53 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 					assetIds
 					createdAt
 					updatedAt
+					assets {
+						id
+						slug
+						title
+						description
+						type
+						genre
+						status
+						createdAt
+						updatedAt
+						publishRule {
+							publishAt
+							unpublishAt
+							regions
+							ageRating
+						}
+						videos {
+							id
+							type
+							format
+							storageLocation {
+								bucket
+								key
+								url
+							}
+							width
+							height
+							duration
+							bitrate
+							codec
+							size
+							contentType
+							streamInfo {
+								downloadUrl
+								cdnPrefix
+								playUrl
+							}
+							thumbnail {
+								fileName
+								url
+								width
+								height
+								size
+								contentType
+							}
+						}
+					}
 				}
 			}
 		}
@@ -304,7 +380,7 @@ func (s *Service) fetchBucketsFromAssetManager(ctx context.Context) ([]model.Buc
 func (s *Service) fetchAssetFromAssetManager(ctx context.Context, slug string) (*model.Asset, error) {
 	query := fmt.Sprintf(`
 		query {
-			asset(slug: "%s") {
+			assetBySlug(slug: "%s") {
 				id
 				slug
 				title
