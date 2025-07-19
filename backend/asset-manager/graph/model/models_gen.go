@@ -25,6 +25,7 @@ type Asset struct {
 	Metadata    *string      `json:"metadata,omitempty"`
 	OwnerID     *string      `json:"ownerId,omitempty"`
 	Videos      []*Video     `json:"videos,omitempty"`
+	Images      []*Image     `json:"images,omitempty"`
 	PublishRule *PublishRule `json:"publishRule,omitempty"`
 	Parent      *Asset       `json:"parent,omitempty"`
 	Children    []*Asset     `json:"children,omitempty"`
@@ -77,14 +78,18 @@ type BucketPage struct {
 }
 
 type Image struct {
+	ID              string    `json:"id"`
 	FileName        string    `json:"fileName"`
 	URL             string    `json:"url"`
+	Type            ImageType `json:"type"`
 	StorageLocation *S3Object `json:"storageLocation,omitempty"`
 	Width           *int      `json:"width,omitempty"`
 	Height          *int      `json:"height,omitempty"`
 	Size            *int      `json:"size,omitempty"`
 	ContentType     *string   `json:"contentType,omitempty"`
 	Metadata        *string   `json:"metadata,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type JSONPatch struct {
@@ -325,6 +330,69 @@ func (e *BucketType) UnmarshalJSON(b []byte) error {
 }
 
 func (e BucketType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ImageType string
+
+const (
+	ImageTypeThumbnail  ImageType = "THUMBNAIL"
+	ImageTypePoster     ImageType = "POSTER"
+	ImageTypeBanner     ImageType = "BANNER"
+	ImageTypeHero       ImageType = "HERO"
+	ImageTypeLogo       ImageType = "LOGO"
+	ImageTypeScreenshot ImageType = "SCREENSHOT"
+)
+
+var AllImageType = []ImageType{
+	ImageTypeThumbnail,
+	ImageTypePoster,
+	ImageTypeBanner,
+	ImageTypeHero,
+	ImageTypeLogo,
+	ImageTypeScreenshot,
+}
+
+func (e ImageType) IsValid() bool {
+	switch e {
+	case ImageTypeThumbnail, ImageTypePoster, ImageTypeBanner, ImageTypeHero, ImageTypeLogo, ImageTypeScreenshot:
+		return true
+	}
+	return false
+}
+
+func (e ImageType) String() string {
+	return string(e)
+}
+
+func (e *ImageType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ImageType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ImageType", str)
+	}
+	return nil
+}
+
+func (e ImageType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ImageType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ImageType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

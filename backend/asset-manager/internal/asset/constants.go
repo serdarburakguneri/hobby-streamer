@@ -59,6 +59,15 @@ const (
 	VideoFormatDASH VideoFormat = "dash"
 )
 
+const (
+	ImageTypeThumbnail  ImageType = "thumbnail"
+	ImageTypePoster     ImageType = "poster"
+	ImageTypeBanner     ImageType = "banner"
+	ImageTypeHero       ImageType = "hero"
+	ImageTypeLogo       ImageType = "logo"
+	ImageTypeScreenshot ImageType = "screenshot"
+)
+
 var (
 	AssetStatusDraft     = constants.AssetStatusDraft
 	AssetStatusPublished = constants.AssetStatusPublished

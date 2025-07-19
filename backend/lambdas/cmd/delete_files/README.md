@@ -25,7 +25,7 @@ A Go-based AWS Lambda function for deleting S3 files related to an asset. Typica
       "key": "asset123/main_1234567890.m3u8"
     },
     {
-      "bucket": "thumbnails-storage",
+      "bucket": "images-storage",
       "key": "asset123/thumbnail_1234567890.jpg"
     }
   ]
@@ -46,7 +46,7 @@ A Go-based AWS Lambda function for deleting S3 files related to an asset. Typica
     }
   ],
   "errors": [
-    "Failed to delete asset123/thumbnail_1234567890.jpg from thumbnails-storage: NoSuchKey"
+    "Failed to delete asset123/thumbnail_1234567890.jpg from images-storage: NoSuchKey"
   ]
 }
 ```

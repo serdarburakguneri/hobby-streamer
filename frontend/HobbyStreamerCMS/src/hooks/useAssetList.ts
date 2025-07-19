@@ -12,7 +12,6 @@ export function useAssetList(refreshTrigger?: number) {
   const [error, setError] = useState<string | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deletingVideo, setDeletingVideo] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [children, setChildren] = useState<Asset[]>([]);
@@ -118,23 +117,7 @@ export function useAssetList(refreshTrigger?: number) {
     }
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
-    if (!selectedAsset) return;
-    
-    try {
-      setDeletingVideo(true);
-      const updatedAsset = await assetService.deleteVideo(selectedAsset.id, videoId);
-      setSelectedAsset(updatedAsset);
-      await loadAssets();
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
-    } catch (err: any) {
-      console.error('Error deleting video:', err);
-      Alert.alert('Error', `Failed to delete video: ${err.message || 'Unknown error'}`);
-    } finally {
-      setDeletingVideo(false);
-    }
-  };
+
 
   const handleUpdateAsset = async (field: string, value: any) => {
     if (!selectedAsset) return;
@@ -256,7 +239,6 @@ export function useAssetList(refreshTrigger?: number) {
     error,
     showSuccessMessage,
     deleting,
-    deletingVideo,
     publishing,
     updating,
     children,
@@ -266,7 +248,6 @@ export function useAssetList(refreshTrigger?: number) {
     handleRefreshSelectedAsset,
     handleAssetSelect,
     handleDeleteAsset,
-    handleDeleteVideo,
     handleUpdateAsset,
     handlePublishAsset,
   };

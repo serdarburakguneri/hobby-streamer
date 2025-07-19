@@ -21,6 +21,7 @@ type Asset {
   metadata: String
   ownerId: String
   videos: [Video!]
+  images: [Image!]
   publishRule: PublishRule
 
   # Relationships
@@ -50,14 +51,18 @@ type Video {
 }
 
 type Image {
+  id: ID!
   fileName: String!
   url: String!
+  type: ImageType!
   storageLocation: S3Object
   width: Int
   height: Int
   size: Int
   contentType: String
   metadata: String
+  createdAt: Time!
+  updatedAt: Time!
 }
 
 type S3Object {
@@ -77,6 +82,15 @@ enum VideoType {
   TRAILER
   BEHIND_THE_SCENES
   INTERVIEW
+}
+
+enum ImageType {
+  THUMBNAIL
+  POSTER
+  BANNER
+  HERO
+  LOGO
+  SCREENSHOT
 }
 
 
@@ -198,6 +212,8 @@ type Mutation {
 
   addVideo(assetId: ID!, type: VideoType!, format: String!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
   deleteVideo(assetId: ID!, videoId: ID!): Asset!
+  addImage(assetId: ID!, type: ImageType!, fileName: String!, bucket: String!, key: String!, url: String!, contentType: String!, size: Int!): Asset!
+  deleteImage(assetId: ID!, imageId: ID!): Asset!
 
   createBucket(input: BucketInput!): Bucket!
   updateBucket(id: ID!, input: UpdateBucketInput!): Bucket!

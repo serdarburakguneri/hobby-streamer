@@ -402,6 +402,68 @@ func (r *mutationResolver) DeleteVideo(ctx context.Context, assetID string, vide
 	return mapAssetToGraphQL(updatedAsset), nil
 }
 
+// AddImage is the resolver for the addImage field.
+func (r *mutationResolver) AddImage(ctx context.Context, assetID string, typeArg model.ImageType, fileName string, bucket string, key string, url string, contentType string, size int) (*model.Asset, error) {
+	var imageType asset.ImageType
+	switch typeArg {
+	case model.ImageTypeThumbnail:
+		imageType = asset.ImageTypeThumbnail
+	case model.ImageTypePoster:
+		imageType = asset.ImageTypePoster
+	case model.ImageTypeBanner:
+		imageType = asset.ImageTypeBanner
+	case model.ImageTypeHero:
+		imageType = asset.ImageTypeHero
+	case model.ImageTypeLogo:
+		imageType = asset.ImageTypeLogo
+	case model.ImageTypeScreenshot:
+		imageType = asset.ImageTypeScreenshot
+
+	default:
+		return nil, fmt.Errorf("unknown image type: %s", typeArg)
+	}
+
+	internalImage := &asset.Image{
+		FileName: fileName,
+		URL:      url,
+		Type:     imageType,
+		StorageLocation: &asset.S3Object{
+			Bucket: bucket,
+			Key:    key,
+			URL:    url,
+		},
+		Size:        int64(size),
+		ContentType: contentType,
+	}
+
+	err := r.Resolver.AssetService.AddImage(ctx, assetID, internalImage)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add image: %w", err)
+	}
+
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated asset: %w", err)
+	}
+
+	return mapAssetToGraphQL(updatedAsset), nil
+}
+
+// DeleteImage is the resolver for the deleteImage field.
+func (r *mutationResolver) DeleteImage(ctx context.Context, assetID string, imageID string) (*model.Asset, error) {
+	err := r.Resolver.AssetService.DeleteImage(ctx, assetID, imageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete image: %w", err)
+	}
+
+	updatedAsset, err := r.Resolver.AssetService.GetAssetByID(ctx, assetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated asset: %w", err)
+	}
+
+	return mapAssetToGraphQL(updatedAsset), nil
+}
+
 // CreateBucket is the resolver for the createBucket field.
 func (r *mutationResolver) CreateBucket(ctx context.Context, input model.BucketInput) (*model.Bucket, error) {
 	internalBucket := mapGraphQLBucketInputToBucket(input)

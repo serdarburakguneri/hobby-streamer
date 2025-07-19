@@ -23,8 +23,6 @@ interface AssetListScreenProps {
 
 export default function AssetListScreen({ onCreateAsset, refreshTrigger }: AssetListScreenProps) {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [showDeleteVideoConfirmation, setShowDeleteVideoConfirmation] = useState(false);
-  const [videoToDelete, setVideoToDelete] = useState<{ id: string; type: string; format: string } | null>(null);
 
   const {
     assets,
@@ -34,7 +32,6 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
     error,
     showSuccessMessage,
     deleting,
-    deletingVideo,
     publishing,
     updating,
     children,
@@ -43,27 +40,13 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
     handleRefreshSelectedAsset,
     handleAssetSelect,
     handleDeleteAsset,
-    handleDeleteVideo,
     handleUpdateAsset,
     handlePublishAsset,
   } = useAssetList(refreshTrigger);
 
 
 
-  const handleDeleteVideoWithConfirmation = (videoId: string) => {
-    const video = selectedAsset?.videos?.find(v => v.id === videoId);
-    if (video) {
-      setVideoToDelete({ id: videoId, type: video.type, format: video.format });
-      setShowDeleteVideoConfirmation(true);
-    }
-  };
 
-  const performDeleteVideo = async () => {
-    if (!videoToDelete) return;
-    await handleDeleteVideo(videoToDelete.id);
-    setShowDeleteVideoConfirmation(false);
-    setVideoToDelete(null);
-  };
 
   const performDelete = async () => {
     await handleDeleteAsset();
@@ -138,35 +121,7 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
         </View>
       )}
 
-      {showDeleteVideoConfirmation && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Delete Video</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to delete the {videoToDelete?.format.toUpperCase()} {videoToDelete?.type.toLowerCase()} video from "{selectedAsset?.title || `Asset ${selectedAsset?.id}`}"? This action cannot be undone.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowDeleteVideoConfirmation(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmDeleteButton]}
-                onPress={performDeleteVideo}
-                disabled={deletingVideo}
-              >
-                {deletingVideo ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.confirmDeleteButtonText}>Delete</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+
 
 
 
@@ -208,7 +163,6 @@ export default function AssetListScreen({ onCreateAsset, refreshTrigger }: Asset
           <AssetDetails
             asset={selectedAsset}
             onUpdate={handleUpdateAsset}
-            onDeleteVideo={handleDeleteVideoWithConfirmation}
             onSelectChild={handleAssetSelect}
             children={children}
             childrenLoading={childrenLoading}

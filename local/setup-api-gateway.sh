@@ -59,6 +59,11 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   UPLOAD_ID=$(echo $UPLOAD_RESPONSE | jq -r '.id')
   echo "[INFO] Upload Resource ID: $UPLOAD_ID"
 
+  echo "[INFO] Creating image-upload resource..."
+  IMAGE_UPLOAD_RESPONSE=$(aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-resource --rest-api-id $API_ID --parent-id $ROOT_ID --path-part image-upload)
+  IMAGE_UPLOAD_ID=$(echo $IMAGE_UPLOAD_RESPONSE | jq -r '.id')
+  echo "[INFO] Image Upload Resource ID: $IMAGE_UPLOAD_ID"
+
   create_method_with_cors() {
       local resource_id=$1
       local http_method=$2
@@ -178,9 +183,13 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   create_method_with_cors $GRAPHQL_ID "GET" "HTTP_PROXY" "http://host.docker.internal:8082/graphql"
   create_options_method $GRAPHQL_ID
 
-  echo "[INFO] Setting up upload endpoint..."
-  create_method_with_cors $UPLOAD_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:generate-presigned-url/invocations"
+  echo "[INFO] Setting up video upload endpoint..."
+  create_method_with_cors $UPLOAD_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:generate-video-upload-url/invocations"
   create_options_method $UPLOAD_ID
+
+  echo "[INFO] Setting up image upload endpoint..."
+  create_method_with_cors $IMAGE_UPLOAD_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:generate-image-upload-url/invocations"
+  create_options_method $IMAGE_UPLOAD_ID
 
   echo "[INFO] Deploying API..."
   aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-deployment \
@@ -189,11 +198,18 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
 
   echo "[INFO] Adding Lambda permission for API Gateway..."
   aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT lambda add-permission \
-    --function-name generate-presigned-url \
+    --function-name generate-video-upload-url \
     --statement-id apigateway-invoke \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
     --source-arn "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/upload"
+
+  aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT lambda add-permission \
+    --function-name generate-image-upload-url \
+    --statement-id apigateway-invoke \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/image-upload"
 
   echo $API_ID > .api-gateway-id
   echo "[INFO] API ID saved to .api-gateway-id"

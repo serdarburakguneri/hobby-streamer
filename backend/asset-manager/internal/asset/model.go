@@ -50,15 +50,21 @@ type Video struct {
 	UpdatedAt       time.Time         `json:"updatedAt"`
 }
 
+type ImageType string
+
 type Image struct {
+	ID              string            `json:"id"`
 	FileName        string            `json:"fileName"`
 	URL             string            `json:"url"`
+	Type            ImageType         `json:"type"`
 	StorageLocation *S3Object         `json:"storageLocation,omitempty"`
 	Width           int               `json:"width,omitempty"`
 	Height          int               `json:"height,omitempty"`
 	Size            int64             `json:"size,omitempty"`
 	ContentType     string            `json:"contentType,omitempty"`
 	Metadata        map[string]string `json:"metadata,omitempty"`
+	CreatedAt       time.Time         `json:"createdAt"`
+	UpdatedAt       time.Time         `json:"updatedAt"`
 }
 
 type S3Object struct {

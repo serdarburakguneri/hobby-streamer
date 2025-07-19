@@ -52,34 +52,36 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		MERGE (a:Asset {id: $id})
 		ON CREATE SET
 			a.slug = $slug,
-					a.title = $title,
-		a.description = $description,
-		a.type = $type,
-		a.genre = $genre,
-		a.genres = $genres,
-		a.tags = $tags,
-		a.ownerId = $ownerId,
-		a.publishRulePublishAt = $publishRulePublishAt,
-		a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
-		a.publishRuleRegions = $publishRuleRegions,
-		a.publishRuleAgeRating = $publishRuleAgeRating,
-		a.videos = $videos,
-		a.createdAt = $createdAt,
-		a.updatedAt = $updatedAt
-	ON MATCH SET
-		a.title = $title,
-		a.description = $description,
-		a.type = $type,
-		a.genre = $genre,
-		a.genres = $genres,
-		a.tags = $tags,
-		a.ownerId = $ownerId,
-		a.publishRulePublishAt = $publishRulePublishAt,
-		a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
-		a.publishRuleRegions = $publishRuleRegions,
-		a.publishRuleAgeRating = $publishRuleAgeRating,
-		a.videos = $videos,
-		a.updatedAt = $updatedAt
+			a.title = $title,
+			a.description = $description,
+			a.type = $type,
+			a.genre = $genre,
+			a.genres = $genres,
+			a.tags = $tags,
+			a.ownerId = $ownerId,
+			a.publishRulePublishAt = $publishRulePublishAt,
+			a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
+			a.publishRuleRegions = $publishRuleRegions,
+			a.publishRuleAgeRating = $publishRuleAgeRating,
+			a.videos = $videos,
+			a.images = $images,
+			a.createdAt = $createdAt,
+			a.updatedAt = $updatedAt
+		ON MATCH SET
+			a.title = $title,
+			a.description = $description,
+			a.type = $type,
+			a.genre = $genre,
+			a.genres = $genres,
+			a.tags = $tags,
+			a.ownerId = $ownerId,
+			a.publishRulePublishAt = $publishRulePublishAt,
+			a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
+			a.publishRuleRegions = $publishRuleRegions,
+			a.publishRuleAgeRating = $publishRuleAgeRating,
+			a.videos = $videos,
+			a.images = $images,
+			a.updatedAt = $updatedAt
 		RETURN a
 	`
 
@@ -118,6 +120,12 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		return fmt.Errorf("failed to marshal videos: %w", err)
 	}
 
+	imagesJSON, err := json.Marshal(a.Images)
+	if err != nil {
+		log.WithError(err).Error("Failed to marshal images to JSON", "asset_id", a.ID)
+		return fmt.Errorf("failed to marshal images: %w", err)
+	}
+
 	params := map[string]interface{}{
 		"id":                     a.ID,
 		"slug":                   a.Slug,
@@ -133,6 +141,7 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		"publishRuleRegions":     publishRuleRegions,
 		"publishRuleAgeRating":   publishRuleAgeRating,
 		"videos":                 string(videosJSON),
+		"images":                 string(imagesJSON),
 		"createdAt":              a.CreatedAt,
 		"updatedAt":              a.UpdatedAt,
 	}
@@ -342,14 +351,12 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	// Build dynamic SET clause
 	setClause := "SET a.updatedAt = $updatedAt"
 	params := map[string]interface{}{
 		"id":        id,
 		"updatedAt": time.Now().UTC(),
 	}
-
-	// Track if parentId is being updated
+	
 	var parentIdUpdated bool
 	var newParentId string
 
@@ -357,8 +364,7 @@ func (r *Repository) PatchAsset(ctx context.Context, id string, patch map[string
 		paramKey := fmt.Sprintf("param_%s", key)
 		setClause += fmt.Sprintf(", a.%s = $%s", key, paramKey)
 		params[paramKey] = value
-
-		// Track parentId updates
+		
 		if key == "parentId" {
 			parentIdUpdated = true
 			if value != nil {
@@ -579,6 +585,18 @@ func (r *Repository) recordToAsset(record *neo4j.Record) (*Asset, error) {
 		}
 	} else {
 		asset.Videos = []Video{}
+	}
+
+	if imagesJSON, ok := props["images"].(string); ok && imagesJSON != "" {
+		var images []Image
+		if err := json.Unmarshal([]byte(imagesJSON), &images); err != nil {
+			r.logger.WithError(err).Warn("Failed to unmarshal images JSON, setting empty images array", "asset_id", asset.ID)
+			asset.Images = []Image{}
+		} else {
+			asset.Images = images
+		}
+	} else {
+		asset.Images = []Image{}
 	}
 
 	return asset, nil

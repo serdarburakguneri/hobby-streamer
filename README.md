@@ -48,8 +48,9 @@ There’s also a [sequence diagram](docs/video-upload-transcode-sequence.md)
 - [`streaming-api`](backend/streaming-api/README.md)
 
 ### Lambdas
-- [`generate_presigned_upload_url`](backend/lambdas/cmd/generate_presigned_upload_url/README.md)
-- [`delete_files`](backend/lambdas/cmd/delete_files/README.md)
+- [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md) - Video upload presigned URLs
+- [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md) - Image upload presigned URLs
+- [`delete_files`](backend/lambdas/cmd/delete_files/README.md) - Cleanup uploaded files
 
 ### Frontend
 - [`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md)

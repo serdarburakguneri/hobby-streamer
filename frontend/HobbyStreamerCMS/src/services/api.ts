@@ -1,7 +1,7 @@
 import { gql, useApolloClient } from '@apollo/client';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Asset, AssetCreateDTO, AssetUpdateDTO, AssetPage, AssetInput, AssetType } from '../types/asset';
+import { Asset, AssetCreateDTO, AssetUpdateDTO, AssetPage, AssetInput, AssetType, Image, ImageType } from '../types/asset';
 import { API_CONFIG } from '../config/api';
 
 const AUTH_BASE_URL = API_CONFIG.AUTH_BASE_URL;
@@ -282,6 +282,19 @@ const GET_ASSETS = gql`
             contentType
             metadata
           }
+          createdAt
+          updatedAt
+        }
+        images {
+          id
+          fileName
+          url
+          type
+          width
+          height
+          size
+          contentType
+          metadata
           createdAt
           updatedAt
         }
@@ -1094,6 +1107,72 @@ const REMOVE_ASSET_FROM_BUCKET = gql`
   }
 `;
 
+const ADD_IMAGE = gql`
+  mutation AddImage($assetId: ID!, $type: ImageType!, $fileName: String!, $bucket: String!, $key: String!, $url: String!, $contentType: String!, $size: Int!) {
+    addImage(assetId: $assetId, type: $type, fileName: $fileName, bucket: $bucket, key: $key, url: $url, contentType: $contentType, size: $size) {
+      id
+      slug
+      title
+      description
+      type
+      genre
+      genres
+      tags
+      status
+      createdAt
+      updatedAt
+      metadata
+      ownerId
+      images {
+        id
+        fileName
+        url
+        type
+        width
+        height
+        size
+        contentType
+        metadata
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const DELETE_IMAGE = gql`
+  mutation DeleteImage($assetId: ID!, $imageId: ID!) {
+    deleteImage(assetId: $assetId, imageId: $imageId) {
+      id
+      slug
+      title
+      description
+      type
+      genre
+      genres
+      tags
+      status
+      createdAt
+      updatedAt
+      metadata
+      ownerId
+      images {
+        id
+        fileName
+        url
+        type
+        width
+        height
+        size
+        contentType
+        metadata
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
 // Helper function to parse metadata JSON string to object
 const parseMetadata = (metadataString?: string): Record<string, any> | undefined => {
   if (!metadataString) return undefined;
@@ -1106,11 +1185,43 @@ const parseMetadata = (metadataString?: string): Record<string, any> | undefined
 };
 
 // Helper function to convert Asset with string metadata to Asset with object metadata
+const parseImages = (imagesData?: any): any[] => {
+  console.log('parseImages called with:', imagesData);
+  
+  if (!imagesData) return [];
+  
+  if (Array.isArray(imagesData)) {
+    console.log('Images is already an array:', imagesData);
+    return imagesData;
+  }
+  
+  if (typeof imagesData === 'string') {
+    try {
+      const parsed = JSON.parse(imagesData);
+      console.log('Parsed images from string:', parsed);
+      return parsed;
+    } catch (error) {
+      console.warn('Failed to parse images JSON string:', error);
+      return [];
+    }
+  }
+  
+  console.log('Images is neither array nor string, returning empty array');
+  return [];
+};
+
 const convertAssetMetadata = (asset: any): Asset => {
-  return {
+  console.log('convertAssetMetadata called with asset:', asset);
+  console.log('asset.images before parsing:', asset.images);
+  
+  const converted = {
     ...asset,
     metadata: parseMetadata(asset.metadata),
+    images: parseImages(asset.images),
   };
+  
+  console.log('converted asset.images after parsing:', converted.images);
+  return converted;
 };
 
 // Custom hook for asset service
@@ -1128,7 +1239,9 @@ export const useAssetService = () => {
             fetchPolicy: 'no-cache',
           });
           
+          console.log('Raw GraphQL response:', response.data);
           const rawAssets = response.data.assets.items || [];
+          console.log('Raw assets before conversion:', rawAssets);
           const assets = rawAssets.map(convertAssetMetadata);
           return {
             assets,
@@ -1469,6 +1582,58 @@ export const useAssetService = () => {
         variables: { bucketId, assetId },
       });
       return response.data.removeAssetFromBucket;
+    },
+
+    getImageUploadUrl: async (fileName: string, assetId: string, imageType: ImageType): Promise<{ url: string }> => {
+      try {
+        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/image-upload`, {
+          fileName: fileName,
+          assetId: assetId,
+          imageType: imageType
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const presignedUrl = response.data.url;
+        const localhostUrl = presignedUrl.replace('localstack:4566', 'localhost:4566');
+        
+        return { url: localhostUrl };
+      } catch (error) {
+        console.error('Error getting image upload URL:', error);
+        throw new Error('Failed to get image upload URL');
+      }
+    },
+
+    addImageToAsset: async (assetId: string, imageData: Partial<Image>): Promise<Image> => {
+      console.log('addImageToAsset called with:', { assetId, imageData });
+      const variables = { 
+        assetId, 
+        type: imageData.type,
+        fileName: imageData.fileName,
+        bucket: 'images-storage',
+        key: `${assetId}/${imageData.type?.toLowerCase()}/${imageData.fileName}`,
+        url: imageData.url,
+        contentType: 'image/jpeg',
+        size: 0,
+      };
+      console.log('GraphQL variables:', variables);
+      
+      const response = await client.mutate({
+        mutation: ADD_IMAGE,
+        variables,
+      });
+      
+      console.log('GraphQL response:', response.data);
+      return response.data.addImage;
+    },
+
+    deleteImageFromAsset: async (assetId: string, imageId: string): Promise<void> => {
+      await client.mutate({
+        mutation: DELETE_IMAGE,
+        variables: { assetId, imageId },
+      });
     },
   };
 };

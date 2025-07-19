@@ -1,4 +1,4 @@
-module github.com/serdarburakguneri/hobby-streamer/backend/storage/cmd/delete_asset_files
+module github.com/serdarburakguneri/hobby-streamer/backend/lambdas/cmd/delete_files
 
 go 1.23.0
 

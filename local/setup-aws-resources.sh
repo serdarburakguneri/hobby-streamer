@@ -9,7 +9,7 @@ echo "[INFO] Restarting LocalStack to apply CORS configuration..."
 docker-compose restart localstack
 sleep 10
 
-for bucket in raw-storage hls-storage dash-storage thumbnails-storage; do
+for bucket in raw-storage hls-storage dash-storage images-storage; do
   if aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3 ls "s3://$bucket" 2>&1 | grep -q 'NoSuchBucket'; then
     echo "[INFO] Creating S3 bucket: $bucket"
     aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api create-bucket --bucket $bucket --region $AWS_REGION
@@ -22,7 +22,7 @@ echo "[INFO] Re-applying S3 CORS configuration..."
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket raw-storage --cors-configuration file://cors.json
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket hls-storage --cors-configuration file://cors.json
 aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket dash-storage --cors-configuration file://cors.json
-aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket thumbnails-storage --cors-configuration file://cors.json
+aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT s3api put-bucket-cors --bucket images-storage --cors-configuration file://cors.json
 
 echo "[INFO] Creating SQS queues..."
 

@@ -30,7 +30,7 @@ type AssetService interface {
 	PatchAsset(ctx context.Context, id string, patch map[string]interface{}) error
 	DeleteAsset(ctx context.Context, id string) error
 	AddImage(ctx context.Context, id string, img *Image) error
-	DeleteImage(ctx context.Context, id string, filename string) error
+	DeleteImage(ctx context.Context, id string, imageId string) error
 	AddVideo(ctx context.Context, id string, video *Video) error
 	DeleteVideo(ctx context.Context, assetID string, videoID string) error
 	HandleAnalyzeCompletion(ctx context.Context, payload map[string]interface{}) error
@@ -272,9 +272,16 @@ func (s *Service) AddImage(ctx context.Context, id string, img *Image) error {
 		return apperrors.NewNotFoundError("asset not found", err)
 	}
 
+	if img.ID == "" {
+		img.ID = generateID()
+	}
+
+	img.CreatedAt = time.Now()
+	img.UpdatedAt = time.Now()
+
 	for _, existing := range asset.Images {
-		if existing.FileName == img.FileName {
-			return apperrors.NewConflictError("image already exists for this asset", nil)
+		if existing.FileName == img.FileName && existing.Type == img.Type {
+			return apperrors.NewConflictError("image with same filename and type already exists for this asset", nil)
 		}
 	}
 
@@ -282,7 +289,7 @@ func (s *Service) AddImage(ctx context.Context, id string, img *Image) error {
 	return s.Repo.SaveAsset(ctx, asset)
 }
 
-func (s *Service) DeleteImage(ctx context.Context, id string, filename string) error {
+func (s *Service) DeleteImage(ctx context.Context, id string, imageId string) error {
 	asset, err := s.Repo.GetAssetByID(ctx, id)
 	if err != nil {
 		return apperrors.NewNotFoundError("asset not found", err)
@@ -290,7 +297,7 @@ func (s *Service) DeleteImage(ctx context.Context, id string, filename string) e
 
 	filtered := make([]Image, 0, len(asset.Images))
 	for _, img := range asset.Images {
-		if img.FileName != filename {
+		if img.ID != imageId {
 			filtered = append(filtered, img)
 		}
 	}
@@ -308,7 +315,7 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	// Check if a video with the same format already exists
 	for i, existingVideo := range asset.Videos {
 		if existingVideo.Format == video.Format {
-			// If the existing video is failed, we can retry by updating its status
+
 			if existingVideo.Status == VideoStatusFailed {
 				asset.Videos[i].Status = VideoStatusPending
 				asset.Videos[i].UpdatedAt = time.Now()
@@ -317,7 +324,6 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 					return err
 				}
 
-				// Trigger transcoding job for the existing video
 				if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
 					jobSent := s.sendTranscodeJob(ctx, asset.ID, existingVideo.ID, existingVideo.StorageLocation, string(video.Format))
 					if !jobSent {
@@ -329,18 +335,14 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 				}
 				return nil
 			}
-
-			// If the existing video is ready, return success (already available)
 			if existingVideo.Status == VideoStatusReady {
 				return nil
 			}
 
-			// If the existing video is in progress, return conflict
 			return apperrors.NewConflictError("video with this format is already being processed", nil)
 		}
 	}
 
-	// No existing video with this format, create new one
 	if video.ID == "" {
 		video.ID = generateID()
 	}
@@ -361,7 +363,7 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	if video.Format == VideoFormatRaw {
 		jobSent := s.sendAnalyzeJob(ctx, asset.ID, video.ID, video.StorageLocation)
 		if !jobSent {
-			// If job couldn't be sent, set status to failed
+
 			for i, v := range asset.Videos {
 				if v.ID == video.ID {
 					asset.Videos[i].Status = VideoStatusFailed
@@ -374,7 +376,7 @@ func (s *Service) AddVideo(ctx context.Context, id string, video *Video) error {
 	} else if video.Format == VideoFormatHLS || video.Format == VideoFormatDASH {
 		jobSent := s.sendTranscodeJob(ctx, asset.ID, video.ID, video.StorageLocation, string(video.Format))
 		if !jobSent {
-			// If job couldn't be sent, set status to failed
+
 			for i, v := range asset.Videos {
 				if v.ID == video.ID {
 					asset.Videos[i].Status = VideoStatusFailed
@@ -681,8 +683,8 @@ func (s *Service) getCDNPrefixForBucket(bucket string) string {
 		return s.Config.GetStringFromComponent("cdn", "hls_prefix")
 	case "dash-storage":
 		return s.Config.GetStringFromComponent("cdn", "dash_prefix")
-	case "thumbnails-storage":
-		return s.Config.GetStringFromComponent("cdn", "thumbnails_prefix")
+	case "images-storage":
+		return s.Config.GetStringFromComponent("cdn", "images_prefix")
 	default:
 		return ""
 	}

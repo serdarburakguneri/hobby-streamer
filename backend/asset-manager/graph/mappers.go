@@ -29,6 +29,7 @@ func mapAssetToGraphQL(a *asset.Asset) *model.Asset {
 		UpdatedAt:   a.UpdatedAt,
 		OwnerID:     a.OwnerID,
 		Videos:      mapVideosToGraphQL(a.Videos),
+		Images:      mapImagesToGraphQL(a.Images),
 		PublishRule: mapPublishRuleToGraphQL(a.PublishRule),
 	}
 
@@ -349,18 +350,54 @@ func mapVideosToGraphQL(videos []asset.Video) []*model.Video {
 	return result
 }
 
+func mapImagesToGraphQL(images []asset.Image) []*model.Image {
+	if images == nil {
+		return nil
+	}
+
+	result := make([]*model.Image, 0, len(images))
+	for _, img := range images {
+		result = append(result, mapImageToGraphQL(&img))
+	}
+	return result
+}
+
 func mapImageToGraphQL(img *asset.Image) *model.Image {
 	if img == nil {
 		return nil
 	}
 
+	var imageType model.ImageType
+	switch img.Type {
+	case asset.ImageTypeThumbnail:
+		imageType = model.ImageTypeThumbnail
+	case asset.ImageTypePoster:
+		imageType = model.ImageTypePoster
+	case asset.ImageTypeBanner:
+		imageType = model.ImageTypeBanner
+	case asset.ImageTypeHero:
+		imageType = model.ImageTypeHero
+	case asset.ImageTypeLogo:
+		imageType = model.ImageTypeLogo
+	case asset.ImageTypeScreenshot:
+		imageType = model.ImageTypeScreenshot
+
+	default:
+		logger.Get().WithService("graph-mapper").Error("Unknown image type, using POSTER as fallback", "image_type", img.Type, "image_id", img.ID, "fileName", img.FileName)
+		imageType = model.ImageTypePoster
+	}
+
 	graphQLImage := &model.Image{
+		ID:          img.ID,
 		FileName:    img.FileName,
 		URL:         img.URL,
+		Type:        imageType,
 		Width:       &img.Width,
 		Height:      &img.Height,
 		Size:        &[]int{int(img.Size)}[0],
 		ContentType: &img.ContentType,
+		CreatedAt:   img.CreatedAt,
+		UpdatedAt:   img.UpdatedAt,
 	}
 
 	if img.StorageLocation != nil {

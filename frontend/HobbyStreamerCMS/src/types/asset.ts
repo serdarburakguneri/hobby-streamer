@@ -16,6 +16,7 @@ export interface Asset {
   children?: Asset[];
   buckets?: Bucket[];
   videos?: Video[];
+  images?: Image[];
   publishRule?: PublishRule;
 }
 
@@ -70,15 +71,30 @@ export interface Video {
   updatedAt: string;
 }
 
+export enum ImageType {
+  THUMBNAIL = 'THUMBNAIL',
+  POSTER = 'POSTER',
+  BANNER = 'BANNER',
+  HERO = 'HERO',
+  LOGO = 'LOGO',
+  SCREENSHOT = 'SCREENSHOT',
+  BEHIND_THE_SCENES = 'BEHIND_THE_SCENES',
+  INTERVIEW = 'INTERVIEW'
+}
+
 export interface Image {
+  id: string;
   fileName: string;
   url: string;
+  type: ImageType;
   storageLocation?: S3Object;
   width?: number;
   height?: number;
   size?: number;
   contentType?: string;
   metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 

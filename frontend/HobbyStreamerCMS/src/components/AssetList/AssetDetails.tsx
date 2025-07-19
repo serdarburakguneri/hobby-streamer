@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Asset } from '../../types/asset';
 import EditableField from './EditableField';
 import VideoSection from './VideoSection';
+import ImageUpload from './ImageUpload';
 import ChildrenSection from './ChildrenSection';
 
 interface AssetDetailsProps {
   asset: Asset | null;
   onUpdate: (field: string, value: any) => Promise<void>;
-  onDeleteVideo: (videoId: string) => void;
   onSelectChild: (child: Asset) => void;
   children: Asset[];
   childrenLoading: boolean;
@@ -18,7 +18,6 @@ interface AssetDetailsProps {
 export default function AssetDetails({ 
   asset, 
   onUpdate, 
-  onDeleteVideo, 
   onSelectChild,
   children,
   childrenLoading,
@@ -110,16 +109,17 @@ export default function AssetDetails({
       </View>
 
       <VideoSection 
-        videos={asset.videos}
-        onDeleteVideo={onDeleteVideo}
-        onUpdate={onUpdate}
-        assetId={asset.id}
-        onUploadComplete={() => {
+        asset={asset}
+        onVideoAdded={() => {
           if (onRefresh) {
             onRefresh();
           }
         }}
-        onRefreshAsset={() => {
+      />
+
+      <ImageUpload 
+        asset={asset}
+        onImageAdded={() => {
           if (onRefresh) {
             onRefresh();
           }

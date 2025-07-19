@@ -94,13 +94,13 @@ if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT cloudfront list-distributi
         }' \
         --region $AWS_REGION > /dev/null 2>&1 || echo "[WARN] CloudFront not supported in LocalStack"
 
-    echo "[INFO] Creating CloudFront distribution for thumbnails..."
+    echo "[INFO] Creating CloudFront distribution for images..."
     aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT cloudfront create-distribution \
         --distribution-config '{
-            "CallerReference": "thumbnails-'$(date +%s)'",
-            "Comment": "Thumbnails Distribution",
+            "CallerReference": "images-'$(date +%s)'",
+            "Comment": "Images Distribution",
             "DefaultCacheBehavior": {
-                "TargetOriginId": "thumbnails-storage-origin",
+                "TargetOriginId": "images-storage-origin",
                 "ViewerProtocolPolicy": "allow-all",
                 "TrustedSigners": {
                     "Enabled": false,
@@ -121,8 +121,8 @@ if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT cloudfront list-distributi
                 "Quantity": 1,
                 "Items": [
                     {
-                        "Id": "thumbnails-storage-origin",
-                        "DomainName": "thumbnails-storage.s3.localhost.localstack.cloud",
+                        "Id": "images-storage-origin",
+                        "DomainName": "images-storage.s3.localhost.localstack.cloud",
                         "S3OriginConfig": {
                             "OriginAccessIdentity": ""
                         }
@@ -131,7 +131,7 @@ if ! aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT cloudfront list-distributi
             },
             "Aliases": {
                 "Quantity": 1,
-                "Items": ["thumbnails.localhost"]
+                "Items": ["images.localhost"]
             }
         }' \
         --region $AWS_REGION > /dev/null 2>&1 || echo "[WARN] CloudFront not supported in LocalStack"
@@ -214,13 +214,13 @@ else
         }' \
         --region $AWS_REGION
 
-    echo "[INFO] Creating CloudFront distribution for thumbnails..."
+    echo "[INFO] Creating CloudFront distribution for images..."
     aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT cloudfront create-distribution \
         --distribution-config '{
-            "CallerReference": "thumbnails-'$(date +%s)'",
-            "Comment": "Thumbnails Distribution",
+            "CallerReference": "images-'$(date +%s)'",
+            "Comment": "Images Distribution",
             "DefaultCacheBehavior": {
-                "TargetOriginId": "thumbnails-storage-origin",
+                "TargetOriginId": "images-storage-origin",
                 "ViewerProtocolPolicy": "allow-all",
                 "TrustedSigners": {
                     "Enabled": false,
@@ -241,8 +241,8 @@ else
                 "Quantity": 1,
                 "Items": [
                     {
-                        "Id": "thumbnails-storage-origin",
-                        "DomainName": "thumbnails-storage.s3.'$AWS_REGION'.amazonaws.com",
+                        "Id": "images-storage-origin",
+                        "DomainName": "images-storage.s3.'$AWS_REGION'.amazonaws.com",
                         "S3OriginConfig": {
                             "OriginAccessIdentity": ""
                         }
