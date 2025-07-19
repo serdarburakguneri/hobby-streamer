@@ -67,7 +67,8 @@ services:
       - "8000:8000"
     environment:
       - SERVICES=dynamodb,sqs,s3,lambda,apigateway
-      - PERSISTENCE=0
+      - PERSISTENCE=1
+      - DATA_DIR=/var/lib/localstack
       - ENABLE_CORS_ALLOW_ALL=0
       - CORS_ALLOW_ORIGINS=http://localhost:8081
       - S3_CORS_ALLOW_ORIGINS=http://localhost:8081
@@ -78,6 +79,7 @@ services:
       - S3_SKIP_ACL_VALIDATION=1
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - localstack_data:/var/lib/localstack
     networks:
       - hobby-streamer
 
@@ -237,6 +239,7 @@ volumes:
   neo4j_import:
   neo4j_plugins:
   redis_data:
+  localstack_data:
 
 networks:
   hobby-streamer:
