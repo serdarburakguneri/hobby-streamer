@@ -1,52 +1,31 @@
 # Logger Package
 
-A structured logging helper built on top of Go’s `slog`. Supports both sync and async logging, and includes middleware for tracking requests and compressing responses. Meant to keep logs clean, contextual, and useful — without getting in your way.
-
----
+Structured logging helper built on `slog`. Supports sync/async logging, request tracking middleware, and context-aware logging.
 
 ## Features
 
-- JSON and text output formats
-- Async logging (optional, but handy under load)
-- Request logging middleware with trace IDs
-- Gzip compression middleware
-- Context-aware logging (user ID, service name, etc.)
-- Works well with structured error handling
-
----
+JSON/text output, async logging, request logging middleware with trace IDs, gzip compression, context-aware logging, structured error handling.
 
 ## Quick Start
 
 ```go
 import "github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 
-// Set up sync logger (stdout)
+// Sync logger
 logger.Init(slog.LevelInfo, "text")
-
 logger.Info("App started")
 logger.Error("Something broke", "error", err)
 ```
 
----
-
 ## Async Logging
 
-For higher-throughput scenarios, async logging helps avoid blocking on log writes:
-
 ```go
-// Use async logger with a buffer size
+// Async logger with buffer
 logger.InitAsync(slog.LevelInfo, "json", 1000)
-
-logger.Info("This log is non-blocking")
-logger.Error("Async error", "error", err)
-
-// Make sure logs flush before shutdown
+logger.Info("Non-blocking log")
 defer logger.Close()
-```
 
-### Config Sample
-
-```yaml
+// Config
 log:
   level: info
   format: json
@@ -55,47 +34,22 @@ log:
     buffer_size: 1000
 ```
 
----
-
 ## Middleware
 
-### Request Logging
-
-Adds trace IDs and logs incoming HTTP requests:
-
 ```go
+// Request logging with trace IDs
 router.Use(logger.RequestLoggingMiddleware(logger.Get()))
-```
 
-### Compression
-
-Adds gzip compression when the client supports it:
-
-```go
+// Gzip compression
 router.Use(logger.CompressionMiddleware)
 ```
 
----
-
 ## Context Support
-
-Add context to log entries:
 
 ```go
 ctx := context.WithValue(context.Background(), "user_id", "abc123")
 logger.WithContext(ctx).Info("User action")
-```
-
----
-
-## Add Service Info
-
-Tag logs with your service name:
-
-```go
 logger.WithService("streaming-api").Info("Service is up")
 ```
 
----
-
-> ℹ️ This logger is meant to be lightweight and flexible — good defaults, with room to grow if you need more control.
+> ℹ️ Lightweight and flexible — good defaults with room to grow.

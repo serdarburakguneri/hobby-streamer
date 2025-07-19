@@ -1,91 +1,39 @@
 # Transcoder Service
 
-A background worker that processes video jobs from an SQS queue. Uses FFmpeg to perform video analysis and generate HLS and DASH outputs for playback.
-
----
+Background worker that processes video jobs from SQS queue. Uses FFmpeg for video analysis and HLS/DASH transcoding.
 
 ## Features
 
-- Listens to SQS for incoming video job messages
-- Supports:
-  - Metadata analysis (duration, format, streams)
-  - HLS transcoding
-  - DASH transcoding
-- Built with the shared SQS client package
-- Includes retry logic and structured logging for failed jobs
-
----
+SQS job processing, metadata analysis, HLS/DASH transcoding, retry logic, structured logging.
 
 ## Requirements
 
-- Go 1.22+
-- FFmpeg installed and accessible via `$PATH`
-- LocalStack running with the correct SQS queue configured
+Go 1.22+, FFmpeg in `$PATH`, LocalStack with SQS queues.
 
----
-
-## Running Locally
-
-### 1. Ensure queues are available
-
-Use the root-level `./local/build.sh` script to spin up LocalStack and initialize required queues.
-
-### 2. Start the worker
+## Running
 
 ```bash
+# Start queues first
+./local/build.sh
+
+# Start worker
 cd backend/transcoder
 TRANSCODER_QUEUE_URL=http://localhost:4566/000000000000/transcoder-jobs \
 go run ./cmd/worker/main.go
 ```
 
----
-
-## Supported Job Types
+## Job Types
 
 ### `analyze`
-
-Runs FFmpeg to extract video metadata (streams, duration, etc.).
-
-**Example:**
-
-```json
-{
-  "input": "path/to/video.mp4",
-  "assetId": "asset-id",
-  "videoType": "main"
-}
-```
-
----
+Extract video metadata (streams, duration).  
+**Input:** `{"input": "path/to/video.mp4", "assetId": "asset-id", "videoType": "main"}`
 
 ### `transcode-hls`
-
-Transcodes a video to HLS format (`.m3u8` + segments).
-
-**Example:**
-
-```json
-{
-  "input": "path/to/video.mp4",
-  "output": "output/path/playlist.m3u8"
-}
-```
-
----
+Transcode to HLS format (`.m3u8` + segments).  
+**Input:** `{"input": "path/to/video.mp4", "output": "output/path/playlist.m3u8"}`
 
 ### `transcode-dash`
+Transcode to MPEG-DASH format (`.mpd` + segments).  
+**Input:** `{"input": "path/to/video.mp4", "output": "output/path/manifest.mpd"}`
 
-Transcodes a video to MPEG-DASH format (`.mpd` + segments).
-
-**Example:**
-
-```json
-{
-  "input": "path/to/video.mp4",
-  "output": "output/path/manifest.mpd"
-}
-```
-
----
-
-> ⚠️ This service is intended for local testing and development only. FFmpeg settings and job handling may evolve as use cases expand.
+> ⚠️ Local testing and development only. FFmpeg settings may evolve.

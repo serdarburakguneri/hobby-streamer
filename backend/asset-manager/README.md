@@ -1,73 +1,33 @@
 # Asset Manager Service
 
-GraphQL API for managing media assets and buckets in the Hobby Streamer project. It stores asset metadata in Neo4j and supports parent-child relationships (e.g. series → season → episode). Also handles integration with video workflows and authentication via Keycloak.
-
----
+GraphQL API for managing media assets and buckets. Stores metadata in Neo4j with parent-child relationships (series → season → episode). Handles video workflows and Keycloak authentication.
 
 ## Features
 
-- GraphQL API for asset and bucket management
-- Hierarchical asset support (Movie, Series, Episode, etc.)
-- SQS integration for triggering transcode jobs and receiving updates
-- JWT-based authentication (via Keycloak)
-- Typed error handling for more informative responses
+GraphQL API, hierarchical assets, SQS integration, JWT auth, typed error handling.
 
----
-
-## Running Locally
+## Running
 
 ```bash
-cd backend/asset-manager
-go run ./cmd/main.go
+# Local
+cd backend/asset-manager && go run ./cmd/main.go
+
+# Docker
+docker build -t asset-manager . && docker run -p 8080:8080 asset-manager
 ```
 
----
+## API
 
-## Docker
+- `POST /graphql` — GraphQL endpoint  
+- `GET /playground` — Interactive playground (dev)
 
-```bash
-docker build -t asset-manager .
-docker run -p 8080:8080 asset-manager
-```
+## Schema
 
----
+**Asset Types:** Movie, Series, Season, Episode, Documentary, Music, Podcast, Trailer, BehindTheScenes, Interview
 
-## API Endpoints
+**Asset Status:** draft, scheduled, published, expired
 
-- `POST /graphql` — GraphQL query endpoint  
-- `GET /playground` — Interactive GraphQL Playground (dev only)
-
----
-
-## GraphQL Schema
-
-### Asset Types
-
-- `Movie`
-- `Series`, `Season`, `Episode`
-- `Documentary`
-- `Music`
-- `Podcast`
-- `Trailer`
-- `BehindTheScenes`
-- `Interview`
-
-### Asset Status
-
-- `draft` — Not yet published  
-- `scheduled` — Set to be published later  
-- `published` — Publicly available  
-- `expired` — No longer available
-
-### Video Status
-
-- `pending` — Awaiting processing  
-- `analyzing` — Format/resolution check  
-- `transcoding` — Actively being processed  
-- `ready` — Available for playback  
-- `failed` — Processing failed
-
----
+**Video Status:** pending, analyzing, transcoding, ready, failed
 
 ## Example Query
 
@@ -78,37 +38,17 @@ query {
       id
       title
       status
-      videos {
-        label
-        status
-      }
+      videos { label status }
     }
   }
 }
 ```
 
----
-
 ## Development
-
-### Generate GraphQL Code
 
 ```bash
 go run github.com/99designs/gqlgen generate
+go build ./... && go test ./...
 ```
 
-### Build
-
-```bash
-go build ./...
-```
-
-### Run Tests
-
-```bash
-go test ./...
-```
-
----
-
-> ⚠️ This service is still evolving — primarily used for local development and exploring asset modeling patterns.
+> ⚠️ Evolving service — local development and asset modeling exploration.

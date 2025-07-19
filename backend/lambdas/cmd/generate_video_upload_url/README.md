@@ -1,109 +1,58 @@
 # Generate Video Upload URL Lambda
 
-Lambda function that generates presigned S3 URLs for uploading video files. Used for direct browser or client uploads to the `raw-storage` S3 bucket.
-
-## Bucket Usage
-
-| Bucket Name        | Purpose                        |
-|--------------------|--------------------------------|
-| `raw-storage`      | Direct uploads (presigned URL) |
-
----
+Lambda function that generates presigned S3 URLs for uploading video files to `raw-storage` bucket.
 
 ## Environment Variables
 
-| Variable         | Description                                 | Default                   |
-|------------------|---------------------------------------------|---------------------------|
-| `BUCKET_NAME`    | S3 bucket for uploads                       | `raw-storage`             |
-| `BUCKET_REGION`  | AWS region for the bucket                   | `us-east-1`               |
-| `AWS_ENDPOINT`   | Custom AWS endpoint (for LocalStack)        | `http://localhost:4566`   |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BUCKET_NAME` | S3 bucket for uploads | `raw-storage` |
+| `BUCKET_REGION` | AWS region | `us-east-1` |
+| `AWS_ENDPOINT` | Custom endpoint (LocalStack) | `http://localhost:4566` |
 
----
+## Local Development
 
-## Local Development with LocalStack
-
-### Option 1: Use Build Script
-
-Run the project’s setup script:
-
+### Quick Setup
 ```bash
-./build.sh
+./build.sh  # Starts LocalStack, creates buckets, deploys Lambda
 ```
 
-This will:
-- Start LocalStack via Docker Compose
-- Create required S3 buckets: `raw-storage`, `transcoded-storage`, `images-storage`
-- Deploy the Lambda function
-- Set up related services (DynamoDB, SQS, etc.)
-
----
-
-### Option 2: Manual Setup
-
-#### 1. Start LocalStack
-
+### Manual Setup
 ```bash
+# Start LocalStack
 docker-compose up -d
-```
 
-#### 2. Create S3 Buckets
+# Create buckets
+awslocal s3 mb s3://raw-storage s3://transcoded-storage s3://images-storage
 
-```bash
-awslocal s3 mb s3://raw-storage
-awslocal s3 mb s3://transcoded-storage
-awslocal s3 mb s3://images-storage
-```
-
-#### 3. Build and Deploy Lambda
-
-```bash
+# Build and deploy
 cd backend/lambdas/cmd/generate_video_upload_url
 GOOS=linux GOARCH=amd64 go build -o main main.go
 zip function.zip main
 
 awslocal lambda create-function \
   --function-name generate-video-upload-url \
-  --runtime go1.x \
-  --handler main \
-  --zip-file fileb://function.zip \
+  --runtime go1.x --handler main --zip-file fileb://function.zip \
   --role arn:aws:iam::000000000000:role/lambda-role
-```
 
-#### 4. Set Environment Variables
-
-```bash
+# Set environment
 awslocal lambda update-function-configuration \
   --function-name generate-video-upload-url \
   --environment "Variables={BUCKET_NAME=raw-storage,BUCKET_REGION=us-east-1,AWS_ENDPOINT=http://localhost:4566}"
 ```
 
----
-
 ## Testing
 
-### 1. Generate a Presigned URL
-
 ```bash
+# Generate presigned URL
 awslocal lambda invoke \
   --function-name generate-video-upload-url \
-  --region us-east-1 \
-  --payload '{"body": "{\"fileName\": \"test_video.mp4\", \"assetId\": \"123\", \"videoType\": \"main\"}"}' \
-  --cli-binary-format raw-in-base64-out \
+  --payload '{"body": "{\"fileName\": \"test.mp4\", \"assetId\": \"123\", \"videoType\": \"main\"}"}' \
   response.json
 
-cat response.json | jq '.body' | jq -r | jq '.url'
-```
+# Upload file
+curl -X PUT -T test.mp4 "$(cat response.json | jq -r '.body' | jq -r '.url')"
 
-### 2. Upload a File with the URL
-
-```bash
-curl -X PUT -T test_video.mp4 "<PASTE_URL_HERE>"
-```
-
----
-
-## Utility: Generate a Test Video with FFmpeg
-
-```bash
-ffmpeg -f lavfi -i testsrc=duration=5:size=1280x720:rate=30 -c:v libx264 -pix_fmt yuv420p test_video.mp4
+# Generate test video
+ffmpeg -f lavfi -i testsrc=duration=5:size=1280x720:rate=30 -c:v libx264 test.mp4
 ```

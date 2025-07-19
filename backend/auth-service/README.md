@@ -1,160 +1,42 @@
 # Auth Service
 
-A lightweight Go service that handles JWT-based authentication using Keycloak. Provides login, token validation, and refresh endpoints, with structured logging and clean error handling.
-
----
+Lightweight Go service for JWT-based authentication using Keycloak. Provides login, token validation, and refresh endpoints.
 
 ## Features
 
-- Username/password login via Keycloak
-- JWT token validation with role extraction
-- Token refresh endpoint
-- Basic health check
+Username/password login, JWT validation with role extraction, token refresh, health check.
 
----
-
-## API Overview
+## API
 
 ### `POST /login`
+Authenticate user and get access/refresh tokens.
 
-Authenticate a user and retrieve access/refresh tokens.
-
-**Request:**
-
-```json
-{
-  "username": "testuser",
-  "password": "testpass",
-  "client_id": "asset-manager"
-}
-```
-
-**Success Response:**
-
-```json
-{
-  "access_token": "eyJ...",
-  "token_type": "Bearer",
-  "expires_in": 300,
-  "refresh_token": "eyJ...",
-  "expires_at": "2024-01-01T12:00:00Z"
-}
-```
-
-**Error Response:**
-
-```json
-{
-  "error": "invalid_credentials",
-  "message": "Invalid username or password"
-}
-```
-
----
+**Request:** `{"username": "user", "password": "pass", "client_id": "asset-manager"}`  
+**Response:** `{"access_token": "...", "refresh_token": "...", "expires_in": 300}`
 
 ### `POST /validate`
+Validate token and return user info.
 
-Validate a token and return decoded user info.
-
-**Request:**
-
-```json
-{
-  "token": "Bearer eyJ..."
-}
-```
-
-**Success Response:**
-
-```json
-{
-  "valid": true,
-  "user": {
-    "id": "user-id",
-    "username": "testuser",
-    "email": "test@example.com",
-    "roles": ["user"]
-  },
-  "roles": ["user"]
-}
-```
-
-**Error Response:**
-
-```json
-{
-  "error": "invalid_token",
-  "message": "Token is invalid or expired"
-}
-```
-
----
+**Request:** `{"token": "Bearer ..."}`  
+**Response:** `{"valid": true, "user": {"id": "...", "username": "...", "roles": ["user"]}}`
 
 ### `POST /refresh`
+Refresh access token.
 
-Refresh an access token using a refresh token.
-
-**Request:**
-
-```json
-{
-  "refresh_token": "eyJ..."
-}
-```
-
-**Success Response:**
-
-```json
-{
-  "access_token": "eyJ...",
-  "token_type": "Bearer",
-  "expires_in": 300,
-  "refresh_token": "eyJ...",
-  "expires_at": "2024-01-01T12:00:00Z"
-}
-```
-
-**Error Response:**
-
-```json
-{
-  "error": "invalid_refresh_token",
-  "message": "Refresh token is invalid or expired"
-}
-```
-
----
+**Request:** `{"refresh_token": "..."}`  
+**Response:** `{"access_token": "...", "refresh_token": "...", "expires_in": 300}`
 
 ### `GET /health`
+Health check. **Response:** `{"status": "ok"}`
 
-Simple health check.
-
-**Response:**
-
-```json
-{
-  "status": "ok"
-}
-```
-
----
-
-## Running the Service
-
-### Locally
+## Running
 
 ```bash
-cd backend/auth-service
-go run cmd/main.go
+# Local
+cd backend/auth-service && go run cmd/main.go
+
+# Docker
+docker build -t auth-service . && docker run -p 8080:8080 auth-service
 ```
 
-### With Docker
-
-```bash
-docker build -t auth-service .
-docker run -p 8080:8080 auth-service
-```
-
----
-
-> ⚠️ This service is designed for local development and testing in the context of the Hobby Streamer platform.
+> ⚠️ Designed for local development and testing.
