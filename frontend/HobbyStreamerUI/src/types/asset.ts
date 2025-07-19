@@ -42,7 +42,6 @@ export interface StreamInfo {
 }
 
 export interface PublishRule {
-  isPublic: boolean;
   publishAt?: string;
   unpublishAt?: string;
   regions?: string[];

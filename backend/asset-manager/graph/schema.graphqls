@@ -122,7 +122,6 @@ enum BucketStatus {
 }
 
 type PublishRule {
-  isPublic: Boolean!
   publishAt: Time
   unpublishAt: Time
   regions: [String!]

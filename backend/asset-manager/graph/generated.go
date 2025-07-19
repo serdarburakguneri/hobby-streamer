@@ -122,7 +122,6 @@ type ComplexityRoot struct {
 
 	PublishRule struct {
 		AgeRating   func(childComplexity int) int
-		IsPublic    func(childComplexity int) int
 		PublishAt   func(childComplexity int) int
 		Regions     func(childComplexity int) int
 		UnpublishAt func(childComplexity int) int
@@ -649,13 +648,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PublishRule.AgeRating(childComplexity), true
-
-	case "PublishRule.isPublic":
-		if e.complexity.PublishRule.IsPublic == nil {
-			break
-		}
-
-		return e.complexity.PublishRule.IsPublic(childComplexity), true
 
 	case "PublishRule.publishAt":
 		if e.complexity.PublishRule.PublishAt == nil {
@@ -2892,8 +2884,6 @@ func (ec *executionContext) fieldContext_Asset_publishRule(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "isPublic":
-				return ec.fieldContext_PublishRule_isPublic(ctx, field)
 			case "publishAt":
 				return ec.fieldContext_PublishRule_publishAt(ctx, field)
 			case "unpublishAt":
@@ -5124,50 +5114,6 @@ func (ec *executionContext) fieldContext_Mutation_removeAssetFromBucket(ctx cont
 	if fc.Args, err = ec.field_Mutation_removeAssetFromBucket_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PublishRule_isPublic(ctx context.Context, field graphql.CollectedField, obj *model.PublishRule) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PublishRule_isPublic(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsPublic, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PublishRule_isPublic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PublishRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
 	}
 	return fc, nil
 }
@@ -9694,11 +9640,6 @@ func (ec *executionContext) _PublishRule(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PublishRule")
-		case "isPublic":
-			out.Values[i] = ec._PublishRule_isPublic(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "publishAt":
 			out.Values[i] = ec._PublishRule_publishAt(ctx, field, obj)
 		case "unpublishAt":

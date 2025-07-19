@@ -52,36 +52,34 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		MERGE (a:Asset {id: $id})
 		ON CREATE SET
 			a.slug = $slug,
-			a.title = $title,
-			a.description = $description,
-			a.type = $type,
-			a.genre = $genre,
-			a.genres = $genres,
-			a.tags = $tags,
-			a.ownerId = $ownerId,
-			a.publishRuleIsPublic = $publishRuleIsPublic,
-			a.publishRulePublishAt = $publishRulePublishAt,
-			a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
-			a.publishRuleRegions = $publishRuleRegions,
-			a.publishRuleAgeRating = $publishRuleAgeRating,
-			a.videos = $videos,
-			a.createdAt = $createdAt,
-			a.updatedAt = $updatedAt
-		ON MATCH SET
-			a.title = $title,
-			a.description = $description,
-			a.type = $type,
-			a.genre = $genre,
-			a.genres = $genres,
-			a.tags = $tags,
-			a.ownerId = $ownerId,
-			a.publishRuleIsPublic = $publishRuleIsPublic,
-			a.publishRulePublishAt = $publishRulePublishAt,
-			a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
-			a.publishRuleRegions = $publishRuleRegions,
-			a.publishRuleAgeRating = $publishRuleAgeRating,
-			a.videos = $videos,
-			a.updatedAt = $updatedAt
+					a.title = $title,
+		a.description = $description,
+		a.type = $type,
+		a.genre = $genre,
+		a.genres = $genres,
+		a.tags = $tags,
+		a.ownerId = $ownerId,
+		a.publishRulePublishAt = $publishRulePublishAt,
+		a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
+		a.publishRuleRegions = $publishRuleRegions,
+		a.publishRuleAgeRating = $publishRuleAgeRating,
+		a.videos = $videos,
+		a.createdAt = $createdAt,
+		a.updatedAt = $updatedAt
+	ON MATCH SET
+		a.title = $title,
+		a.description = $description,
+		a.type = $type,
+		a.genre = $genre,
+		a.genres = $genres,
+		a.tags = $tags,
+		a.ownerId = $ownerId,
+		a.publishRulePublishAt = $publishRulePublishAt,
+		a.publishRuleUnpublishAt = $publishRuleUnpublishAt,
+		a.publishRuleRegions = $publishRuleRegions,
+		a.publishRuleAgeRating = $publishRuleAgeRating,
+		a.videos = $videos,
+		a.updatedAt = $updatedAt
 		RETURN a
 	`
 
@@ -102,14 +100,12 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		ownerID = *a.OwnerID
 	}
 
-	var publishRuleIsPublic bool
 	var publishRulePublishAt time.Time
 	var publishRuleUnpublishAt time.Time
 	var publishRuleRegions []string
 	var publishRuleAgeRating string
 
 	if a.PublishRule != nil {
-		publishRuleIsPublic = a.PublishRule.IsPublic
 		publishRulePublishAt = a.PublishRule.PublishAt
 		publishRuleUnpublishAt = a.PublishRule.UnpublishAt
 		publishRuleRegions = a.PublishRule.Regions
@@ -132,7 +128,6 @@ func (r *Repository) SaveAsset(ctx context.Context, a *Asset) error {
 		"genres":                 a.Genres,
 		"tags":                   a.Tags,
 		"ownerId":                ownerID,
-		"publishRuleIsPublic":    publishRuleIsPublic,
 		"publishRulePublishAt":   publishRulePublishAt,
 		"publishRuleUnpublishAt": publishRuleUnpublishAt,
 		"publishRuleRegions":     publishRuleRegions,
@@ -540,9 +535,8 @@ func (r *Repository) recordToAsset(record *neo4j.Record) (*Asset, error) {
 		}
 	}
 
-	if isPublic, ok := props["publishRuleIsPublic"].(bool); ok {
+	if props["publishRulePublishAt"] != nil {
 		publishRule := &PublishRule{}
-		publishRule.IsPublic = isPublic
 
 		if publishAt, ok := props["publishRulePublishAt"].(time.Time); ok {
 			publishRule.PublishAt = publishAt

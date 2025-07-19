@@ -97,7 +97,6 @@ type Mutation struct {
 }
 
 type PublishRule struct {
-	IsPublic    bool       `json:"isPublic"`
 	PublishAt   *time.Time `json:"publishAt,omitempty"`
 	UnpublishAt *time.Time `json:"unpublishAt,omitempty"`
 	Regions     []string   `json:"regions,omitempty"`

@@ -128,9 +128,7 @@ func (s *Service) CreateAsset(ctx context.Context, a *Asset) (*Asset, error) {
 	}
 
 	if a.PublishRule == nil {
-		a.PublishRule = &PublishRule{
-			IsPublic: false,
-		}
+		a.PublishRule = &PublishRule{}
 	}
 
 	existingAsset, err := s.Repo.GetAssetBySlug(ctx, a.Slug)

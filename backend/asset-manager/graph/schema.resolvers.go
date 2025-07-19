@@ -236,9 +236,7 @@ func (r *mutationResolver) PatchPublishRule(ctx context.Context, id string, patc
 	}
 
 	if internalAsset.PublishRule == nil {
-		internalAsset.PublishRule = &asset.PublishRule{
-			IsPublic: true,
-		}
+		internalAsset.PublishRule = &asset.PublishRule{}
 	}
 
 	for _, patch := range patches {

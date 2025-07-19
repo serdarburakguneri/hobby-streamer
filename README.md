@@ -8,7 +8,7 @@ This is a side project where I experiment with ideas for building a basic video 
 
 Hobby Streamer pieces together:
 - Video upload and FFmpeg-based transcoding
-- Stream delivery (HLS/DASH-ish)
+- Stream delivery (HLS/DASH)
 - Asset metadata and relationships
 - Basic auth + role handling with Keycloak
 - Developer-focused logging and monitoring setup
@@ -22,7 +22,7 @@ There’s also a [sequence diagram](docs/video-upload-transcode-sequence.md)
 ## Tech Stack (Today, at Least)
 
 ### Backend
-- Go (idiomatic-ish, learning-focused)
+- Go
 - GraphQL 
 - Neo4j 
 - Keycloak (OAuth2, RBAC)
@@ -32,7 +32,7 @@ There’s also a [sequence diagram](docs/video-upload-transcode-sequence.md)
 ### Infra
 - Docker Compose (for local dev)
 - LocalStack (mock AWS: S3, SQS, Lambda)
-- Fluentd + Elasticsearch + Kibana (log stack attempt)
+- Fluentd + Elasticsearch + Kibana (log stack)
 - Nginx (pretend CDN)
 
 ### Frontend
@@ -42,18 +42,18 @@ There’s also a [sequence diagram](docs/video-upload-transcode-sequence.md)
 ## Repo Layout
 
 ### Backend Services
-- `asset-manager`: GraphQL API for CRUD and event consumer ([README](backend/asset-manager/README.md))
-- `auth-service`: Auth with Keycloak ([README](backend/auth-service/README.md))
-- `transcoder`: FFmpeg worker ([README](backend/transcoder/README.md))
-- `streaming-api`: REST API + Redis caching ([README](backend/streaming-api/README.md))
+- [`asset-manager`](backend/asset-manager/README.md)
+- [`auth-service`](backend/auth-service/README.md)
+- [`transcoder`](backend/transcoder/README.md)
+- [`streaming-api`](backend/streaming-api/README.md)
 
 ### Lambdas
-- `generate_presigned_upload_url`: temporary S3 URL ([README](backend/lambdas/cmd/generate_presigned_upload_url/README.md))
-- `delete_files`: cleanup on delete ([README](backend/lambdas/cmd/delete_files/README.md))
+- [`generate_presigned_upload_url`](backend/lambdas/cmd/generate_presigned_upload_url/README.md)
+- [`delete_files`](backend/lambdas/cmd/delete_files/README.md)
 
 ### Frontend
-- `HobbyStreamerCMS`: Dashboard UI ([README](frontend/HobbyStreamerCMS/README.md))
-- `HobbyStreamerUI`: Client for streaming ([README](frontend/HobbyStreamerUI/README.md))
+- [`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md)
+- [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md)
 
 ### Shared Backend Libs
 See `backend/pkg`.

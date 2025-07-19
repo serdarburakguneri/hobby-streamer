@@ -240,7 +240,6 @@ const GET_ASSETS = gql`
           type
         }
         publishRule {
-          isPublic
           publishAt
           unpublishAt
           regions
@@ -460,7 +459,6 @@ const GET_ASSETS_BY_PARENT = gql`
           type
         }
         publishRule {
-          isPublic
           publishAt
           unpublishAt
           regions
@@ -534,7 +532,6 @@ const GET_ASSET = gql`
         type
       }
       publishRule {
-        isPublic
         publishAt
         unpublishAt
         regions
@@ -620,7 +617,6 @@ const CREATE_ASSET = gql`
         type
       }
       publishRule {
-        isPublic
         publishAt
         unpublishAt
         regions
@@ -692,7 +688,6 @@ const PATCH_ASSET = gql`
         type
       }
       publishRule {
-        isPublic
         publishAt
         unpublishAt
         regions
@@ -763,7 +758,6 @@ const PATCH_PUBLISH_RULE = gql`
         type
       }
       publishRule {
-        isPublic
         publishAt
         unpublishAt
         regions
@@ -1261,8 +1255,6 @@ export const useAssetService = () => {
 
     publishAsset: async (id: string, publishAt?: string | null, unpublishAt?: string | null, regions?: string[], ageRating?: string | null, clearFields: string[] = []): Promise<Asset> => {
       const patches: any[] = [];
-      
-      
       if (publishAt !== undefined) {
         patches.push({ op: 'replace', path: '/publishAt', value: publishAt ? new Date(publishAt).toISOString() : '' });
       }

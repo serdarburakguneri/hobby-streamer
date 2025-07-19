@@ -1,12 +1,10 @@
 FROM golang:1.23 AS builder
 WORKDIR /app
+
 COPY . .
+RUN cd streaming-api && go mod download
 
-# Install dependencies and build
-RUN cd streaming-api && go env -w GOPRIVATE=*
-RUN cd streaming-api && go mod tidy
-
-
+# Build the application
 RUN cd streaming-api && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o streaming-api ./cmd/main.go
 
 # Final stage

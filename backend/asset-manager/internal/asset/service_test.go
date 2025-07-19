@@ -168,7 +168,7 @@ func TestService_CreateAsset(t *testing.T) {
 				Title: stringPtr("Test Movie"),
 				Type:  stringPtr(AssetTypeMovie),
 				PublishRule: &PublishRule{
-					IsPublic: true,
+					PublishAt: time.Now().Add(-1 * time.Hour),
 				},
 			},
 			wantErr: false,
@@ -214,12 +214,12 @@ func TestService_CreateAsset(t *testing.T) {
 			}
 
 			if tt.asset.PublishRule == nil {
-				if result.PublishRule.IsPublic {
-					t.Errorf("CreateAsset() expected default PublishRule.IsPublic to be false")
+				if !result.PublishRule.PublishAt.IsZero() {
+					t.Errorf("CreateAsset() expected default PublishRule.PublishAt to be zero")
 				}
-			} else if tt.asset.PublishRule.IsPublic {
-				if !result.PublishRule.IsPublic {
-					t.Errorf("CreateAsset() expected custom PublishRule.IsPublic to be preserved")
+			} else if !tt.asset.PublishRule.PublishAt.IsZero() {
+				if result.PublishRule.PublishAt.IsZero() {
+					t.Errorf("CreateAsset() expected custom PublishRule.PublishAt to be preserved")
 				}
 			}
 

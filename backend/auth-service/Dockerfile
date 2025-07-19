@@ -1,9 +1,8 @@
 FROM golang:1.23-alpine as builder
 WORKDIR /app
-COPY . .
 
-# Ensure go.sum is up to date
-RUN cd auth-service && go mod tidy
+COPY . .
+RUN cd auth-service && go mod download
 
 # Run tests (fail build if tests fail)
 RUN cd auth-service && go test ./... -v

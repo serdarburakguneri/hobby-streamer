@@ -80,7 +80,6 @@ type Credit struct {
 }
 
 type PublishRule struct {
-	IsPublic    bool      `json:"isPublic"`
 	PublishAt   time.Time `json:"publishAt,omitempty"`
 	UnpublishAt time.Time `json:"unpublishAt,omitempty"`
 	Regions     []string  `json:"regions,omitempty"`
@@ -92,13 +91,13 @@ func (a *Asset) Status() string {
 		return "draft"
 	}
 
-	if !a.PublishRule.IsPublic {
+	now := time.Now().UTC()
+
+	if a.PublishRule.PublishAt.IsZero() {
 		return "draft"
 	}
 
-	now := time.Now().UTC()
-
-	if !a.PublishRule.PublishAt.IsZero() && now.Before(a.PublishRule.PublishAt) {
+	if now.Before(a.PublishRule.PublishAt) {
 		return "scheduled"
 	}
 

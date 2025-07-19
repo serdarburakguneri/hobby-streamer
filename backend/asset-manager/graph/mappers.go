@@ -291,7 +291,6 @@ func mapPublishRuleToGraphQL(rule *asset.PublishRule) *model.PublishRule {
 	}
 
 	return &model.PublishRule{
-		IsPublic:    rule.IsPublic,
 		PublishAt:   &rule.PublishAt,
 		UnpublishAt: &rule.UnpublishAt,
 		Regions:     rule.Regions,

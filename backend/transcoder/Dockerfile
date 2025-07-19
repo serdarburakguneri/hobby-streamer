@@ -1,9 +1,8 @@
 FROM golang:1.23 AS builder
 WORKDIR /app
-COPY . .
 
-# Ensure go.sum is up to date
-RUN cd transcoder && go mod tidy
+COPY . .
+RUN cd transcoder && go mod download
 
 # Run tests (fail build if tests fail)
 RUN cd transcoder && go test ./... -v
