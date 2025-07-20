@@ -28,10 +28,10 @@ export interface PublishRule {
 }
 
 export enum VideoType {
-  MAIN = 'MAIN',
-  TRAILER = 'TRAILER',
-  BEHIND_THE_SCENES = 'BEHIND_THE_SCENES',
-  INTERVIEW = 'INTERVIEW'
+  MAIN = 'main',
+  TRAILER = 'trailer',
+  BEHIND_THE_SCENES = 'behind',
+  INTERVIEW = 'interview'
 }
 
 export enum VideoFormat {
@@ -73,14 +73,14 @@ export interface Video {
 }
 
 export enum ImageType {
-  THUMBNAIL = 'THUMBNAIL',
-  POSTER = 'POSTER',
-  BANNER = 'BANNER',
-  HERO = 'HERO',
-  LOGO = 'LOGO',
-  SCREENSHOT = 'SCREENSHOT',
-  BEHIND_THE_SCENES = 'BEHIND_THE_SCENES',
-  INTERVIEW = 'INTERVIEW'
+  THUMBNAIL = 'thumbnail',
+  POSTER = 'poster',
+  BANNER = 'banner',
+  HERO = 'hero',
+  LOGO = 'logo',
+  SCREENSHOT = 'screenshot',
+  BEHIND_THE_SCENES = 'behind_scenes',
+  INTERVIEW = 'interview'
 }
 
 export interface Image {

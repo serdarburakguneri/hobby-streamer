@@ -283,20 +283,20 @@ func (e ImageType) MarshalJSON() ([]byte, error) {
 type VideoFormat string
 
 const (
-	VideoFormatMp4  VideoFormat = "mp4"
+	VideoFormatRaw  VideoFormat = "raw"
 	VideoFormatHls  VideoFormat = "hls"
 	VideoFormatDash VideoFormat = "dash"
 )
 
 var AllVideoFormat = []VideoFormat{
-	VideoFormatMp4,
+	VideoFormatRaw,
 	VideoFormatHls,
 	VideoFormatDash,
 }
 
 func (e VideoFormat) IsValid() bool {
 	switch e {
-	case VideoFormatMp4, VideoFormatHls, VideoFormatDash:
+	case VideoFormatRaw, VideoFormatHls, VideoFormatDash:
 		return true
 	}
 	return false

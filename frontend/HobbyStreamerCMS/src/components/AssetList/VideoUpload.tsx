@@ -101,7 +101,7 @@ export default function VideoUpload({ assetId, videoType, onUploadComplete, onCa
         size: file.size || 0
       });
       
-      await addVideo(assetId, getVideoTypeLabel(videoType), 'mp4', bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);
+      await addVideo(assetId, getVideoTypeLabel(videoType), 'raw', bucket, key, url, file.mimeType || 'video/mp4', file.size || 0);
       
       setUploadProgress(100);
       Alert.alert('Success', 'Video uploaded successfully');

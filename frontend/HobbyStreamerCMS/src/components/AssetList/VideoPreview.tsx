@@ -172,13 +172,13 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
 
   const getVideoTypeLabel = (type: string) => {
     switch (type) {
-      case 'MAIN':
+      case 'main':
         return 'Main Video';
-      case 'TRAILER':
+      case 'trailer':
         return 'Trailer';
-      case 'BEHIND_THE_SCENES':
+      case 'behind':
         return 'Behind the Scenes';
-      case 'INTERVIEW':
+      case 'interview':
         return 'Interview';
       default:
         return type;

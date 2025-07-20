@@ -229,11 +229,12 @@ func TestRichDomainModel(t *testing.T) {
 
 		// Add required content
 		s3Object, _ := NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
-		video, err := asset.AddVideo("main", &VideoFormatMP4, *s3Object)
+		videoFormat := VideoFormat(constants.VideoStreamingFormatRaw)
+		video, err := asset.AddVideo("main", &videoFormat, *s3Object)
 		assert.NoError(t, err)
 
 		// Update video status to ready
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatusReady)
+		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Now should be ready for publishing
@@ -284,10 +285,11 @@ func TestDomainServices(t *testing.T) {
 
 		// Add video and make it ready
 		s3Object, _ := NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
-		video, err := asset.AddVideo("main", &VideoFormatMP4, *s3Object)
+		videoFormat := VideoFormat(constants.VideoStreamingFormatRaw)
+		video, err := asset.AddVideo("main", &videoFormat, *s3Object)
 		assert.NoError(t, err)
 
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatusReady)
+		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Should pass validation
@@ -309,10 +311,11 @@ func TestDomainServices(t *testing.T) {
 
 		// Add video and make it ready
 		s3Object, _ := NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
-		video, err := asset.AddVideo("main", &VideoFormatMP4, *s3Object)
+		videoFormat := VideoFormat(constants.VideoStreamingFormatRaw)
+		video, err := asset.AddVideo("main", &videoFormat, *s3Object)
 		assert.NoError(t, err)
 
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatusReady)
+		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Test with valid publish rule
@@ -337,11 +340,13 @@ func TestDomainServices(t *testing.T) {
 
 		// Add videos
 		s3Object1, _ := NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
-		_, err = asset.AddVideo("main", &VideoFormatMP4, *s3Object1)
+		videoFormat1 := VideoFormat(constants.VideoStreamingFormatRaw)
+		_, err = asset.AddVideo("main", &videoFormat1, *s3Object1)
 		assert.NoError(t, err)
 
 		s3Object2, _ := NewS3Object("test-bucket", "videos/trailer.m3u8", "https://test-bucket.s3.amazonaws.com/videos/trailer.m3u8")
-		_, err = asset.AddVideo("trailer", &VideoFormatHLS, *s3Object2)
+		videoFormat2 := VideoFormat(constants.VideoStreamingFormatHLS)
+		_, err = asset.AddVideo("trailer", &videoFormat2, *s3Object2)
 		assert.NoError(t, err)
 
 		// Calculate metrics
@@ -363,14 +368,16 @@ func TestDomainServices(t *testing.T) {
 
 		// Add videos with sizes
 		s3Object1, _ := NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
-		video1, err := asset.AddVideo("main", &VideoFormatMP4, *s3Object1)
+		videoFormat1 := VideoFormat(constants.VideoStreamingFormatRaw)
+		video1, err := asset.AddVideo("main", &videoFormat1, *s3Object1)
 		assert.NoError(t, err)
 
 		// Set video size
 		video1.UpdateSize(1024 * 1024 * 100) // 100MB
 
 		s3Object2, _ := NewS3Object("test-bucket", "videos/trailer.m3u8", "https://test-bucket.s3.amazonaws.com/videos/trailer.m3u8")
-		video2, err := asset.AddVideo("trailer", &VideoFormatHLS, *s3Object2)
+		videoFormat2 := VideoFormat(constants.VideoStreamingFormatHLS)
+		video2, err := asset.AddVideo("trailer", &videoFormat2, *s3Object2)
 		assert.NoError(t, err)
 
 		// Set video size

@@ -173,7 +173,7 @@ enum VideoType {
 }
 
 enum VideoFormat {
-  mp4
+  raw
   hls
   dash
 }
