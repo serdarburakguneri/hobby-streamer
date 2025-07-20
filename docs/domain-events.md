@@ -1,7 +1,5 @@
 # Domain Events
 
-> Just a simple event-driven approach
-
 The project uses domain events to decouple services and enable asynchronous processing. Events flow through SQS queues to keep things loose and scalable.
 
 ## Overview
@@ -58,7 +56,7 @@ Events use a simple JSON envelope:
     "assetId": "123",
     "videoId": "456",
     "timestamp": "2024-01-01T00:00:00Z",
-    "description": "Multi-line\ndescription\nwith newlines"
+    "description": "Description"
   }
 }
 ```
@@ -69,17 +67,3 @@ Events use a simple JSON envelope:
 - `job-queue` - Job triggers for transcoder
 - `completion-queue` - Job completion notifications
 
-## Benefits
-
-- **Loose Coupling** - Services don't know about each other
-- **Scalability** - Events can be processed asynchronously  
-- **Reliability** - SQS handles retries and dead letter queues
-- **Observability** - Events provide audit trail
-
-## Trade-offs
-
-- **Eventual Consistency** - State may be temporarily inconsistent
-- **Complexity** - More moving parts to debug
-- **Ordering** - Events may arrive out of order
-
-The event-driven approach keeps the architecture simple while enabling the flexibility needed for video processing workflows. 

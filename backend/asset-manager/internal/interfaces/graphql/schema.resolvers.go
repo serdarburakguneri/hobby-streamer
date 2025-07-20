@@ -143,6 +143,20 @@ func (r *mutationResolver) PatchAsset(ctx context.Context, id string, patches []
 	return domainAssetToGraphQL(asset), nil
 }
 
+// DeleteAsset is the resolver for the deleteAsset field.
+func (r *mutationResolver) DeleteAsset(ctx context.Context, id string) (bool, error) {
+	cmd := appasset.DeleteAssetCommand{
+		ID: id,
+	}
+
+	err := r.assetAppService.DeleteAsset(ctx, cmd)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // AddVideo is the resolver for the addVideo field.
 func (r *mutationResolver) AddVideo(ctx context.Context, input AddVideoInput) (*Video, error) {
 	storageLocation, err := asset.NewS3Object(input.Bucket, input.Key, input.URL)

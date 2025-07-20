@@ -13,6 +13,7 @@ type Query {
 type Mutation {
   createAsset(input: CreateAssetInput!): Asset!
   patchAsset(id: ID!, patches: [JSONPatch!]!): Asset!
+  deleteAsset(id: ID!): Boolean!
   addVideo(input: AddVideoInput!): Video!
   createBucket(input: CreateBucketInput!): Bucket!
   updateBucket(input: UpdateBucketInput!): Bucket!
