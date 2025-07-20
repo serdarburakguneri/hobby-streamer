@@ -1,0 +1,249 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - hobby-streamer
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.0.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - hobby-streamer
+
+  fluentd:
+    build:
+      context: ./local/fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd
+    volumes:
+      - ./local/fluentd/fluent.conf:/fluentd/etc/fluent.conf
+      - ./local/fluentd/log:/fluentd/log
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "fluentd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      hobby-streamer:
+        ipv4_address: 172.30.0.10
+        aliases:
+          - fluentd
+
+  localstack:
+    image: localstack/localstack:latest
+    env_file:
+      - .env
+    ports:
+      - "4566:4566"
+      - "8000:8000"
+    environment:
+      - SERVICES=dynamodb,sqs,s3,lambda,apigateway
+      - PERSISTENCE=1
+      - DATA_DIR=/var/lib/localstack
+      - ENABLE_CORS_ALLOW_ALL=0
+      - CORS_ALLOW_ORIGINS=http://localhost:8081
+      - S3_CORS_ALLOW_ORIGINS=http://localhost:8081
+      - S3_CORS_ALLOW_METHODS=GET,PUT,POST,DELETE,HEAD,OPTIONS
+      - S3_CORS_ALLOW_HEADERS=*
+      - S3_SKIP_SIGNATURE_VALIDATION=1
+      - S3_SKIP_OWNERSHIP_VALIDATION=1
+      - S3_SKIP_ACL_VALIDATION=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - localstack_data:/var/lib/localstack
+    networks:
+      - hobby-streamer
+
+  neo4j:
+    image: neo4j:5.15-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    networks:
+      - hobby-streamer
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.6
+    command: start-dev --https-port=8443 --https-certificate-file=/opt/keycloak/certs/cert.pem --https-certificate-key-file=/opt/keycloak/certs/key.pem
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/hobby-realm.json
+    ports:
+      - "9090:8080"
+      - "8443:8443"
+    volumes:
+      - ./local/keycloak-config/hobby-realm.json:/opt/keycloak/data/import/hobby-realm.json
+      - ./local/keycloak-certs:/opt/keycloak/certs
+    depends_on:
+      - localstack
+    networks:
+      - hobby-streamer
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  asset-manager:
+    build:
+      context: ./backend
+      dockerfile: asset-manager/Dockerfile
+    ports:
+      - "8082:8080"
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - NEO4J_PASSWORD=password
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      neo4j:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  transcoder:
+    build:
+      context: ./backend
+      dockerfile: transcoder/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      fluentd:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+       fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hobby-streamer
+
+  streaming-api:
+    build:
+      context: ./backend
+      dockerfile: streaming-api/Dockerfile
+    ports:
+      - "8084:8080"
+    environment:
+      - ENVIRONMENT=development
+      - KEYCLOAK_CLIENT_SECRET=streaming-api-secret
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      asset-manager:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  nginx:
+    build:
+      context: ./local/nginx
+    ports:
+      - "8083:8083"
+    depends_on:
+      - localstack
+    restart: unless-stopped
+    networks:
+      - hobby-streamer
+
+
+volumes:
+  esdata:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  redis_data:
+  localstack_data:
+
+networks:
+  hobby-streamer:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

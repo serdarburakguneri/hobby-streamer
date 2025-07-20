@@ -1,0 +1,68 @@
+{
+  "realm": "hobby",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "asset-manager",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["*"]
+    },
+    {
+      "clientId": "storage",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": ["*"]
+    },
+    {
+      "clientId": "streaming-api",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "streaming-api-secret",
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "redirectUris": ["*"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "admin" },
+      { "name": "user" },
+      { "name": "service" }
+    ]
+  },
+  "users": [
+    {
+      "username": "user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "service-account-streaming-api",
+      "enabled": true,
+      "serviceAccountClientId": "streaming-api",
+      "realmRoles": ["service"]
+    }
+  ]
+} 
