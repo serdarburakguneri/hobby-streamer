@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import Hls from 'hls.js';
 import * as dashjs from 'dashjs';
+import { API_CONFIG } from '../../config/api';
 
 interface VideoPreviewProps {
   video: any;
@@ -12,6 +13,19 @@ interface VideoPreviewProps {
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+const convertS3UrlToHttp = (url: string): string => {
+  if (!url) return url;
+  
+  if (url.startsWith('s3://')) {
+    const s3Path = url.replace('s3://', '');
+    const [bucket, ...keyParts] = s3Path.split('/');
+    const key = keyParts.join('/');
+    return `${API_CONFIG.CDN_BASE_URL}/${key}`;
+  }
+  
+  return url;
+};
 
 export default function VideoPreview({ video, visible, onClose }: VideoPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -22,11 +36,11 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
   const dashRef = useRef<dashjs.MediaPlayerClass | null>(null);
 
   const getVideoUrl = () => {
-      if (video.streamInfo?.url) {
-    return video.streamInfo.url;
+    if (video.streamInfo?.url) {
+      return video.streamInfo.url;
     }
     if (video.storageLocation?.url) {
-      return video.storageLocation.url;
+      return convertS3UrlToHttp(video.storageLocation.url);
     }
     return null;
   };

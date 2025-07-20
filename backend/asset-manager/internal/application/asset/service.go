@@ -2,10 +2,11 @@ package asset
 
 import (
 	"context"
-	"time"
-
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
+	"time"
 
 	domainasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
@@ -918,7 +919,9 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 	if metadata.Success {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
 		if metadata.URL != "" {
-			streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, nil, nil)
+			cdnURL := s.convertS3URLToCDN(metadata.URL)
+			cdnPrefix := "http://localhost:8083/cdn"
+			streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, &cdnPrefix, &cdnURL)
 			if err == nil {
 				video.SetStreamInfo(streamInfo)
 			}
@@ -948,6 +951,22 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 	}
 	log.Info("Video transcoding updated successfully", "asset_id", assetID, "video_id", videoID, "format", format, "success", metadata.Success)
 	return nil
+}
+
+func (s *ApplicationService) convertS3URLToCDN(s3URL string) string {
+	if !strings.HasPrefix(s3URL, "s3://") {
+		return s3URL
+	}
+
+	s3Path := strings.TrimPrefix(s3URL, "s3://")
+	parts := strings.SplitN(s3Path, "/", 2)
+	if len(parts) != 2 {
+		return s3URL
+	}
+
+	key := parts[1]
+
+	return fmt.Sprintf("http://localhost:8083/cdn/%s", key)
 }
 
 func (s *ApplicationService) GetAssetMetrics(ctx context.Context, assetID string) (*domainasset.AssetMetrics, error) {

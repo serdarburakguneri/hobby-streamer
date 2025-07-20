@@ -98,7 +98,7 @@ func (p *EventPublisher) PublishVideoAdded(ctx context.Context, a *domainasset.A
 			p.logger.WithError(err).Error("Failed to trigger analyze job", "asset_id", a.ID().Value(), "video_id", video.ID())
 		}
 	} else if video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatHLS) || video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatDASH) {
-		if err := p.triggerTranscodeJob(ctx, a.ID().Value(), video.ID(), video.StorageLocation(), string(video.Format())); err != nil {
+		if err := p.triggerTranscodeJob(ctx, a, video.ID(), video.StorageLocation(), string(video.Format())); err != nil {
 			p.logger.WithError(err).Error("Failed to trigger transcode job", "asset_id", a.ID().Value(), "video_id", video.ID(), "format", video.Format())
 		}
 	}
@@ -249,20 +249,31 @@ func (p *EventPublisher) triggerAnalyzeJob(ctx context.Context, assetID, videoID
 	return nil
 }
 
-func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, assetID, videoID string, storageLocation domainasset.S3Object, format string) error {
+func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domainasset.Asset, videoID string, storageLocation domainasset.S3Object, format string) error {
 	if p.jobProducer == nil {
-		p.logger.Warn("Job producer not configured, skipping transcode job", "asset_id", assetID, "video_id", videoID)
+		p.logger.Warn("Job producer not configured, skipping transcode job", "asset_id", asset.ID().Value(), "video_id", videoID)
 		return nil
 	}
 
-	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket(), storageLocation.Key())
+	var input string
+	if format == "hls" || format == "dash" {
+		rawVideo := p.findRawVideo(asset)
+		if rawVideo == nil {
+			p.logger.Error("No raw video found for transcode job", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format)
+			return fmt.Errorf("no raw video found for transcode job")
+		}
+		input = fmt.Sprintf("s3://%s/%s", rawVideo.StorageLocation().Bucket(), rawVideo.StorageLocation().Key())
+	} else {
+		input = fmt.Sprintf("s3://%s/%s", storageLocation.Bucket(), storageLocation.Key())
+	}
+
 	outputBucket := "content-east"
-	outputKey := fmt.Sprintf("%s/%s/%s/playlist.%s", assetID, videoID, format, p.getOutputExtension(format))
+	outputKey := fmt.Sprintf("%s/%s/%s/playlist.%s", asset.ID().Value(), videoID, format, p.getOutputExtension(format))
 
 	payload := messages.JobPayload{
 		JobType:      "transcode",
 		Input:        input,
-		AssetID:      assetID,
+		AssetID:      asset.ID().Value(),
 		VideoID:      videoID,
 		Format:       format,
 		OutputBucket: outputBucket,
@@ -274,7 +285,16 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, assetID, video
 		return fmt.Errorf("failed to send transcode job: %w", err)
 	}
 
-	p.logger.Info("Transcode job triggered successfully", "asset_id", assetID, "video_id", videoID, "format", format, "input", input, "output", fmt.Sprintf("s3://%s/%s", outputBucket, outputKey))
+	p.logger.Info("Transcode job triggered successfully", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format, "input", input, "output", fmt.Sprintf("s3://%s/%s", outputBucket, outputKey))
+	return nil
+}
+
+func (p *EventPublisher) findRawVideo(asset *domainasset.Asset) *domainasset.Video {
+	for _, video := range asset.Videos() {
+		if video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatRaw) {
+			return video
+		}
+	}
 	return nil
 }
 
