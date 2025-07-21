@@ -179,6 +179,23 @@ func (r *mutationResolver) AddVideo(ctx context.Context, input AddVideoInput) (*
 	return domainVideoToGraphQL(video), nil
 }
 
+// DeleteVideo is the resolver for the deleteVideo field.
+func (r *mutationResolver) DeleteVideo(ctx context.Context, assetID string, videoID string) (*Asset, error) {
+	cmd := appasset.RemoveVideoCommand{
+		AssetID: assetID,
+		VideoID: videoID,
+	}
+	err := r.assetAppService.RemoveVideo(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := r.assetAppService.GetAsset(ctx, appasset.GetAssetQuery{ID: assetID})
+	if err != nil {
+		return nil, err
+	}
+	return domainAssetToGraphQL(asset), nil
+}
+
 // CreateBucket is the resolver for the createBucket field.
 func (r *mutationResolver) CreateBucket(ctx context.Context, input CreateBucketInput) (*Bucket, error) {
 	cmd := appbucket.CreateBucketCommand{

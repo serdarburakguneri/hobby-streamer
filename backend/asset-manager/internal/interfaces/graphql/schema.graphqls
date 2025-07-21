@@ -15,6 +15,7 @@ type Mutation {
   patchAsset(id: ID!, patches: [JSONPatch!]!): Asset!
   deleteAsset(id: ID!): Boolean!
   addVideo(input: AddVideoInput!): Video!
+  deleteVideo(assetId: ID!, videoId: ID!): Asset!
   createBucket(input: CreateBucketInput!): Bucket!
   updateBucket(input: UpdateBucketInput!): Bucket!
   deleteBucket(input: DeleteBucketInput!): Boolean!

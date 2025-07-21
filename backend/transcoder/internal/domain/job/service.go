@@ -84,7 +84,7 @@ func (s *JobDomainService) TranscodeVideo(ctx context.Context, job *Job) (*Trans
 	defer os.Remove(localPath)
 
 	outputDir := "/tmp/transcode/" + job.ID()
-	if err := os.MkdirAll(outputDir, 0750); err != nil { // nolint:gosec // Temporary directory with restricted permissions
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		return nil, errors.NewInternalError("failed to create output directory", err)
 	}
 	defer os.RemoveAll(outputDir)
@@ -104,11 +104,24 @@ func (s *JobDomainService) TranscodeVideo(ctx context.Context, job *Job) (*Trans
 	if transcodeErr != nil {
 		return nil, errors.NewInternalError("transcoding failed", transcodeErr)
 	}
-
-	outputURL, uploadErr := s.uploadToS3(ctx, outputPath, job.Output())
-	if uploadErr != nil {
-		return nil, errors.NewExternalError("failed to upload to S3", uploadErr)
+	
+	if !strings.HasPrefix(job.Output(), "s3://") {
+		return nil, errors.NewValidationError("output must be an S3 path", nil)
 	}
+	parts := strings.SplitN(job.Output()[5:], "/", 2)
+	if len(parts) != 2 {
+		return nil, errors.NewValidationError(fmt.Sprintf("invalid S3 path: %s", job.Output()), nil)
+	}
+	bucket := parts[0]
+	manifestKey := parts[1]
+	dirKey := filepath.Dir(manifestKey)
+	
+	uploadErr := s.s3Client.UploadDirectory(ctx, outputDir, bucket, dirKey)
+	if uploadErr != nil {
+		return nil, errors.NewExternalError("failed to upload directory to S3", uploadErr)
+	}
+
+	outputURL := job.Output()
 
 	metadata, metadataErr := s.extractTranscodeMetadata(ctx, outputPath)
 	if metadataErr != nil {
