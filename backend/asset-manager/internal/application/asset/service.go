@@ -918,12 +918,26 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 
 	if metadata.Success {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
-		if metadata.URL != "" {
-			cdnURL := s.convertS3URLToCDN(metadata.URL)
-			cdnPrefix := "http://localhost:8083/cdn"
-			streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, &cdnPrefix, &cdnURL)
-			if err == nil {
-				video.SetStreamInfo(streamInfo)
+
+		if format == "hls" || format == "dash" {
+			if metadata.Bucket != "" && metadata.Key != "" {
+				manifestS3Url := "s3://" + metadata.Bucket + "/" + metadata.Key
+				newS3Obj, err := domainasset.NewS3Object(metadata.Bucket, metadata.Key, manifestS3Url)
+				if err == nil {
+					video.SetStorageLocation(*newS3Obj)
+				}
+			}
+			if metadata.URL != "" {
+				cdnURL := s.convertS3URLToCDN(metadata.URL)
+				cdnPrefix := "http://localhost:8083/cdn"
+				log.Info("Creating StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL, "cdn_prefix", cdnPrefix)
+				streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, &cdnPrefix, &cdnURL)
+				if err != nil {
+					log.WithError(err).Error("Failed to create StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL)
+				} else {
+					log.Info("Successfully created StreamInfo", "stream_info", streamInfo)
+					video.SetStreamInfo(streamInfo)
+				}
 			}
 		}
 	} else {

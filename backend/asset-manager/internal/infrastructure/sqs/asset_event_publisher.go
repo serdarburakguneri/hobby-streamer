@@ -268,7 +268,12 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 	}
 
 	outputBucket := "content-east"
-	outputKey := fmt.Sprintf("%s/%s/%s/playlist.%s", asset.ID().Value(), videoID, format, p.getOutputExtension(format))
+	var outputKey string
+	if format == "dash" {
+		outputKey = fmt.Sprintf("%s/%s/%s/manifest.mpd", asset.ID().Value(), videoID, format)
+	} else {
+		outputKey = fmt.Sprintf("%s/%s/%s/playlist.%s", asset.ID().Value(), videoID, format, p.getOutputExtension(format))
+	}
 
 	payload := messages.JobPayload{
 		JobType:      "transcode",

@@ -238,6 +238,11 @@ func (v *Video) SetType(videoType VideoType) {
 	v.updatedAt = time.Now().UTC()
 }
 
+func (v *Video) SetStorageLocation(s3obj S3Object) {
+	v.storageLocation = s3obj
+	v.updatedAt = time.Now().UTC()
+}
+
 func (v *Video) Quality() VideoQuality {
 	if v.width >= 3840 {
 		return VideoQuality(constants.VideoQuality4K)

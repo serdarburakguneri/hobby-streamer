@@ -104,7 +104,7 @@ func (s *JobDomainService) TranscodeVideo(ctx context.Context, job *Job) (*Trans
 	if transcodeErr != nil {
 		return nil, errors.NewInternalError("transcoding failed", transcodeErr)
 	}
-	
+
 	if !strings.HasPrefix(job.Output(), "s3://") {
 		return nil, errors.NewValidationError("output must be an S3 path", nil)
 	}
@@ -115,13 +115,13 @@ func (s *JobDomainService) TranscodeVideo(ctx context.Context, job *Job) (*Trans
 	bucket := parts[0]
 	manifestKey := parts[1]
 	dirKey := filepath.Dir(manifestKey)
-	
+
 	uploadErr := s.s3Client.UploadDirectory(ctx, outputDir, bucket, dirKey)
 	if uploadErr != nil {
 		return nil, errors.NewExternalError("failed to upload directory to S3", uploadErr)
 	}
 
-	outputURL := job.Output()
+	outputURL := "s3://" + bucket + "/" + manifestKey
 
 	metadata, metadataErr := s.extractTranscodeMetadata(ctx, outputPath)
 	if metadataErr != nil {
@@ -299,7 +299,7 @@ func (s *JobDomainService) transcodeToHLS(ctx context.Context, inputPath, output
 }
 
 func (s *JobDomainService) transcodeToDASH(ctx context.Context, inputPath, outputDir string) (string, error) {
-	outputPath := filepath.Join(outputDir, "manifest.mpd")
+	outputPath := filepath.Join(outputDir, "playlist.mpd")
 
 	retryFunc := func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ffmpeg", // nolint:gosec // ffmpeg is a trusted binary with controlled arguments
@@ -335,17 +335,10 @@ func (s *JobDomainService) extractTranscodeMetadata(ctx context.Context, filePat
 		ContentType: "application/x-mpegURL",
 	}
 
-	if fileInfo.IsDir() {
-		manifestPath := filePath
-		if strings.HasSuffix(filePath, "/") {
-			manifestPath = filePath[:len(filePath)-1]
-		}
-
-		if strings.Contains(manifestPath, "playlist.m3u8") {
-			metadata.ContentType = "application/x-mpegURL"
-		} else if strings.Contains(manifestPath, "manifest.mpd") {
-			metadata.ContentType = "application/dash+xml"
-		}
+	if strings.Contains(filePath, "playlist.m3u8") {
+		metadata.ContentType = "application/x-mpegURL"
+	} else if strings.Contains(filePath, "playlist.mpd") {
+		metadata.ContentType = "application/dash+xml"
 	}
 
 	return metadata, nil
