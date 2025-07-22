@@ -9,6 +9,7 @@ import (
 	domainasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -213,12 +214,12 @@ func (p *EventPublisher) publishEvent(ctx context.Context, event map[string]inte
 	payload, err := json.Marshal(event)
 	if err != nil {
 		p.logger.WithError(err).Error("Failed to marshal event", "event", event)
-		return err
+		return pkgerrors.NewInternalError("failed to marshal event", err)
 	}
 
 	if err := p.producer.SendMessage(ctx, "domain_event", string(payload)); err != nil {
 		p.logger.WithError(err).Error("Failed to publish event", "event", event)
-		return err
+		return pkgerrors.NewInternalError("failed to publish event", err)
 	}
 
 	p.logger.Debug("Event published successfully", "event", event)
@@ -242,7 +243,7 @@ func (p *EventPublisher) triggerAnalyzeJob(ctx context.Context, assetID, videoID
 
 	err := p.jobProducer.SendMessage(ctx, messages.MessageTypeJob, payload)
 	if err != nil {
-		return fmt.Errorf("failed to send analyze job: %w", err)
+		return pkgerrors.NewInternalError("failed to send analyze job", err)
 	}
 
 	p.logger.Info("Analyze job triggered successfully", "asset_id", assetID, "video_id", videoID, "input", input)
@@ -260,7 +261,7 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 		rawVideo := p.findRawVideo(asset)
 		if rawVideo == nil {
 			p.logger.Error("No raw video found for transcode job", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format)
-			return fmt.Errorf("no raw video found for transcode job")
+			return pkgerrors.NewInternalError("no raw video found for transcode job", nil)
 		}
 		input = fmt.Sprintf("s3://%s/%s", rawVideo.StorageLocation().Bucket(), rawVideo.StorageLocation().Key())
 	} else {
@@ -287,7 +288,7 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 
 	err := p.jobProducer.SendMessage(ctx, messages.MessageTypeJob, payload)
 	if err != nil {
-		return fmt.Errorf("failed to send transcode job: %w", err)
+		return pkgerrors.NewInternalError("failed to send transcode job", err)
 	}
 
 	p.logger.Info("Transcode job triggered successfully", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format, "input", input, "output", fmt.Sprintf("s3://%s/%s", outputBucket, outputKey))

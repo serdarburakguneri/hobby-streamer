@@ -1,11 +1,12 @@
 package asset
 
 import (
-	"errors"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type ImageType string
@@ -365,19 +366,19 @@ func isValidSlug(slug string) bool {
 }
 
 var (
-	ErrInvalidImageType            = errors.New("invalid image type")
-	ErrInvalidS3Bucket             = errors.New("invalid S3 bucket")
-	ErrInvalidS3Key                = errors.New("invalid S3 key")
-	ErrInvalidS3URL                = errors.New("invalid S3 URL")
-	ErrInvalidStreamInfoURL        = errors.New("invalid stream info URL")
-	ErrInvalidPublishDates         = errors.New("invalid publish dates")
-	ErrTooManyRegions              = errors.New("too many regions")
-	ErrInvalidRegion               = errors.New("invalid region")
-	ErrInvalidAgeRating            = errors.New("invalid age rating")
-	ErrInvalidTranscodingJobID     = errors.New("invalid transcoding job ID")
-	ErrInvalidTranscodingProgress  = errors.New("invalid transcoding progress")
-	ErrInvalidTranscodingOutputURL = errors.New("invalid transcoding output URL")
-	ErrInvalidCreditRole           = errors.New("invalid credit role")
-	ErrInvalidCreditName           = errors.New("invalid credit name")
-	ErrInvalidCreditPersonID       = errors.New("invalid credit person ID")
+	ErrInvalidImageType            = pkgerrors.NewValidationError("invalid image type", nil)
+	ErrInvalidS3Bucket             = pkgerrors.NewValidationError("invalid S3 bucket", nil)
+	ErrInvalidS3Key                = pkgerrors.NewValidationError("invalid S3 key", nil)
+	ErrInvalidS3URL                = pkgerrors.NewValidationError("invalid S3 URL", nil)
+	ErrInvalidStreamInfoURL        = pkgerrors.NewValidationError("invalid stream info URL", nil)
+	ErrInvalidPublishDates         = pkgerrors.NewValidationError("invalid publish dates", nil)
+	ErrTooManyRegions              = pkgerrors.NewValidationError("too many regions", nil)
+	ErrInvalidRegion               = pkgerrors.NewValidationError("invalid region", nil)
+	ErrInvalidAgeRating            = pkgerrors.NewValidationError("invalid age rating", nil)
+	ErrInvalidTranscodingJobID     = pkgerrors.NewValidationError("invalid transcoding job ID", nil)
+	ErrInvalidTranscodingProgress  = pkgerrors.NewValidationError("invalid transcoding progress", nil)
+	ErrInvalidTranscodingOutputURL = pkgerrors.NewValidationError("invalid transcoding output URL", nil)
+	ErrInvalidCreditRole           = pkgerrors.NewValidationError("invalid credit role", nil)
+	ErrInvalidCreditName           = pkgerrors.NewValidationError("invalid credit name", nil)
+	ErrInvalidCreditPersonID       = pkgerrors.NewValidationError("invalid credit person ID", nil)
 )

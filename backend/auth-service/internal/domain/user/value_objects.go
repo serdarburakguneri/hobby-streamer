@@ -1,10 +1,11 @@
 package user
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type UserID struct {
@@ -175,8 +176,8 @@ func (u UpdatedAt) Value() time.Time {
 }
 
 var (
-	ErrInvalidUserID   = errors.New("invalid user ID")
-	ErrInvalidUsername = errors.New("invalid username")
-	ErrInvalidEmail    = errors.New("invalid email")
-	ErrInvalidRole     = errors.New("invalid role")
+	ErrInvalidUserID   = pkgerrors.NewValidationError("invalid user ID", nil)
+	ErrInvalidUsername = pkgerrors.NewValidationError("invalid username", nil)
+	ErrInvalidEmail    = pkgerrors.NewValidationError("invalid email", nil)
+	ErrInvalidRole     = pkgerrors.NewValidationError("invalid role", nil)
 )

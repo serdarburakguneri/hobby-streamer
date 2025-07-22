@@ -1,8 +1,9 @@
 package token
 
 import (
-	"errors"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type Token struct {
@@ -95,5 +96,5 @@ func (t *Token) Revoke() {
 }
 
 var (
-	ErrNoRefreshToken = errors.New("no refresh token available")
+	ErrNoRefreshToken = pkgerrors.NewValidationError("no refresh token available", nil)
 )

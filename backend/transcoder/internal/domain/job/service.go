@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
@@ -29,23 +29,23 @@ func NewJobDomainService() *JobDomainService {
 
 func (s *JobDomainService) ValidateJob(job *Job) error {
 	if job.AssetID() == "" {
-		return errors.NewValidationError("asset ID is required", nil)
+		return pkgerrors.NewValidationError("asset ID is required", nil)
 	}
 
 	if job.VideoID() == "" {
-		return errors.NewValidationError("video ID is required", nil)
+		return pkgerrors.NewValidationError("video ID is required", nil)
 	}
 
 	if job.Input() == "" {
-		return errors.NewValidationError("input is required", nil)
+		return pkgerrors.NewValidationError("input is required", nil)
 	}
 
 	if job.Type() == JobTypeTranscode && job.Output() == "" {
-		return errors.NewValidationError("output is required for transcode jobs", nil)
+		return pkgerrors.NewValidationError("output is required for transcode jobs", nil)
 	}
 
 	if job.Type() == JobTypeTranscode && job.Format() == "" {
-		return errors.NewValidationError("format is required for transcode jobs", nil)
+		return pkgerrors.NewValidationError("format is required for transcode jobs", nil)
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (s *JobDomainService) ValidateJob(job *Job) error {
 func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{}, error) {
 	localPath, err := s.downloadFromS3(ctx, job.Input())
 	if err != nil {
-		return nil, errors.NewExternalError("failed to download input file", err)
+		return nil, pkgerrors.NewExternalError("failed to download input file", err)
 	}
 	defer os.Remove(localPath)
 
@@ -62,7 +62,7 @@ func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{
 	if job.Type() == JobTypeTranscode {
 		outputDir = "/tmp/transcode/" + job.ID()
 		if err := os.MkdirAll(outputDir, 0750); err != nil {
-			return nil, errors.NewInternalError("failed to create output directory", err)
+			return nil, pkgerrors.NewInternalError("failed to create output directory", err)
 		}
 		defer os.RemoveAll(outputDir)
 	}
@@ -75,7 +75,7 @@ func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{
 	}
 	strategy := s.transcoderRegistry.Get(strategyKey)
 	if strategy == nil {
-		return nil, errors.NewValidationError("unsupported job type/format: "+strategyKey, nil)
+		return nil, pkgerrors.NewValidationError("unsupported job type/format: "+strategyKey, nil)
 	}
 	outputPath, stratErr := strategy.Transcode(ctx, job, localPath, outputDir)
 	if stratErr != nil {
@@ -84,11 +84,11 @@ func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{
 
 	if job.Type() == JobTypeTranscode {
 		if !strings.HasPrefix(job.Output(), "s3://") {
-			return nil, errors.NewValidationError("output must be an S3 path", nil)
+			return nil, pkgerrors.NewValidationError("output must be an S3 path", nil)
 		}
 		parts := strings.SplitN(job.Output()[5:], "/", 2)
 		if len(parts) != 2 {
-			return nil, errors.NewValidationError("invalid S3 path: "+job.Output(), nil)
+			return nil, pkgerrors.NewValidationError("invalid S3 path: "+job.Output(), nil)
 		}
 		bucket := parts[0]
 		manifestKey := parts[1]
@@ -96,13 +96,13 @@ func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{
 
 		uploadErr := s.s3Client.UploadDirectory(ctx, outputDir, bucket, dirKey)
 		if uploadErr != nil {
-			return nil, errors.NewExternalError("failed to upload directory to S3", uploadErr)
+			return nil, pkgerrors.NewExternalError("failed to upload directory to S3", uploadErr)
 		}
 
 		outputURL := "s3://" + bucket + "/" + manifestKey
 		metadata, metadataErr := strategy.ExtractMetadata(ctx, outputPath)
 		if metadataErr != nil {
-			return nil, errors.NewInternalError("failed to extract transcode metadata", metadataErr)
+			return nil, pkgerrors.NewInternalError("failed to extract transcode metadata", metadataErr)
 		}
 		if metadata != nil {
 			metadata.OutputURL = outputURL
@@ -126,10 +126,10 @@ func (s *JobDomainService) downloadFromS3(ctx context.Context, input string) (st
 			return err
 		}
 
-		retryErr := errors.RetryWithBackoff(ctx, retryFunc, 3)
+		retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 3)
 		if retryErr != nil {
 			s.logger.WithError(retryErr).Error("Failed to download from S3 after retries", "input", input)
-			return "", errors.NewExternalError("failed to download from S3", retryErr)
+			return "", pkgerrors.NewExternalError("failed to download from S3", retryErr)
 		}
 
 		return localPath, nil
@@ -144,7 +144,7 @@ func (s *JobDomainService) uploadToS3(ctx context.Context, localPath, s3Path str
 
 	parts := strings.SplitN(s3Path[5:], "/", 2)
 	if len(parts) != 2 {
-		return "", errors.NewValidationError(fmt.Sprintf("invalid S3 path: %s", s3Path), nil)
+		return "", pkgerrors.NewValidationError(fmt.Sprintf("invalid S3 path: %s", s3Path), nil)
 	}
 
 	bucket := parts[0]
@@ -154,10 +154,10 @@ func (s *JobDomainService) uploadToS3(ctx context.Context, localPath, s3Path str
 		return s.s3Client.Upload(ctx, localPath, bucket, key)
 	}
 
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 3)
+	retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 3)
 	if retryErr != nil {
 		s.logger.WithError(retryErr).Error("Failed to upload to S3 after retries", "local_path", localPath, "bucket", bucket, "key", key)
-		return "", errors.NewExternalError("failed to upload to S3", retryErr)
+		return "", pkgerrors.NewExternalError("failed to upload to S3", retryErr)
 	}
 
 	s.logger.Info("Successfully uploaded to S3", "local_path", localPath, "bucket", bucket, "key", key)

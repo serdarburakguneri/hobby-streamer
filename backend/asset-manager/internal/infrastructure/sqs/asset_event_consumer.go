@@ -3,8 +3,8 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
@@ -40,12 +40,12 @@ func (c *EventConsumer) RegisterCompletionQueue(queueURL string) {
 
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("failed to marshal payload: %w", err)
+			return pkgerrors.NewInternalError("failed to marshal payload", err)
 		}
 
 		var jobCompletionPayload messages.JobCompletionPayload
 		if err := json.Unmarshal(payloadBytes, &jobCompletionPayload); err != nil {
-			return fmt.Errorf("failed to unmarshal job completion payload: %w", err)
+			return pkgerrors.NewInternalError("failed to unmarshal job completion payload", err)
 		}
 
 		switch jobCompletionPayload.JobType {

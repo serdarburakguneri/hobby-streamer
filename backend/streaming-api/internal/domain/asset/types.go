@@ -1,13 +1,13 @@
 package asset
 
 import (
-	"errors"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type S3ObjectValue struct {
@@ -357,20 +357,20 @@ func (i ImageType) Equals(other ImageType) bool {
 }
 
 var (
-	ErrInvalidS3Bucket     = errors.New("invalid S3 bucket name")
-	ErrInvalidS3Key        = errors.New("invalid S3 key")
-	ErrInvalidS3URL        = errors.New("invalid S3 URL")
-	ErrInvalidDownloadURL  = errors.New("invalid download URL")
-	ErrInvalidCDNPrefix    = errors.New("invalid CDN prefix")
-	ErrInvalidStreamURL    = errors.New("invalid stream URL")
-	ErrInvalidPublishDates = errors.New("invalid publish dates")
-	ErrTooManyRegions      = errors.New("too many regions")
-	ErrInvalidRegion       = errors.New("invalid region")
-	ErrInvalidAgeRating    = errors.New("invalid age rating")
-	ErrInvalidVideoID      = errors.New("invalid video ID")
-	ErrInvalidVideoType    = errors.New("invalid video type")
-	ErrInvalidVideoFormat  = errors.New("invalid video format")
-	ErrInvalidImageID      = errors.New("invalid image ID")
-	ErrInvalidFileName     = errors.New("invalid file name")
-	ErrInvalidImageType    = errors.New("invalid image type")
+	ErrInvalidS3Bucket     = pkgerrors.NewValidationError("invalid S3 bucket name", nil)
+	ErrInvalidS3Key        = pkgerrors.NewValidationError("invalid S3 key", nil)
+	ErrInvalidS3URL        = pkgerrors.NewValidationError("invalid S3 URL", nil)
+	ErrInvalidDownloadURL  = pkgerrors.NewValidationError("invalid download URL", nil)
+	ErrInvalidCDNPrefix    = pkgerrors.NewValidationError("invalid CDN prefix", nil)
+	ErrInvalidStreamURL    = pkgerrors.NewValidationError("invalid stream URL", nil)
+	ErrInvalidPublishDates = pkgerrors.NewValidationError("invalid publish dates", nil)
+	ErrTooManyRegions      = pkgerrors.NewValidationError("too many regions", nil)
+	ErrInvalidRegion       = pkgerrors.NewValidationError("invalid region", nil)
+	ErrInvalidAgeRating    = pkgerrors.NewValidationError("invalid age rating", nil)
+	ErrInvalidVideoID      = pkgerrors.NewValidationError("invalid video ID", nil)
+	ErrInvalidVideoType    = pkgerrors.NewValidationError("invalid video type", nil)
+	ErrInvalidVideoFormat  = pkgerrors.NewValidationError("invalid video format", nil)
+	ErrInvalidImageID      = pkgerrors.NewValidationError("invalid image ID", nil)
+	ErrInvalidFileName     = pkgerrors.NewValidationError("invalid file name", nil)
+	ErrInvalidImageType    = pkgerrors.NewValidationError("invalid image type", nil)
 )

@@ -91,17 +91,17 @@ func (s *DomainTokenValidationService) extractExpirationFromToken(tokenString st
 	}
 
 	if !parsedToken.Valid {
-		return time.Time{}, errors.New("invalid token")
+		return time.Time{}, pkgerrors.NewValidationError("invalid token", nil)
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return time.Time{}, errors.New("invalid token claims")
+		return time.Time{}, pkgerrors.NewValidationError("invalid token claims", nil)
 	}
 
 	expClaim, exists := claims["exp"]
 	if !exists {
-		return time.Time{}, errors.New("token missing expiration claim")
+		return time.Time{}, pkgerrors.NewValidationError("token missing expiration claim", nil)
 	}
 
 	var expTime time.Time
@@ -120,7 +120,7 @@ func (s *DomainTokenValidationService) extractExpirationFromToken(tokenString st
 		}
 		expTime = expInt
 	default:
-		return time.Time{}, errors.New("invalid expiration claim format")
+		return time.Time{}, pkgerrors.NewValidationError("invalid expiration claim format", nil)
 	}
 
 	return expTime, nil
@@ -136,17 +136,17 @@ func (s *DomainTokenValidationService) extractUserFromToken(tokenString string) 
 	}
 
 	if !parsedToken.Valid {
-		return nil, errors.New("invalid token")
+		return nil, pkgerrors.NewValidationError("invalid token", nil)
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("invalid token claims")
+		return nil, pkgerrors.NewValidationError("invalid token claims", nil)
 	}
 
 	userIDStr := s.getStringClaim(claims, "sub")
 	if userIDStr == "" {
-		return nil, errors.New("token missing user ID")
+		return nil, pkgerrors.NewValidationError("token missing user ID", nil)
 	}
 
 	userID, err := user.NewUserID(userIDStr)
@@ -236,11 +236,11 @@ func NewDomainPasswordPolicyService() *DomainPasswordPolicyService {
 
 func (s *DomainPasswordPolicyService) ValidatePassword(password string) error {
 	if len(password) < 8 {
-		return ErrPasswordTooShort
+		return pkgerrors.NewValidationError("password too short", nil)
 	}
 
 	if len(password) > 128 {
-		return ErrPasswordTooLong
+		return pkgerrors.NewValidationError("password too long", nil)
 	}
 
 	hasUpper := false
@@ -262,16 +262,16 @@ func (s *DomainPasswordPolicyService) ValidatePassword(password string) error {
 	}
 
 	if !hasUpper {
-		return ErrPasswordMissingUpperCase
+		return pkgerrors.NewValidationError("password missing uppercase letter", nil)
 	}
 	if !hasLower {
-		return ErrPasswordMissingLowerCase
+		return pkgerrors.NewValidationError("password missing lowercase letter", nil)
 	}
 	if !hasDigit {
-		return ErrPasswordMissingDigit
+		return pkgerrors.NewValidationError("password missing digit", nil)
 	}
 	if !hasSpecial {
-		return ErrPasswordMissingSpecial
+		return pkgerrors.NewValidationError("password missing special character", nil)
 	}
 
 	return nil

@@ -37,9 +37,18 @@ func (s *ApplicationService) CreateBucket(ctx context.Context, cmd CreateBucketC
 		return nil, domainbucket.ErrKeyAlreadyExists
 	}
 
-	bucket, err := domainbucket.NewBucket(cmd.Name, cmd.Key, cmd.Description, cmd.OwnerID, cmd.Status)
+	bucket, err := domainbucket.NewBucket(cmd.Name, cmd.Key)
 	if err != nil {
 		return nil, err
+	}
+	if cmd.Description != nil {
+		bucket.UpdateDescription(cmd.Description)
+	}
+	if cmd.OwnerID != nil {
+		bucket.SetOwnerID(cmd.OwnerID)
+	}
+	if cmd.Status != nil {
+		bucket.SetStatus(cmd.Status)
 	}
 
 	if err := s.repo.Create(ctx, bucket); err != nil {

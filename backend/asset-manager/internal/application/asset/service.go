@@ -3,7 +3,6 @@ package asset
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -291,7 +290,7 @@ func (s *ApplicationService) PatchAsset(ctx context.Context, cmd PatchAssetComma
 		log.Info("Applying patch", "patch", patch, "asset_id", assetID.Value(), "asset_status", asset.Status())
 		if err := s.applyPatch(asset, patch); err != nil {
 			log.WithError(err).Error("Failed to apply patch", "patch", patch, "asset_id", assetID.Value())
-			return nil, pkgerrors.NewValidationError("failed to apply patch", err)
+			return nil, err
 		}
 	}
 
@@ -311,7 +310,7 @@ func (s *ApplicationService) applyPatch(a *domainasset.Asset, patch JSONPatchOpe
 	case "remove":
 		return s.applyRemovePatch(a, patch)
 	default:
-		return errors.New("unsupported patch operation")
+		return pkgerrors.NewValidationError("unsupported patch operation", nil)
 	}
 }
 
@@ -330,7 +329,7 @@ func (s *ApplicationService) applyReplacePatch(a *domainasset.Asset, patch JSONP
 
 	handler, exists := patchHandlers[patch.Path]
 	if !exists {
-		return errors.New("unsupported field for replacement")
+		return pkgerrors.NewValidationError("unsupported field for replacement", nil)
 	}
 
 	return handler(a, patch.Value)
@@ -350,7 +349,7 @@ func (s *ApplicationService) applyRemovePatch(a *domainasset.Asset, patch JSONPa
 
 	handler, exists := removeHandlers[patch.Path]
 	if !exists {
-		return errors.New("unsupported field for removal")
+		return pkgerrors.NewValidationError("unsupported field for removal", nil)
 	}
 
 	return handler(a)

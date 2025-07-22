@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"errors"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type LoginRequest struct {
@@ -86,9 +86,9 @@ func (r *TokenRefreshRequest) Validate() error {
 }
 
 var (
-	ErrInvalidUsername     = errors.New("invalid username")
-	ErrInvalidPassword     = errors.New("invalid password")
-	ErrInvalidClientID     = errors.New("invalid client ID")
-	ErrInvalidToken        = errors.New("invalid token")
-	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrInvalidUsername     = pkgerrors.NewValidationError("invalid username", nil)
+	ErrInvalidPassword     = pkgerrors.NewValidationError("invalid password", nil)
+	ErrInvalidClientID     = pkgerrors.NewValidationError("invalid client ID", nil)
+	ErrInvalidToken        = pkgerrors.NewValidationError("invalid token", nil)
+	ErrInvalidRefreshToken = pkgerrors.NewValidationError("invalid refresh token", nil)
 )

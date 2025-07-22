@@ -8,6 +8,7 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -32,7 +33,7 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 		b, err := json.Marshal(bucket.Metadata())
 		if err != nil {
 			log.Error(fmt.Sprintf("Failed to marshal metadata: %v", err))
-			return fmt.Errorf("failed to marshal metadata: %w", err)
+			return pkgerrors.NewInternalError("failed to marshal metadata", err)
 		}
 		metadataJSON = string(b)
 	}
@@ -68,15 +69,15 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.Error(fmt.Sprintf("Create error: %v", err))
-		return fmt.Errorf("neo4j create error: %w", err)
+		return pkgerrors.NewInternalError("neo4j create error", err)
 	}
 	if !result.Next() {
 		if result.Err() != nil {
 			log.Error(fmt.Sprintf("Create result error: %v", result.Err()))
-			return fmt.Errorf("neo4j create result error: %w", result.Err())
+			return pkgerrors.NewInternalError("neo4j create result error", result.Err())
 		}
 		log.Warn("Failed to create bucket: no result returned")
-		return fmt.Errorf("failed to create bucket: no result returned")
+		return pkgerrors.NewInternalError("failed to create bucket: no result returned", nil)
 	}
 	log.Info(fmt.Sprintf("Bucket created successfully: %v", params["id"]))
 	return nil
@@ -94,12 +95,12 @@ func (r *BucketRepository) GetByID(ctx context.Context, id string) (*domainbucke
 
 	result, err := session.Run(query, map[string]interface{}{"id": id})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bucket: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to get bucket", err)
 	}
 
 	record, err := result.Single()
 	if err != nil {
-		return nil, fmt.Errorf("bucket not found")
+		return nil, pkgerrors.NewNotFoundError("bucket not found", nil)
 	}
 
 	return r.recordToBucket(record)
@@ -117,12 +118,12 @@ func (r *BucketRepository) GetBySlug(ctx context.Context, slug string) (*domainb
 
 	result, err := session.Run(query, map[string]interface{}{"slug": slug})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bucket by slug: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to get bucket by slug", err)
 	}
 
 	record, err := result.Single()
 	if err != nil {
-		return nil, fmt.Errorf("bucket not found")
+		return nil, pkgerrors.NewNotFoundError("bucket not found", nil)
 	}
 
 	return r.recordToBucket(record)
@@ -188,7 +189,7 @@ func (r *BucketRepository) List(ctx context.Context, limit *int, lastKey map[str
 
 	result, err := session.Run(query, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list buckets: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to list buckets", err)
 	}
 
 	var buckets []*domainbucket.Bucket
@@ -228,7 +229,7 @@ func (r *BucketRepository) Search(ctx context.Context, query string, limit *int,
 
 	result, err := session.Run(cypherQuery, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search buckets: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to search buckets", err)
 	}
 
 	var buckets []*domainbucket.Bucket
@@ -266,7 +267,7 @@ func (r *BucketRepository) GetByOwnerID(ctx context.Context, ownerID string, lim
 
 	result, err := session.Run(query, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get buckets by owner: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to get buckets by owner", err)
 	}
 
 	var buckets []*domainbucket.Bucket
@@ -308,15 +309,15 @@ func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetI
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.Error(fmt.Sprintf("AddAsset error: %v", err))
-		return err
+		return pkgerrors.NewInternalError("add asset error", err)
 	}
 	if !result.Next() {
 		if result.Err() != nil {
 			log.Error(fmt.Sprintf("AddAsset result error: %v", result.Err()))
-			return result.Err()
+			return pkgerrors.NewInternalError("add asset result error", result.Err())
 		}
 		log.Warn("AddAsset: no result returned")
-		return fmt.Errorf("add asset: no result returned")
+		return pkgerrors.NewInternalError("add asset: no result returned", nil)
 	}
 	log.Info("AddAsset: relationship created successfully")
 	return nil
@@ -367,7 +368,7 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, lim
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.Error(fmt.Sprintf("GetAssetIDs error: %v", err))
-		return nil, fmt.Errorf("failed to get bucket asset IDs: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to get bucket asset IDs", err)
 	}
 
 	var assetIDs []string
@@ -396,7 +397,7 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key string) (*domainbuc
 
 	result, err := session.Run(query, map[string]interface{}{"key": key})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bucket by key: %w", err)
+		return nil, pkgerrors.NewInternalError("failed to get bucket by key", err)
 	}
 
 	record, err := result.Single()
@@ -410,7 +411,7 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key string) (*domainbuc
 func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.Bucket, error) {
 	bucketNode, ok := record.Get("b")
 	if !ok {
-		return nil, fmt.Errorf("bucket node not found in record")
+		return nil, pkgerrors.NewInternalError("bucket node not found in record", nil)
 	}
 
 	bucketProps := bucketNode.(neo4j.Node).Props
@@ -434,7 +435,7 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 	if metadataInterface, exists := bucketProps["metadata"]; exists {
 		if metadataMap, ok := metadataInterface.(string); ok {
 			if err := json.Unmarshal([]byte(metadataMap), &metadata); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+				return nil, pkgerrors.NewInternalError("failed to unmarshal metadata", err)
 			}
 		}
 	}
@@ -468,7 +469,7 @@ func (r *BucketRepository) HasAsset(ctx context.Context, bucketID string, assetI
 
 	result, err := session.Run(query, params)
 	if err != nil {
-		return false, err
+		return false, pkgerrors.NewInternalError("failed to check if asset is in bucket", err)
 	}
 
 	if result.Next() {
@@ -495,7 +496,7 @@ func (r *BucketRepository) AssetCount(ctx context.Context, bucketID string) (int
 
 	result, err := session.Run(query, params)
 	if err != nil {
-		return 0, err
+		return 0, pkgerrors.NewInternalError("failed to get asset count for bucket", err)
 	}
 
 	if result.Next() {

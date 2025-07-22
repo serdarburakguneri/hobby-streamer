@@ -1,8 +1,10 @@
 package bucket
 
 import (
-	"errors"
+	"regexp"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type Bucket struct {
@@ -18,13 +20,13 @@ type Bucket struct {
 	updatedAt   time.Time
 }
 
-func NewBucket(name string, key string, description *string, ownerID *string, status *string) (*Bucket, error) {
+func NewBucket(name, key string) (*Bucket, error) {
 	if name == "" {
-		return nil, errors.New("bucket name cannot be empty")
+		return nil, pkgerrors.NewValidationError("bucket name cannot be empty", nil)
 	}
 
 	if !isValidKey(key) {
-		return nil, errors.New("invalid bucket key format")
+		return nil, pkgerrors.NewValidationError("invalid bucket key format", nil)
 	}
 
 	now := time.Now().UTC()
@@ -32,10 +34,10 @@ func NewBucket(name string, key string, description *string, ownerID *string, st
 		id:          generateID(),
 		key:         key,
 		name:        name,
-		description: description,
+		description: nil,
 		bucketType:  nil,
-		status:      status,
-		ownerID:     ownerID,
+		status:      nil,
+		ownerID:     nil,
 		metadata:    make(map[string]interface{}),
 		createdAt:   now,
 		updatedAt:   now,
@@ -109,7 +111,7 @@ func (b *Bucket) UpdatedAt() time.Time {
 
 func (b *Bucket) UpdateName(name string) error {
 	if name == "" {
-		return errors.New("bucket name cannot be empty")
+		return pkgerrors.NewValidationError("bucket name cannot be empty", nil)
 	}
 	b.name = name
 	b.updatedAt = time.Now().UTC()
@@ -134,4 +136,32 @@ func (b *Bucket) SetMetadata(metadata map[string]interface{}) {
 func (b *Bucket) SetStatus(status *string) {
 	b.status = status
 	b.updatedAt = time.Now().UTC()
+}
+
+func (b *Bucket) ValidateName() error {
+	if b.name == "" {
+		return pkgerrors.NewValidationError("bucket name cannot be empty", nil)
+	}
+	return nil
+}
+
+func isValidKey(key string) bool {
+	if len(key) < 3 || len(key) > 50 {
+		return false
+	}
+	matched, _ := regexp.MatchString(`^[a-z0-9-]+$`, key)
+	return matched
+}
+
+func generateID() string {
+	return time.Now().Format("20060102150405") + "-" + randomString(8)
+}
+
+func randomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+	}
+	return string(b)
 }

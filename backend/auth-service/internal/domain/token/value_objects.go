@@ -1,9 +1,10 @@
 package token
 
 import (
-	"errors"
 	"regexp"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type AccessToken struct {
@@ -134,8 +135,8 @@ func (e ExpiresAt) TimeUntilExpiry() time.Duration {
 }
 
 var (
-	ErrInvalidAccessToken  = errors.New("invalid access token")
-	ErrInvalidTokenType    = errors.New("invalid token type")
-	ErrInvalidExpiresIn    = errors.New("invalid expires in value")
-	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrInvalidAccessToken  = pkgerrors.NewValidationError("invalid access token", nil)
+	ErrInvalidTokenType    = pkgerrors.NewValidationError("invalid token type", nil)
+	ErrInvalidExpiresIn    = pkgerrors.NewValidationError("invalid expires in value", nil)
+	ErrInvalidRefreshToken = pkgerrors.NewValidationError("invalid refresh token", nil)
 )

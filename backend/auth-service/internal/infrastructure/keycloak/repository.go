@@ -62,7 +62,7 @@ func (r *Repository) Login(ctx context.Context, req *appauth.LoginRequest) (*tok
 	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", r.keycloakURL, r.realm)
 	resp, err := r.httpClient.PostForm(tokenURL, data)
 	if err != nil {
-		return nil, pkgerrors.WithContext(fmt.Errorf("failed to make token request: %w", err), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("failed to make token request", err), map[string]interface{}{
 			"operation": "login",
 			"username":  req.Username(),
 			"client_id": req.ClientID(),
@@ -71,7 +71,7 @@ func (r *Repository) Login(ctx context.Context, req *appauth.LoginRequest) (*tok
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, pkgerrors.WithContext(fmt.Errorf("token request failed with status: %d", resp.StatusCode), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("token request failed with status", fmt.Errorf("status: %d", resp.StatusCode)), map[string]interface{}{
 			"operation":   "login",
 			"status_code": resp.StatusCode,
 			"username":    req.Username(),
@@ -87,7 +87,7 @@ func (r *Repository) Login(ctx context.Context, req *appauth.LoginRequest) (*tok
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return nil, pkgerrors.WithContext(fmt.Errorf("failed to decode token response: %w", err), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("failed to decode token response", err), map[string]interface{}{
 			"operation": "login",
 			"username":  req.Username(),
 			"client_id": req.ClientID(),
@@ -129,7 +129,7 @@ func (r *Repository) ValidateToken(ctx context.Context, req *appauth.TokenValida
 
 	validation, err := r.tokenValidationService.ValidateToken(tokenString)
 	if err != nil {
-		return nil, pkgerrors.WithContext(fmt.Errorf("token validation failed: %w", err), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("token validation failed", err), map[string]interface{}{
 			"operation": "validate_token",
 		})
 	}
@@ -157,14 +157,14 @@ func (r *Repository) RefreshToken(ctx context.Context, req *appauth.TokenRefresh
 	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", r.keycloakURL, r.realm)
 	resp, err := r.httpClient.PostForm(tokenURL, data)
 	if err != nil {
-		return nil, pkgerrors.WithContext(fmt.Errorf("failed to make refresh request: %w", err), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("failed to make refresh request", err), map[string]interface{}{
 			"operation": "refresh_token",
 		})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, pkgerrors.WithContext(fmt.Errorf("refresh request failed with status: %d", resp.StatusCode), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("refresh request failed with status", fmt.Errorf("status: %d", resp.StatusCode)), map[string]interface{}{
 			"operation":   "refresh_token",
 			"status_code": resp.StatusCode,
 		})
@@ -178,7 +178,7 @@ func (r *Repository) RefreshToken(ctx context.Context, req *appauth.TokenRefresh
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return nil, pkgerrors.WithContext(fmt.Errorf("failed to decode refresh response: %w", err), map[string]interface{}{
+		return nil, pkgerrors.WithContext(pkgerrors.NewInternalError("failed to decode refresh response", err), map[string]interface{}{
 			"operation": "refresh_token",
 		})
 	}

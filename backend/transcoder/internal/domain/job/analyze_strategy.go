@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type AnalyzeStrategy struct{}
@@ -14,10 +14,10 @@ type AnalyzeStrategy struct{}
 func (a *AnalyzeStrategy) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
 	metadata, err := a.ExtractMetadata(ctx, localPath)
 	if err != nil {
-		return "", errors.NewInternalError("failed to extract video metadata", err)
+		return "", pkgerrors.NewInternalError("failed to extract video metadata", err)
 	}
 	if err := a.validateVideo(ctx, localPath); err != nil {
-		return "", errors.NewValidationError("video validation failed", err)
+		return "", pkgerrors.NewValidationError("video validation failed", err)
 	}
 	_ = metadata
 	return "", nil
@@ -39,9 +39,9 @@ func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string) 
 		return err
 	}
 
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
+	retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 2)
 	if retryErr != nil {
-		return nil, errors.NewInternalError("ffprobe command failed", retryErr)
+		return nil, pkgerrors.NewInternalError("ffprobe command failed", retryErr)
 	}
 
 	var probeResult struct {
@@ -59,7 +59,7 @@ func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string) 
 	}
 
 	if err := json.Unmarshal(out, &probeResult); err != nil {
-		return nil, errors.NewInternalError("failed to parse ffprobe output", err)
+		return nil, pkgerrors.NewInternalError("failed to parse ffprobe output", err)
 	}
 
 	metadata := &TranscodeMetadata{}
@@ -99,9 +99,9 @@ func (a *AnalyzeStrategy) validateVideo(ctx context.Context, filePath string) er
 		return err
 	}
 
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
+	retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 2)
 	if retryErr != nil {
-		return errors.NewValidationError("video validation failed", retryErr)
+		return pkgerrors.NewValidationError("video validation failed", retryErr)
 	}
 	return nil
 }

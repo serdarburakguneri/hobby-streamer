@@ -1,10 +1,10 @@
 package asset
 
 import (
-	"errors"
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type AssetPublishingService struct{}
@@ -264,17 +264,17 @@ type SearchFilters struct {
 }
 
 var (
-	ErrInvalidAsset              = errors.New("invalid asset")
-	ErrUnauthorizedAccess        = errors.New("unauthorized access")
-	ErrAssetNotReady             = errors.New("asset not ready")
-	ErrAssetHasNoContent         = errors.New("asset has no content")
-	ErrAssetNotPublished         = errors.New("asset not published")
-	ErrAssetNotAvailableInRegion = errors.New("asset not available in region")
-	ErrAssetNotAgeAppropriate    = errors.New("asset not age appropriate")
-	ErrAssetHasNoVideo           = errors.New("asset has no video")
-	ErrAssetHasNoMainVideo       = errors.New("asset has no main video")
-	ErrVideoNotReady             = errors.New("video not ready")
-	ErrInvalidSearchQuery        = errors.New("invalid search query")
+	ErrInvalidAsset              = pkgerrors.NewValidationError("invalid asset", nil)
+	ErrUnauthorizedAccess        = pkgerrors.NewValidationError("unauthorized access", nil)
+	ErrAssetNotReady             = pkgerrors.NewValidationError("asset not ready", nil)
+	ErrAssetHasNoContent         = pkgerrors.NewValidationError("asset has no content", nil)
+	ErrAssetNotPublished         = pkgerrors.NewValidationError("asset not published", nil)
+	ErrAssetNotAvailableInRegion = pkgerrors.NewValidationError("asset not available in region", nil)
+	ErrAssetNotAgeAppropriate    = pkgerrors.NewValidationError("asset not age appropriate", nil)
+	ErrAssetHasNoVideo           = pkgerrors.NewValidationError("asset has no video", nil)
+	ErrAssetHasNoMainVideo       = pkgerrors.NewValidationError("asset has no main video", nil)
+	ErrVideoNotReady             = pkgerrors.NewValidationError("video not ready", nil)
+	ErrInvalidSearchQuery        = pkgerrors.NewValidationError("invalid search query", nil)
 )
 
 func min(a, b int) int {

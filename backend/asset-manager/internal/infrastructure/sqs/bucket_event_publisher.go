@@ -3,10 +3,10 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs"
 )
 
@@ -27,9 +27,9 @@ func (p *BucketEventPublisher) PublishBucketCreated(ctx context.Context, bucket 
 		Data: BucketEventData{
 			ID:          bucket.ID(),
 			Name:        bucket.Name(),
-			Description: bucket.Description(),
+			Description: stringPtrToString(bucket.Description()),
 			Key:         bucket.Key(),
-			OwnerID:     bucket.OwnerID(),
+			OwnerID:     stringPtrToString(bucket.OwnerID()),
 			Metadata:    bucket.Metadata(),
 			CreatedAt:   bucket.CreatedAt().Format(time.RFC3339),
 			UpdatedAt:   bucket.UpdatedAt().Format(time.RFC3339),
@@ -46,9 +46,9 @@ func (p *BucketEventPublisher) PublishBucketUpdated(ctx context.Context, bucket 
 		Data: BucketEventData{
 			ID:          bucket.ID(),
 			Name:        bucket.Name(),
-			Description: bucket.Description(),
+			Description: stringPtrToString(bucket.Description()),
 			Key:         bucket.Key(),
-			OwnerID:     bucket.OwnerID(),
+			OwnerID:     stringPtrToString(bucket.OwnerID()),
 			Metadata:    bucket.Metadata(),
 			CreatedAt:   bucket.CreatedAt().Format(time.RFC3339),
 			UpdatedAt:   bucket.UpdatedAt().Format(time.RFC3339),
@@ -99,68 +99,75 @@ func (p *BucketEventPublisher) PublishAssetRemovedFromBucket(ctx context.Context
 func (p *BucketEventPublisher) publishEvent(ctx context.Context, event interface{}) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("failed to marshal event: %w", err)
+		return pkgerrors.NewInternalError("failed to marshal event", err)
 	}
 
 	err = p.producer.SendMessage(ctx, string(payload), "bucket-event")
 	if err != nil {
-		return fmt.Errorf("failed to send bucket event: %w", err)
+		return pkgerrors.NewInternalError("failed to send bucket event", err)
 	}
 
 	return nil
 }
 
+func stringPtrToString(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
+
 type BucketCreatedEvent struct {
 	EventType string          `json:"eventType"`
-	BucketID  string          `json:"bucketId"`
+	BucketID  string          `json:"bucketID"`
 	Data      BucketEventData `json:"data"`
 }
 
 type BucketUpdatedEvent struct {
 	EventType string          `json:"eventType"`
-	BucketID  string          `json:"bucketId"`
+	BucketID  string          `json:"bucketID"`
 	Data      BucketEventData `json:"data"`
 }
 
 type BucketDeletedEvent struct {
 	EventType string                 `json:"eventType"`
-	BucketID  string                 `json:"bucketId"`
+	BucketID  string                 `json:"bucketID"`
 	Data      BucketDeletedEventData `json:"data"`
 }
 
 type AssetAddedToBucketEvent struct {
 	EventType string                      `json:"eventType"`
-	BucketID  string                      `json:"bucketId"`
+	BucketID  string                      `json:"bucketID"`
 	Data      AssetAddedToBucketEventData `json:"data"`
 }
 
 type AssetRemovedFromBucketEvent struct {
 	EventType string                          `json:"eventType"`
-	BucketID  string                          `json:"bucketId"`
+	BucketID  string                          `json:"bucketID"`
 	Data      AssetRemovedFromBucketEventData `json:"data"`
 }
 
 type BucketEventData struct {
 	ID          string                 `json:"id"`
 	Name        string                 `json:"name"`
-	Description *string                `json:"description"`
+	Description string                 `json:"description"`
 	Key         string                 `json:"key"`
-	OwnerID     *string                `json:"ownerId"`
+	OwnerID     string                 `json:"ownerID"`
 	Metadata    map[string]interface{} `json:"metadata"`
 	CreatedAt   string                 `json:"createdAt"`
 	UpdatedAt   string                 `json:"updatedAt"`
 }
 
 type BucketDeletedEventData struct {
-	BucketID string `json:"bucketId"`
+	BucketID string `json:"bucketID"`
 }
 
 type AssetAddedToBucketEventData struct {
-	BucketID string `json:"bucketId"`
-	AssetID  string `json:"assetId"`
+	BucketID string `json:"bucketID"`
+	AssetID  string `json:"assetID"`
 }
 
 type AssetRemovedFromBucketEventData struct {
-	BucketID string `json:"bucketId"`
-	AssetID  string `json:"assetId"`
+	BucketID string `json:"bucketID"`
+	AssetID  string `json:"assetID"`
 }

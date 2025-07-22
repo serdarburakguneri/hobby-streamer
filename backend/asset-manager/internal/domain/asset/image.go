@@ -1,8 +1,9 @@
 package asset
 
 import (
-	"errors"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type Image struct {
@@ -226,12 +227,12 @@ func (i Image) Equals(other Image) bool {
 }
 
 var (
-	ErrInvalidImageFileName      = errors.New("invalid image file name")
-	ErrInvalidImageURL           = errors.New("invalid image URL")
-	ErrInvalidImageWidth         = errors.New("invalid image width")
-	ErrInvalidImageHeight        = errors.New("invalid image height")
-	ErrInvalidImageSize          = errors.New("invalid image size")
-	ErrInvalidImageContentType   = errors.New("invalid image content type")
-	ErrInvalidImageMetadataKey   = errors.New("invalid image metadata key")
-	ErrInvalidImageMetadataValue = errors.New("invalid image metadata value")
+	ErrInvalidImageFileName      = pkgerrors.NewValidationError("invalid image file name", nil)
+	ErrInvalidImageURL           = pkgerrors.NewValidationError("invalid image URL", nil)
+	ErrInvalidImageWidth         = pkgerrors.NewValidationError("invalid image width", nil)
+	ErrInvalidImageHeight        = pkgerrors.NewValidationError("invalid image height", nil)
+	ErrInvalidImageSize          = pkgerrors.NewValidationError("invalid image size", nil)
+	ErrInvalidImageContentType   = pkgerrors.NewValidationError("invalid image content type", nil)
+	ErrInvalidImageMetadataKey   = pkgerrors.NewValidationError("invalid image metadata key", nil)
+	ErrInvalidImageMetadataValue = pkgerrors.NewValidationError("invalid image metadata value", nil)
 )

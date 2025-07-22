@@ -1,9 +1,8 @@
 package asset
 
 import (
-	"errors"
-
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type CreateAssetCommand struct {
@@ -231,12 +230,9 @@ type JSONPatchOperation struct {
 	Value string `json:"value,omitempty"`
 }
 
-func (c PatchAssetCommand) Validate() error {
-	if c.ID == "" {
-		return asset.ErrInvalidAssetID
-	}
+func (c *PatchAssetCommand) Validate() error {
 	if len(c.Patches) == 0 {
-		return errors.New("no patches provided")
+		return pkgerrors.NewValidationError("no patches provided", nil)
 	}
 	return nil
 }

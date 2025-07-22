@@ -1,8 +1,9 @@
 package user
 
 import (
-	"errors"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type User struct {
@@ -156,6 +157,6 @@ func (u *User) UpdateUsername(username Username) error {
 }
 
 var (
-	ErrRoleAlreadyExists = errors.New("role already exists")
-	ErrRoleNotFound      = errors.New("role not found")
+	ErrRoleAlreadyExists = pkgerrors.NewValidationError("role already exists", nil)
+	ErrRoleNotFound      = pkgerrors.NewValidationError("role not found", nil)
 )
