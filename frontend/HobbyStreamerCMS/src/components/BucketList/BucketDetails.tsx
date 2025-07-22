@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Bucket, BucketType, Asset, getAssetIdsFromBucket } from '../../types/asset';
+import { Bucket, BucketType, Asset } from '../../types/asset';
 import AddAssetToBucket from './AddAssetToBucket';
 import EditableField from '../AssetList/EditableField';
 
@@ -237,7 +237,7 @@ export default function BucketDetails({
 
       <AddAssetToBucket
         bucketId={bucket.id}
-        existingAssetIds={getAssetIdsFromBucket(bucket)}
+        assets={bucket.assets || []}
         onAddAsset={onAddAsset}
         onClose={() => setShowAddAssetModal(false)}
         visible={showAddAssetModal}

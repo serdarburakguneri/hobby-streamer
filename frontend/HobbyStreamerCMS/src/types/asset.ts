@@ -165,6 +165,7 @@ export interface Bucket {
   createdAt: string;
   updatedAt: string;
   assets?: Asset[];
+  ownerId?: string;
 }
 
 export enum BucketType {
@@ -253,8 +254,4 @@ export interface AssetUpdateInput {
   ownerId?: string | null;
   parentId?: string | null;
   clearFields?: string[];
-}
-
-export const getAssetIdsFromBucket = (bucket: Bucket): string[] => {
-  return bucket.assets?.map(asset => asset.id) || [];
-}; 
+} 

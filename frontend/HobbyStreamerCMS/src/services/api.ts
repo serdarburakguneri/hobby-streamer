@@ -346,6 +346,75 @@ const GET_BUCKETS = gql`
           updatedAt
           metadata
           ownerId
+          videos {
+            id
+            type
+            format
+            storageLocation {
+              bucket
+              key
+              url
+            }
+            width
+            height
+            duration
+            bitrate
+            codec
+            size
+            contentType
+            streamInfo {
+              downloadUrl
+              cdnPrefix
+              url
+            }
+            metadata
+            status
+            thumbnail {
+              fileName
+              url
+              storageLocation {
+                bucket
+                key
+                url
+              }
+              width
+              height
+              size
+              contentType
+              metadata
+            }
+            transcodingInfo {
+              jobId
+              progress
+              outputUrl
+              error
+              completedAt
+            }
+            createdAt
+            updatedAt
+            quality
+            isReady
+            isProcessing
+            isFailed
+          }
+          images {
+            id
+            fileName
+            url
+            type
+            width
+            height
+            size
+            contentType
+            metadata
+            streamInfo {
+              downloadUrl
+              cdnPrefix
+              url
+            }
+            createdAt
+            updatedAt
+          }
         }
       }
       nextKey
@@ -428,6 +497,24 @@ const GET_BUCKET = gql`
           isReady
           isProcessing
           isFailed
+        }
+        images {
+          id
+          fileName
+          url
+          type
+          width
+          height
+          size
+          contentType
+          metadata
+          streamInfo {
+            downloadUrl
+            cdnPrefix
+            url
+          }
+          createdAt
+          updatedAt
         }
       }
     }
@@ -922,7 +1009,6 @@ const CREATE_BUCKET = gql`
       description
       type
       status
-      assetIds
       createdAt
       updatedAt
       assets {
@@ -975,39 +1061,14 @@ const UPDATE_BUCKET = gql`
 `;
 
 const DELETE_BUCKET = gql`
-  mutation DeleteBucket($id: ID!) {
-    deleteBucket(id: $id)
+  mutation DeleteBucket($id: ID!, $ownerId: String!) {
+    deleteBucket(input: { id: $id, ownerId: $ownerId })
   }
 `;
 
 const ADD_ASSET_TO_BUCKET = gql`
-  mutation AddAssetToBucket($bucketId: ID!, $assetId: ID!) {
-    addAssetToBucket(bucketId: $bucketId, assetId: $assetId) {
-      id
-      key
-      name
-      description
-      type
-      status
-      assetIds
-      createdAt
-      updatedAt
-      assets {
-        id
-        slug
-        title
-        description
-        type
-        genre
-        genres
-        tags
-        status
-        createdAt
-        updatedAt
-        metadata
-        ownerId
-      }
-    }
+  mutation AddAssetToBucket($bucketId: ID!, $assetId: ID!, $ownerId: String!) {
+    addAssetToBucket(input: { bucketId: $bucketId, assetId: $assetId, ownerId: $ownerId })
   }
 `;
 
@@ -1530,7 +1591,6 @@ export const useAssetService = () => {
         key: bucketData.key,
         name: bucketData.name,
         description: bucketData.description || '',
-        type: bucketData.type,
         status: bucketData.status ? bucketData.status.toUpperCase() : 'ACTIVE',
       };
 
@@ -1545,7 +1605,6 @@ export const useAssetService = () => {
       const input = {
         name: bucketData.name,
         description: bucketData.description || '',
-        type: bucketData.type,
         status: bucketData.status ? bucketData.status.toUpperCase() : 'ACTIVE',
       };
 
@@ -1573,17 +1632,17 @@ export const useAssetService = () => {
       return response.data.updateBucket;
     },
 
-    deleteBucket: async (id: string): Promise<void> => {
+    deleteBucket: async (id: string, ownerId: string): Promise<void> => {
       await client.mutate({
         mutation: DELETE_BUCKET,
-        variables: { id },
+        variables: { id, ownerId },
       });
     },
 
-    addAssetToBucket: async (bucketId: string, assetId: string): Promise<any> => {
+    addAssetToBucket: async (bucketId: string, assetId: string, ownerId: string): Promise<boolean> => {
       const response = await client.mutate({
         mutation: ADD_ASSET_TO_BUCKET,
-        variables: { bucketId, assetId },
+        variables: { bucketId, assetId, ownerId },
       });
       return response.data.addAssetToBucket;
     },

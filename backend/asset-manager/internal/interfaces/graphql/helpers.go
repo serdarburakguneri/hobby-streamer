@@ -256,11 +256,10 @@ func domainBucketToGraphQL(bucket *domainbucket.Bucket) *Bucket {
 		Type:        &bucketType,
 		Status:      &status,
 		OwnerID:     &ownerID,
-		AssetIds:    bucket.AssetIDs(),
 		Metadata:    &metadata,
 		CreatedAt:   bucket.CreatedAt(),
 		UpdatedAt:   bucket.UpdatedAt(),
-		AssetCount:  bucket.AssetCount(),
+		AssetCount:  0, // Optionally, implement a method to count assets via relationships if needed
 	}
 }
 
@@ -284,6 +283,32 @@ func domainBucketPageToGraphQL(page *domainbucket.BucketPage) *BucketPage {
 	}
 
 	return &BucketPage{
+		Items:   items,
+		NextKey: &nextKey,
+		HasMore: page.HasMore,
+	}
+}
+
+func domainAssetPageToGraphQL(page *domainasset.AssetPage) *AssetPage {
+	if page == nil {
+		return nil
+	}
+
+	items := make([]*Asset, len(page.Items))
+	for i, asset := range page.Items {
+		items[i] = domainAssetToGraphQL(asset)
+	}
+
+	nextKey := ""
+	if page.LastKey != nil {
+		if key, ok := page.LastKey["key"]; ok {
+			if str, ok := key.(string); ok {
+				nextKey = str
+			}
+		}
+	}
+
+	return &AssetPage{
 		Items:   items,
 		NextKey: &nextKey,
 		HasMore: page.HasMore,

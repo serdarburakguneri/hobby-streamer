@@ -13,13 +13,12 @@ type Bucket struct {
 	bucketType  *string
 	status      *string
 	ownerID     *string
-	assetIDs    []string
 	metadata    map[string]interface{}
 	createdAt   time.Time
 	updatedAt   time.Time
 }
 
-func NewBucket(name string, key string, description *string, ownerID *string) (*Bucket, error) {
+func NewBucket(name string, key string, description *string, ownerID *string, status *string) (*Bucket, error) {
 	if name == "" {
 		return nil, errors.New("bucket name cannot be empty")
 	}
@@ -35,9 +34,8 @@ func NewBucket(name string, key string, description *string, ownerID *string) (*
 		name:        name,
 		description: description,
 		bucketType:  nil,
-		status:      nil,
+		status:      status,
 		ownerID:     ownerID,
-		assetIDs:    make([]string, 0),
 		metadata:    make(map[string]interface{}),
 		createdAt:   now,
 		updatedAt:   now,
@@ -50,7 +48,7 @@ func ReconstructBucket(
 	description *string,
 	key string,
 	ownerID *string,
-	assetIDs []string,
+	status *string,
 	metadata map[string]interface{},
 	createdAt time.Time,
 	updatedAt time.Time,
@@ -61,9 +59,8 @@ func ReconstructBucket(
 		name:        name,
 		description: description,
 		bucketType:  nil,
-		status:      nil,
+		status:      status,
 		ownerID:     ownerID,
-		assetIDs:    assetIDs,
 		metadata:    metadata,
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
@@ -96,10 +93,6 @@ func (b *Bucket) Status() *string {
 
 func (b *Bucket) OwnerID() *string {
 	return b.ownerID
-}
-
-func (b *Bucket) AssetIDs() []string {
-	return b.assetIDs
 }
 
 func (b *Bucket) Metadata() map[string]interface{} {
@@ -138,46 +131,7 @@ func (b *Bucket) SetMetadata(metadata map[string]interface{}) {
 	b.updatedAt = time.Now().UTC()
 }
 
-func (b *Bucket) AddAsset(assetID string) error {
-	if assetID == "" {
-		return errors.New("asset ID cannot be empty")
-	}
-
-	for _, id := range b.assetIDs {
-		if id == assetID {
-			return errors.New("asset already exists in bucket")
-		}
-	}
-
-	b.assetIDs = append(b.assetIDs, assetID)
+func (b *Bucket) SetStatus(status *string) {
+	b.status = status
 	b.updatedAt = time.Now().UTC()
-	return nil
-}
-
-func (b *Bucket) RemoveAsset(assetID string) error {
-	for i, id := range b.assetIDs {
-		if id == assetID {
-			b.assetIDs = append(b.assetIDs[:i], b.assetIDs[i+1:]...)
-			b.updatedAt = time.Now().UTC()
-			return nil
-		}
-	}
-	return errors.New("asset not found in bucket")
-}
-
-func (b *Bucket) HasAsset(assetID string) bool {
-	for _, id := range b.assetIDs {
-		if id == assetID {
-			return true
-		}
-	}
-	return false
-}
-
-func (b *Bucket) AssetCount() int {
-	return len(b.assetIDs)
-}
-
-func (b *Bucket) IsEmpty() bool {
-	return len(b.assetIDs) == 0
 }

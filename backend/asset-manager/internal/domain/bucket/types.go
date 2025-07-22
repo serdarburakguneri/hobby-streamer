@@ -8,6 +8,7 @@ import (
 
 var ErrSlugAlreadyExists = errors.New("bucket slug already exists")
 var ErrKeyAlreadyExists = errors.New("bucket key already exists")
+var ErrBucketNotFound = errors.New("bucket not found")
 
 type BucketPage struct {
 	Items   []*Bucket              `json:"items"`

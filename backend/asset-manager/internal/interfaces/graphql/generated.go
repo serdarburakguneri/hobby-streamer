@@ -164,6 +164,7 @@ type ComplexityRoot struct {
 		BucketByKey    func(childComplexity int, key string) int
 		Buckets        func(childComplexity int, limit *int, nextKey *string) int
 		BucketsByOwner func(childComplexity int, ownerID string, limit *int, nextKey *string) int
+		SearchAssets   func(childComplexity int, query string, limit *int, nextKey *string) int
 		SearchBuckets  func(childComplexity int, query string, limit *int, nextKey *string) int
 	}
 
@@ -188,34 +189,39 @@ type ComplexityRoot struct {
 	}
 
 	Video struct {
-		Bitrate         func(childComplexity int) int
-		Codec           func(childComplexity int) int
-		ContentType     func(childComplexity int) int
-		CreatedAt       func(childComplexity int) int
-		Duration        func(childComplexity int) int
-		Format          func(childComplexity int) int
-		Height          func(childComplexity int) int
-		ID              func(childComplexity int) int
-		IsFailed        func(childComplexity int) int
-		IsProcessing    func(childComplexity int) int
-		IsReady         func(childComplexity int) int
-		Label           func(childComplexity int) int
-		Metadata        func(childComplexity int) int
-		Quality         func(childComplexity int) int
-		Size            func(childComplexity int) int
-		Status          func(childComplexity int) int
-		StorageLocation func(childComplexity int) int
-		StreamInfo      func(childComplexity int) int
-		Thumbnail       func(childComplexity int) int
-		TranscodingInfo func(childComplexity int) int
-		Type            func(childComplexity int) int
-		UpdatedAt       func(childComplexity int) int
-		Width           func(childComplexity int) int
+		AudioCodec         func(childComplexity int) int
+		AvgSegmentDuration func(childComplexity int) int
+		Bitrate            func(childComplexity int) int
+		Codec              func(childComplexity int) int
+		ContentType        func(childComplexity int) int
+		CreatedAt          func(childComplexity int) int
+		Duration           func(childComplexity int) int
+		Format             func(childComplexity int) int
+		Height             func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		IsFailed           func(childComplexity int) int
+		IsProcessing       func(childComplexity int) int
+		IsReady            func(childComplexity int) int
+		Label              func(childComplexity int) int
+		Metadata           func(childComplexity int) int
+		Quality            func(childComplexity int) int
+		SegmentCount       func(childComplexity int) int
+		Segments           func(childComplexity int) int
+		Size               func(childComplexity int) int
+		Status             func(childComplexity int) int
+		StorageLocation    func(childComplexity int) int
+		StreamInfo         func(childComplexity int) int
+		Thumbnail          func(childComplexity int) int
+		TranscodingInfo    func(childComplexity int) int
+		Type               func(childComplexity int) int
+		UpdatedAt          func(childComplexity int) int
+		VideoCodec         func(childComplexity int) int
+		Width              func(childComplexity int) int
 	}
 }
 
 type BucketResolver interface {
-	Assets(ctx context.Context, obj *Bucket) ([]*BucketAsset, error)
+	Assets(ctx context.Context, obj *Bucket) ([]*Asset, error)
 }
 type MutationResolver interface {
 	CreateAsset(ctx context.Context, input CreateAssetInput) (*Asset, error)
@@ -237,6 +243,7 @@ type QueryResolver interface {
 	BucketByKey(ctx context.Context, key string) (*Bucket, error)
 	BucketsByOwner(ctx context.Context, ownerID string, limit *int, nextKey *string) (*BucketPage, error)
 	SearchBuckets(ctx context.Context, query string, limit *int, nextKey *string) (*BucketPage, error)
+	SearchAssets(ctx context.Context, query string, limit *int, nextKey *string) (*AssetPage, error)
 }
 
 type executableSchema struct {
@@ -954,6 +961,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.BucketsByOwner(childComplexity, args["ownerId"].(string), args["limit"].(*int), args["nextKey"].(*string)), true
 
+	case "Query.searchAssets":
+		if e.complexity.Query.SearchAssets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_searchAssets_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SearchAssets(childComplexity, args["query"].(string), args["limit"].(*int), args["nextKey"].(*string)), true
+
 	case "Query.searchBuckets":
 		if e.complexity.Query.SearchBuckets == nil {
 			break
@@ -1042,6 +1061,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TranscodingInfo.Progress(childComplexity), true
+
+	case "Video.audioCodec":
+		if e.complexity.Video.AudioCodec == nil {
+			break
+		}
+
+		return e.complexity.Video.AudioCodec(childComplexity), true
+
+	case "Video.avgSegmentDuration":
+		if e.complexity.Video.AvgSegmentDuration == nil {
+			break
+		}
+
+		return e.complexity.Video.AvgSegmentDuration(childComplexity), true
 
 	case "Video.bitrate":
 		if e.complexity.Video.Bitrate == nil {
@@ -1141,6 +1174,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Video.Quality(childComplexity), true
 
+	case "Video.segmentCount":
+		if e.complexity.Video.SegmentCount == nil {
+			break
+		}
+
+		return e.complexity.Video.SegmentCount(childComplexity), true
+
+	case "Video.segments":
+		if e.complexity.Video.Segments == nil {
+			break
+		}
+
+		return e.complexity.Video.Segments(childComplexity), true
+
 	case "Video.size":
 		if e.complexity.Video.Size == nil {
 			break
@@ -1196,6 +1243,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Video.UpdatedAt(childComplexity), true
+
+	case "Video.videoCodec":
+		if e.complexity.Video.VideoCodec == nil {
+			break
+		}
+
+		return e.complexity.Video.VideoCodec(childComplexity), true
 
 	case "Video.width":
 		if e.complexity.Video.Width == nil {
@@ -1933,6 +1987,80 @@ func (ec *executionContext) field_Query_buckets_argsLimit(
 }
 
 func (ec *executionContext) field_Query_buckets_argsNextKey(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["nextKey"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("nextKey"))
+	if tmp, ok := rawArgs["nextKey"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_searchAssets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_searchAssets_argsQuery(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg0
+	arg1, err := ec.field_Query_searchAssets_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	arg2, err := ec.field_Query_searchAssets_argsNextKey(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["nextKey"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Query_searchAssets_argsQuery(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["query"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("query"))
+	if tmp, ok := rawArgs["query"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_searchAssets_argsLimit(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["limit"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_searchAssets_argsNextKey(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*string, error) {
@@ -2980,6 +3108,16 @@ func (ec *executionContext) fieldContext_Asset_videos(_ context.Context, field g
 				return ec.fieldContext_Video_isProcessing(ctx, field)
 			case "isFailed":
 				return ec.fieldContext_Video_isFailed(ctx, field)
+			case "segmentCount":
+				return ec.fieldContext_Video_segmentCount(ctx, field)
+			case "videoCodec":
+				return ec.fieldContext_Video_videoCodec(ctx, field)
+			case "audioCodec":
+				return ec.fieldContext_Video_audioCodec(ctx, field)
+			case "avgSegmentDuration":
+				return ec.fieldContext_Video_avgSegmentDuration(ctx, field)
+			case "segments":
+				return ec.fieldContext_Video_segments(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
 		},
@@ -3712,9 +3850,9 @@ func (ec *executionContext) _Bucket_assets(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*BucketAsset)
+	res := resTmp.([]*Asset)
 	fc.Result = res
-	return ec.marshalNBucketAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐBucketAssetᚄ(ctx, field.Selections, res)
+	return ec.marshalNAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAssetᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Bucket_assets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3726,33 +3864,47 @@ func (ec *executionContext) fieldContext_Bucket_assets(_ context.Context, field 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_BucketAsset_id(ctx, field)
+				return ec.fieldContext_Asset_id(ctx, field)
 			case "slug":
-				return ec.fieldContext_BucketAsset_slug(ctx, field)
+				return ec.fieldContext_Asset_slug(ctx, field)
 			case "title":
-				return ec.fieldContext_BucketAsset_title(ctx, field)
+				return ec.fieldContext_Asset_title(ctx, field)
 			case "description":
-				return ec.fieldContext_BucketAsset_description(ctx, field)
+				return ec.fieldContext_Asset_description(ctx, field)
 			case "type":
-				return ec.fieldContext_BucketAsset_type(ctx, field)
+				return ec.fieldContext_Asset_type(ctx, field)
 			case "genre":
-				return ec.fieldContext_BucketAsset_genre(ctx, field)
+				return ec.fieldContext_Asset_genre(ctx, field)
 			case "genres":
-				return ec.fieldContext_BucketAsset_genres(ctx, field)
+				return ec.fieldContext_Asset_genres(ctx, field)
 			case "tags":
-				return ec.fieldContext_BucketAsset_tags(ctx, field)
-			case "status":
-				return ec.fieldContext_BucketAsset_status(ctx, field)
-			case "metadata":
-				return ec.fieldContext_BucketAsset_metadata(ctx, field)
-			case "ownerId":
-				return ec.fieldContext_BucketAsset_ownerId(ctx, field)
+				return ec.fieldContext_Asset_tags(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_BucketAsset_createdAt(ctx, field)
+				return ec.fieldContext_Asset_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_BucketAsset_updatedAt(ctx, field)
+				return ec.fieldContext_Asset_updatedAt(ctx, field)
+			case "ownerId":
+				return ec.fieldContext_Asset_ownerId(ctx, field)
+			case "parentId":
+				return ec.fieldContext_Asset_parentId(ctx, field)
+			case "parent":
+				return ec.fieldContext_Asset_parent(ctx, field)
+			case "children":
+				return ec.fieldContext_Asset_children(ctx, field)
+			case "images":
+				return ec.fieldContext_Asset_images(ctx, field)
+			case "videos":
+				return ec.fieldContext_Asset_videos(ctx, field)
+			case "credits":
+				return ec.fieldContext_Asset_credits(ctx, field)
+			case "publishRule":
+				return ec.fieldContext_Asset_publishRule(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Asset_metadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Asset_status(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type BucketAsset", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
 		},
 	}
 	return fc, nil
@@ -5672,6 +5824,16 @@ func (ec *executionContext) fieldContext_Mutation_addVideo(ctx context.Context, 
 				return ec.fieldContext_Video_isProcessing(ctx, field)
 			case "isFailed":
 				return ec.fieldContext_Video_isFailed(ctx, field)
+			case "segmentCount":
+				return ec.fieldContext_Video_segmentCount(ctx, field)
+			case "videoCodec":
+				return ec.fieldContext_Video_videoCodec(ctx, field)
+			case "audioCodec":
+				return ec.fieldContext_Video_audioCodec(ctx, field)
+			case "avgSegmentDuration":
+				return ec.fieldContext_Video_avgSegmentDuration(ctx, field)
+			case "segments":
+				return ec.fieldContext_Video_segments(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
 		},
@@ -6785,6 +6947,69 @@ func (ec *executionContext) fieldContext_Query_searchBuckets(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_searchBuckets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_searchAssets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_searchAssets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SearchAssets(rctx, fc.Args["query"].(string), fc.Args["limit"].(*int), fc.Args["nextKey"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*AssetPage)
+	fc.Result = res
+	return ec.marshalNAssetPage2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAssetPage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_searchAssets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "items":
+				return ec.fieldContext_AssetPage_items(ctx, field)
+			case "nextKey":
+				return ec.fieldContext_AssetPage_nextKey(ctx, field)
+			case "hasMore":
+				return ec.fieldContext_AssetPage_hasMore(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AssetPage", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_searchAssets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8412,6 +8637,211 @@ func (ec *executionContext) fieldContext_Video_isFailed(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_segmentCount(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_segmentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SegmentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_segmentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_videoCodec(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_videoCodec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VideoCodec, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_videoCodec(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_audioCodec(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_audioCodec(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AudioCodec, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_audioCodec(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_avgSegmentDuration(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_avgSegmentDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgSegmentDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_avgSegmentDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_segments(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_segments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Segments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_segments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10582,7 +11012,7 @@ func (ec *executionContext) unmarshalInputCreateBucketInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"key", "name", "description", "ownerId", "metadata"}
+	fieldsInOrder := [...]string{"key", "name", "description", "ownerId", "metadata", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10624,6 +11054,13 @@ func (ec *executionContext) unmarshalInputCreateBucketInput(ctx context.Context,
 				return it, err
 			}
 			it.Metadata = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
 		}
 	}
 
@@ -10753,7 +11190,7 @@ func (ec *executionContext) unmarshalInputUpdateBucketInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "name", "description", "ownerId", "metadata"}
+	fieldsInOrder := [...]string{"id", "name", "description", "ownerId", "metadata", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10795,6 +11232,13 @@ func (ec *executionContext) unmarshalInputUpdateBucketInput(ctx context.Context,
 				return it, err
 			}
 			it.Metadata = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
 		}
 	}
 
@@ -11649,6 +12093,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "searchAssets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_searchAssets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -11906,6 +12372,16 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "segmentCount":
+			out.Values[i] = ec._Video_segmentCount(ctx, field, obj)
+		case "videoCodec":
+			out.Values[i] = ec._Video_videoCodec(ctx, field, obj)
+		case "audioCodec":
+			out.Values[i] = ec._Video_audioCodec(ctx, field, obj)
+		case "avgSegmentDuration":
+			out.Values[i] = ec._Video_avgSegmentDuration(ctx, field, obj)
+		case "segments":
+			out.Values[i] = ec._Video_segments(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12418,60 +12894,6 @@ func (ec *executionContext) marshalNBucket2ᚖgithubᚗcomᚋserdarburakguneri�
 		return graphql.Null
 	}
 	return ec._Bucket(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNBucketAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐBucketAssetᚄ(ctx context.Context, sel ast.SelectionSet, v []*BucketAsset) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNBucketAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐBucketAsset(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNBucketAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐBucketAsset(ctx context.Context, sel ast.SelectionSet, v *BucketAsset) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._BucketAsset(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNBucketPage2githubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐBucketPage(ctx context.Context, sel ast.SelectionSet, v BucketPage) graphql.Marshaler {

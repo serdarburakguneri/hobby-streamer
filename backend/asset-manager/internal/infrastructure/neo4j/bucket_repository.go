@@ -2,11 +2,13 @@ package neo4j
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
 type BucketRepository struct {
@@ -23,6 +25,18 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
+	log := logger.WithService("neo4j-bucket-repository").WithContext(ctx)
+
+	metadataJSON := ""
+	if bucket.Metadata() != nil {
+		b, err := json.Marshal(bucket.Metadata())
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to marshal metadata: %v", err))
+			return fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		metadataJSON = string(b)
+	}
+
 	query := `
 		CREATE (b:Bucket {
 			id: $id,
@@ -30,6 +44,7 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 			description: $description,
 			key: $key,
 			ownerID: $ownerID,
+			status: $status,
 			metadata: $metadata,
 			createdAt: $createdAt,
 			updatedAt: $updatedAt
@@ -43,13 +58,28 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 		"description": bucket.Description(),
 		"key":         bucket.Key(),
 		"ownerID":     bucket.OwnerID(),
-		"metadata":    bucket.Metadata(),
+		"status":      bucket.Status(),
+		"metadata":    metadataJSON,
 		"createdAt":   bucket.CreatedAt(),
 		"updatedAt":   bucket.UpdatedAt(),
 	}
 
-	_, err := session.Run(query, params)
-	return err
+	log.Info(fmt.Sprintf("Creating bucket with params: %+v", params))
+	result, err := session.Run(query, params)
+	if err != nil {
+		log.Error(fmt.Sprintf("Create error: %v", err))
+		return fmt.Errorf("neo4j create error: %w", err)
+	}
+	if !result.Next() {
+		if result.Err() != nil {
+			log.Error(fmt.Sprintf("Create result error: %v", result.Err()))
+			return fmt.Errorf("neo4j create result error: %w", result.Err())
+		}
+		log.Warn("Failed to create bucket: no result returned")
+		return fmt.Errorf("failed to create bucket: no result returned")
+	}
+	log.Info(fmt.Sprintf("Bucket created successfully: %v", params["id"]))
+	return nil
 }
 
 func (r *BucketRepository) GetByID(ctx context.Context, id string) (*domainbucket.Bucket, error) {
@@ -107,6 +137,7 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 		SET b.name = $name,
 			b.description = $description,
 			b.ownerID = $ownerID,
+			b.status = $status,
 			b.metadata = $metadata,
 			b.updatedAt = $updatedAt
 		RETURN b
@@ -117,6 +148,7 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 		"name":        bucket.Name(),
 		"description": bucket.Description(),
 		"ownerID":     bucket.OwnerID(),
+		"status":      bucket.Status(),
 		"metadata":    bucket.Metadata(),
 		"updatedAt":   bucket.UpdatedAt(),
 	}
@@ -258,6 +290,8 @@ func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetI
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
+	log := logger.WithService("neo4j-bucket-repository").WithContext(ctx)
+
 	query := `
 		MATCH (b:Bucket {id: $bucketID})
 		MATCH (a:Asset {id: $assetID})
@@ -270,8 +304,22 @@ func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetI
 		"assetID":  assetID,
 	}
 
-	_, err := session.Run(query, params)
-	return err
+	log.Info(fmt.Sprintf("AddAsset: bucketID=%s assetID=%s query=%s", bucketID, assetID, query))
+	result, err := session.Run(query, params)
+	if err != nil {
+		log.Error(fmt.Sprintf("AddAsset error: %v", err))
+		return err
+	}
+	if !result.Next() {
+		if result.Err() != nil {
+			log.Error(fmt.Sprintf("AddAsset result error: %v", result.Err()))
+			return result.Err()
+		}
+		log.Warn("AddAsset: no result returned")
+		return fmt.Errorf("add asset: no result returned")
+	}
+	log.Info("AddAsset: relationship created successfully")
+	return nil
 }
 
 func (r *BucketRepository) RemoveAsset(ctx context.Context, bucketID string, assetID string) error {
@@ -296,6 +344,13 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, lim
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
+	log := logger.WithService("neo4j-bucket-repository").WithContext(ctx)
+
+	if limit == nil {
+		defaultLimit := 10
+		limit = &defaultLimit
+	}
+
 	query := `
 		MATCH (b:Bucket {id: $bucketID})-[:CONTAINS]->(a:Asset)
 		RETURN a.id
@@ -305,11 +360,13 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, lim
 
 	params := map[string]interface{}{
 		"bucketID": bucketID,
-		"limit":    limit,
+		"limit":    *limit,
 	}
 
+	log.Info(fmt.Sprintf("GetAssetIDs: bucketID=%s query=%s params=%+v", bucketID, query, params))
 	result, err := session.Run(query, params)
 	if err != nil {
+		log.Error(fmt.Sprintf("GetAssetIDs error: %v", err))
 		return nil, fmt.Errorf("failed to get bucket asset IDs: %w", err)
 	}
 
@@ -323,6 +380,7 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, lim
 		}
 	}
 
+	log.Info(fmt.Sprintf("GetAssetIDs: found %d asset IDs", len(assetIDs)))
 	return assetIDs, nil
 }
 
@@ -343,7 +401,7 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key string) (*domainbuc
 
 	record, err := result.Single()
 	if err != nil {
-		return nil, fmt.Errorf("bucket not found")
+		return nil, domainbucket.ErrBucketNotFound
 	}
 
 	return r.recordToBucket(record)
@@ -357,25 +415,10 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 
 	bucketProps := bucketNode.(neo4j.Node).Props
 
-	var assetIDs []string
-	if assetsList, ok := record.Get("assets"); ok {
-		if assetsList != nil {
-			assetsSlice := assetsList.([]interface{})
-			for _, assetNode := range assetsSlice {
-				if assetNode != nil {
-					if props := assetNode.(neo4j.Node).Props; props != nil {
-						if id, ok := props["id"].(string); ok {
-							assetIDs = append(assetIDs, id)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	var descriptionPtr, ownerIDPtr *string
+	var descriptionPtr, ownerIDPtr, statusPtr *string
 	description, _ := bucketProps["description"].(string)
 	ownerID, _ := bucketProps["ownerID"].(string)
+	status, _ := bucketProps["status"].(string)
 
 	if description != "" {
 		descriptionPtr = &description
@@ -383,11 +426,16 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 	if ownerID != "" {
 		ownerIDPtr = &ownerID
 	}
+	if status != "" {
+		statusPtr = &status
+	}
 
 	var metadata map[string]interface{}
 	if metadataInterface, exists := bucketProps["metadata"]; exists {
-		if metadataMap, ok := metadataInterface.(map[string]interface{}); ok {
-			metadata = metadataMap
+		if metadataMap, ok := metadataInterface.(string); ok {
+			if err := json.Unmarshal([]byte(metadataMap), &metadata); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+			}
 		}
 	}
 
@@ -397,9 +445,64 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 		descriptionPtr,
 		bucketProps["key"].(string),
 		ownerIDPtr,
-		assetIDs,
+		statusPtr,
 		metadata,
 		bucketProps["createdAt"].(time.Time),
 		bucketProps["updatedAt"].(time.Time),
 	), nil
+}
+
+func (r *BucketRepository) HasAsset(ctx context.Context, bucketID string, assetID string) (bool, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := `
+		MATCH (b:Bucket {id: $bucketID})-[:CONTAINS]->(a:Asset {id: $assetID})
+		RETURN count(a) as count
+	`
+
+	params := map[string]interface{}{
+		"bucketID": bucketID,
+		"assetID":  assetID,
+	}
+
+	result, err := session.Run(query, params)
+	if err != nil {
+		return false, err
+	}
+
+	if result.Next() {
+		count, _ := result.Record().Get("count")
+		if cnt, ok := count.(int64); ok && cnt > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *BucketRepository) AssetCount(ctx context.Context, bucketID string) (int, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := `
+		MATCH (b:Bucket {id: $bucketID})-[:CONTAINS]->(a:Asset)
+		RETURN count(a) as count
+	`
+
+	params := map[string]interface{}{
+		"bucketID": bucketID,
+	}
+
+	result, err := session.Run(query, params)
+	if err != nil {
+		return 0, err
+	}
+
+	if result.Next() {
+		count, _ := result.Record().Get("count")
+		if cnt, ok := count.(int64); ok {
+			return int(cnt), nil
+		}
+	}
+	return 0, nil
 }

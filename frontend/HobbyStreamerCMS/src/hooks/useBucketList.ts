@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useAssetService } from '../services/api';
 import { Bucket } from '../types/asset';
+import { getAuthToken, validateTokenLocally } from '../services/api';
 
 export function useBucketList(refreshTrigger?: number) {
   const assetService = useAssetService();
@@ -53,10 +54,23 @@ export function useBucketList(refreshTrigger?: number) {
 
   const handleDeleteBucket = async () => {
     if (!selectedBucket) return;
-    
+
     try {
       setDeleting(true);
-      await assetService.deleteBucket(selectedBucket.id);
+      const token = await getAuthToken();
+      let ownerId = '';
+      if (token) {
+        const { valid, user } = validateTokenLocally(token);
+        if (valid && user && user.id) {
+          ownerId = user.id;
+        }
+      }
+      if (!ownerId) {
+        Alert.alert('Error', 'Could not determine logged-in user.');
+        setDeleting(false);
+        return;
+      }
+      await assetService.deleteBucket(selectedBucket.id, ownerId);
       setSelectedBucket(null);
       await loadBuckets();
       setShowSuccessMessage(true);
@@ -128,17 +142,28 @@ export function useBucketList(refreshTrigger?: number) {
 
     try {
       setUpdating(true);
-      const updatedBucket = await assetService.addAssetToBucket(selectedBucket.id, assetId);
-      setSelectedBucket(updatedBucket);
-      
-      setBuckets(prevBuckets => 
-        prevBuckets.map(bucket => 
-          bucket.id === selectedBucket.id ? updatedBucket : bucket
-        )
-      );
-      
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
+      const token = await getAuthToken();
+      let ownerId = '';
+      if (token) {
+        const { valid, user } = validateTokenLocally(token);
+        if (valid && user && user.id) {
+          ownerId = user.id;
+        }
+      }
+      if (!ownerId) {
+        Alert.alert('Error', 'Could not determine logged-in user.');
+        setUpdating(false);
+        return;
+      }
+      const success = await assetService.addAssetToBucket(selectedBucket.id, assetId, ownerId);
+      if (success) {       
+        const updatedBucket = await assetService.getBucket(selectedBucket.id);
+        setSelectedBucket(updatedBucket);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        Alert.alert('Error', 'Failed to add asset to bucket. Please try again.');
+      }
     } catch (err) {
       console.error('Error adding asset to bucket:', err);
       Alert.alert('Error', 'Failed to add asset to bucket. Please try again.');

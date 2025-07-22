@@ -37,7 +37,7 @@ func (s *ApplicationService) CreateBucket(ctx context.Context, cmd CreateBucketC
 		return nil, domainbucket.ErrKeyAlreadyExists
 	}
 
-	bucket, err := domainbucket.NewBucket(cmd.Name, cmd.Key, cmd.Description, cmd.OwnerID)
+	bucket, err := domainbucket.NewBucket(cmd.Name, cmd.Key, cmd.Description, cmd.OwnerID, cmd.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +86,10 @@ func (s *ApplicationService) UpdateBucket(ctx context.Context, cmd UpdateBucketC
 
 	if cmd.Metadata != nil {
 		bucket.SetMetadata(cmd.Metadata)
+	}
+
+	if cmd.Status != nil {
+		bucket.SetStatus(cmd.Status)
 	}
 
 	if err := s.repo.Update(ctx, bucket); err != nil {

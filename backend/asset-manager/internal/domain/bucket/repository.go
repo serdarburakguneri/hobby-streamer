@@ -16,4 +16,6 @@ type Repository interface {
 	AddAsset(ctx context.Context, bucketID string, assetID string) error
 	RemoveAsset(ctx context.Context, bucketID string, assetID string) error
 	GetAssetIDs(ctx context.Context, bucketID string, limit *int, lastKey map[string]interface{}) ([]string, error)
+	HasAsset(ctx context.Context, bucketID string, assetID string) (bool, error)
+	AssetCount(ctx context.Context, bucketID string) (int, error)
 }

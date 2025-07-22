@@ -8,6 +8,7 @@ type Query {
   bucketByKey(key: String!): Bucket
   bucketsByOwner(ownerId: String!, limit: Int, nextKey: String): BucketPage!
   searchBuckets(query: String!, limit: Int, nextKey: String): BucketPage!
+  searchAssets(query: String!, limit: Int, nextKey: String): AssetPage!
 }
 
 type Mutation {
@@ -76,6 +77,11 @@ type Video {
   isReady: Boolean!
   isProcessing: Boolean!
   isFailed: Boolean!
+  segmentCount: Int
+  videoCodec: String
+  audioCodec: String
+  avgSegmentDuration: Float
+  segments: [String!]
 }
 
 type Image {
@@ -136,7 +142,7 @@ type Bucket {
   status: String
   ownerId: String
   assetIds: [String!]!
-  assets: [BucketAsset!]!
+  assets: [Asset!]!
   metadata: String
   createdAt: Time!
   updatedAt: Time!
@@ -220,6 +226,7 @@ input CreateBucketInput {
   description: String
   ownerId: String
   metadata: String
+  status: String # Allowed: DRAFT, ACTIVE, INACTIVE
 }
 
 input UpdateBucketInput {
@@ -228,6 +235,7 @@ input UpdateBucketInput {
   description: String
   ownerId: String
   metadata: String
+  status: String # Allowed: DRAFT, ACTIVE, INACTIVE
 }
 
 input DeleteBucketInput {

@@ -15,7 +15,7 @@ import { Asset } from '../../types/asset';
 
 interface AddAssetToBucketProps {
   bucketId: string;
-  existingAssetIds: string[];
+  assets: Asset[];
   onAddAsset: (assetId: string) => void;
   onClose: () => void;
   visible: boolean;
@@ -23,7 +23,7 @@ interface AddAssetToBucketProps {
 
 export default function AddAssetToBucket({
   bucketId,
-  existingAssetIds,
+  assets,
   onAddAsset,
   onClose,
   visible,
@@ -40,8 +40,9 @@ export default function AddAssetToBucket({
       assetService
         .searchAssets(searchQuery)
         .then((results: any) => {
+          const assetIds = assets.map((a) => a.id);
           const filteredResults = results.assets.filter((asset: Asset) =>
-            !existingAssetIds.includes(asset.id)
+            !assetIds.includes(asset.id)
           );
           setSearchResults(filteredResults);
           setDropdownVisible(true);
@@ -56,7 +57,7 @@ export default function AddAssetToBucket({
       setSearchResults([]);
       setDropdownVisible(false);
     }
-  }, [searchQuery, existingAssetIds]);
+  }, [searchQuery, assets]);
 
   const handleAddAsset = (asset: Asset) => {
     onAddAsset(asset.id);

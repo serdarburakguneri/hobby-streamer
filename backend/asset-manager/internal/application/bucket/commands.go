@@ -5,6 +5,7 @@ type CreateBucketCommand struct {
 	Key         string
 	Description *string
 	OwnerID     *string
+	Status      *string
 }
 
 type GetBucketCommand struct {
@@ -21,6 +22,7 @@ type UpdateBucketCommand struct {
 	Description *string
 	OwnerID     *string
 	Metadata    map[string]interface{}
+	Status      *string
 }
 
 type DeleteBucketCommand struct {

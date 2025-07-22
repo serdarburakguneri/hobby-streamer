@@ -488,8 +488,7 @@ func (s *ApplicationService) updatePublishRule(a *domainasset.Asset, publishAt, 
 	if a.PublishRule() != nil {
 		existingRule = a.PublishRule()
 	}
-
-	// Use provided values or fall back to existing ones
+	
 	if publishAt == nil && existingRule != nil {
 		publishAt = existingRule.PublishAt()
 	}

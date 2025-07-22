@@ -57,19 +57,19 @@ type AssetPage struct {
 }
 
 type Bucket struct {
-	ID          string         `json:"id"`
-	Key         string         `json:"key"`
-	Name        string         `json:"name"`
-	Description *string        `json:"description,omitempty"`
-	Type        *string        `json:"type,omitempty"`
-	Status      *string        `json:"status,omitempty"`
-	OwnerID     *string        `json:"ownerId,omitempty"`
-	AssetIds    []string       `json:"assetIds"`
-	Assets      []*BucketAsset `json:"assets"`
-	Metadata    *string        `json:"metadata,omitempty"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	AssetCount  int            `json:"assetCount"`
+	ID          string    `json:"id"`
+	Key         string    `json:"key"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	Type        *string   `json:"type,omitempty"`
+	Status      *string   `json:"status,omitempty"`
+	OwnerID     *string   `json:"ownerId,omitempty"`
+	AssetIds    []string  `json:"assetIds"`
+	Assets      []*Asset  `json:"assets"`
+	Metadata    *string   `json:"metadata,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	AssetCount  int       `json:"assetCount"`
 }
 
 type BucketAsset struct {
@@ -113,6 +113,7 @@ type CreateBucketInput struct {
 	Description *string `json:"description,omitempty"`
 	OwnerID     *string `json:"ownerId,omitempty"`
 	Metadata    *string `json:"metadata,omitempty"`
+	Status      *string `json:"status,omitempty"`
 }
 
 type Credit struct {
@@ -193,6 +194,7 @@ type UpdateBucketInput struct {
 	Description *string `json:"description,omitempty"`
 	OwnerID     *string `json:"ownerId,omitempty"`
 	Metadata    *string `json:"metadata,omitempty"`
+	Status      *string `json:"status,omitempty"`
 }
 
 type Video struct {

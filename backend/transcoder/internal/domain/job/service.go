@@ -164,17 +164,3 @@ func (s *JobDomainService) uploadToS3(ctx context.Context, localPath, s3Path str
 	s.logger.Info("Successfully uploaded to S3", "local_path", localPath, "bucket", bucket, "key", key)
 	return s3Path, nil
 }
-
-func (s *JobDomainService) validateVideo(ctx context.Context, filePath string) error {
-	retryFunc := func(ctx context.Context) error {
-		cmd := exec.CommandContext(ctx, "ffmpeg", "-i", filePath, "-f", "null", "-") // nolint:gosec // ffmpeg is a trusted binary with controlled arguments
-		_, err := cmd.CombinedOutput()
-		return err
-	}
-
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
-	if retryErr != nil {
-		return errors.NewValidationError("video validation failed", retryErr)
-	}
-	return nil
-}

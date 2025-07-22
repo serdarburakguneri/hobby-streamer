@@ -105,3 +105,9 @@ security:
 
 # Run all quality checks
 quality: fmt vet lint security test 
+
+# Restart a backend service: builds the binary and restarts the Docker Compose container
+restart:
+	@echo "Restarting $(SERVICE) with Docker Compose..."
+	docker-compose build $(SERVICE)
+	docker-compose up -d $(SERVICE)
