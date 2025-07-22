@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type KeycloakValidator struct {
@@ -63,32 +64,32 @@ func (k *KeycloakValidator) ValidateToken(ctx context.Context, token string) (*U
 
 	parsedToken, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
 	if err != nil {
-		return nil, fmt.Errorf("invalid token format: %w", err)
+		return nil, errors.NewInternalError("invalid token format", err)
 	}
 
 	header, ok := parsedToken.Header["kid"].(string)
 	if !ok {
-		return nil, fmt.Errorf("missing key ID in token header")
+		return nil, errors.NewInternalError("missing key ID in token header", nil)
 	}
 
 	publicKey, err := k.getPublicKey(ctx, header)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get public key: %w", err)
+		return nil, errors.NewInternalError("failed to get public key", err)
 	}
 
 	parsedToken, err = jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, errors.NewInternalError(fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]), nil)
 		}
 		return publicKey, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("token signature validation failed: %w", err)
+		return nil, errors.NewInternalError("token signature validation failed", err)
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return nil, errors.NewInternalError("invalid token claims", nil)
 	}
 
 	if err := k.validateClaims(claims); err != nil {
@@ -128,20 +129,20 @@ func (k *KeycloakValidator) getPublicKey(ctx context.Context, kid string) (*rsa.
 	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", k.keycloakURL, k.realm)
 	resp, err := k.httpClient.Get(jwksURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
+		return nil, errors.NewInternalError("failed to fetch JWKS", err)
 	}
 	defer resp.Body.Close()
 
 	var jwks JWKSResponse
 	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, fmt.Errorf("failed to decode JWKS: %w", err)
+		return nil, errors.NewInternalError("failed to decode JWKS", err)
 	}
 
 	for _, jwk := range jwks.Keys {
 		if jwk.Kid == kid {
 			publicKey, err := k.jwkToPublicKey(jwk)
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert JWK to public key: %w", err)
+				return nil, errors.NewInternalError("failed to convert JWK to public key", err)
 			}
 			k.keys[kid] = publicKey
 			k.lastFetch = time.Now()
@@ -149,18 +150,18 @@ func (k *KeycloakValidator) getPublicKey(ctx context.Context, kid string) (*rsa.
 		}
 	}
 
-	return nil, fmt.Errorf("key with kid %s not found", kid)
+	return nil, errors.NewInternalError(fmt.Sprintf("key with kid %s not found", kid), nil)
 }
 
 func (k *KeycloakValidator) jwkToPublicKey(jwk JWK) (*rsa.PublicKey, error) {
 	nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode modulus: %w", err)
+		return nil, errors.NewInternalError("failed to decode modulus", err)
 	}
 
 	eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode exponent: %w", err)
+		return nil, errors.NewInternalError("failed to decode exponent", err)
 	}
 
 	n := new(big.Int).SetBytes(nBytes)
@@ -175,20 +176,20 @@ func (k *KeycloakValidator) jwkToPublicKey(jwk JWK) (*rsa.PublicKey, error) {
 func (k *KeycloakValidator) validateClaims(claims jwt.MapClaims) error {
 	if exp, ok := claims["exp"].(float64); ok {
 		if time.Unix(int64(exp), 0).Before(time.Now()) {
-			return fmt.Errorf(constants.ErrTokenExpired)
+			return errors.NewInternalError(constants.ErrTokenExpired, nil)
 		}
 	}
 
 	if iss, ok := claims["iss"].(string); ok {
 		expectedIss := fmt.Sprintf("%s/realms/%s", k.keycloakURL, k.realm)
 		if iss != expectedIss {
-			return fmt.Errorf("invalid issuer: expected %s, got %s", expectedIss, iss)
+			return errors.NewInternalError(fmt.Sprintf("invalid issuer: expected %s, got %s", expectedIss, iss), nil)
 		}
 	}
 
 	if aud, ok := claims["aud"].(string); ok {
 		if aud != k.clientID {
-			return fmt.Errorf("invalid audience: expected %s, got %s", k.clientID, aud)
+			return errors.NewInternalError(fmt.Sprintf("invalid audience: expected %s, got %s", k.clientID, aud), nil)
 		}
 	}
 

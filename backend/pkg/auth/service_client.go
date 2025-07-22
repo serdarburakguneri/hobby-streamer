@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -71,7 +72,7 @@ func (s *ServiceClient) GetServiceToken(ctx context.Context) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", errors.NewInternalError("failed to create request", err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -81,17 +82,17 @@ func (s *ServiceClient) GetServiceToken(ctx context.Context) (string, error) {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to request token: %w", err)
+		return "", errors.NewInternalError("failed to request token", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("token request failed with status: %d", resp.StatusCode)
+		return "", errors.NewInternalError(fmt.Sprintf("token request failed with status: %d", resp.StatusCode), nil)
 	}
 
 	var tokenResp TokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return "", fmt.Errorf("failed to decode token response: %w", err)
+		return "", errors.NewInternalError("failed to decode token response", err)
 	}
 
 	s.token = &ServiceToken{

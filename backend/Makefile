@@ -1,3 +1,8 @@
+ifeq ($(CURDIR),$(realpath $(dir $(lastword $(MAKEFILE_LIST)))))
+else
+$(error Please run make from the backend directory)
+endif
+
 .PHONY: help lint test build clean generate
 
 # Default target
@@ -94,9 +99,11 @@ vet:
 	@echo "Running go vet..."
 	@for dir in $$(find . -name "go.mod" -type f); do \
 		module_dir=$$(dirname "$$dir"); \
-		echo "Vetting $$module_dir..."; \
-		cd "$$module_dir" && go vet ./... && cd - > /dev/null; \
-	done
+		if [ -d "$$module_dir" ]; then \
+			echo "Vetting $$module_dir..."; \
+			cd "$$module_dir" && go vet ./... && cd - > /dev/null; \
+		fi \
+	 done
 
 # Check for security issues
 security:

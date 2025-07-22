@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -47,7 +48,7 @@ func NewClient(ctx context.Context) (*Client, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+		return nil, errors.NewInternalError("failed to create AWS session", err)
 	}
 
 	return &Client{
@@ -60,12 +61,12 @@ func (c *Client) Download(ctx context.Context, s3URL string) (string, error) {
 	log := c.logger.WithContext(ctx)
 
 	if !strings.HasPrefix(s3URL, "s3://") {
-		return "", fmt.Errorf("invalid S3 URL: %s", s3URL)
+		return "", errors.NewInternalError(fmt.Sprintf("invalid S3 URL: %s", s3URL), nil)
 	}
 
 	parts := strings.SplitN(s3URL[5:], "/", 2)
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid S3 URL format: %s", s3URL)
+		return "", errors.NewInternalError(fmt.Sprintf("invalid S3 URL format: %s", s3URL), nil)
 	}
 
 	bucket := parts[0]
@@ -82,7 +83,7 @@ func (c *Client) Download(ctx context.Context, s3URL string) (string, error) {
 
 	file, err := os.Create(localPath) // nolint:gosec // localPath is controlled and validated
 	if err != nil {
-		return "", fmt.Errorf("failed to create local file: %w", err)
+		return "", errors.NewInternalError("failed to create local file", err)
 	}
 	defer file.Close()
 
@@ -94,7 +95,7 @@ func (c *Client) Download(ctx context.Context, s3URL string) (string, error) {
 		if removeErr := os.Remove(localPath); removeErr != nil {
 			log.WithError(removeErr).Error("Failed to remove local file after S3 download error")
 		}
-		return "", fmt.Errorf("failed to get object from S3: %w", err)
+		return "", errors.NewInternalError("failed to get object from S3", err)
 	}
 	defer result.Body.Close()
 
@@ -103,7 +104,7 @@ func (c *Client) Download(ctx context.Context, s3URL string) (string, error) {
 		if removeErr := os.Remove(localPath); removeErr != nil {
 			log.WithError(removeErr).Error("Failed to remove local file after copy error")
 		}
-		return "", fmt.Errorf("failed to write file to disk: %w", err)
+		return "", errors.NewInternalError("failed to write file to disk", err)
 	}
 
 	log.Info("Successfully downloaded from S3", "local_path", localPath)
@@ -115,7 +116,7 @@ func (c *Client) Upload(ctx context.Context, localPath, bucket, key string) erro
 
 	file, err := os.Open(localPath) // nolint:gosec // localPath is controlled and validated
 	if err != nil {
-		return fmt.Errorf("failed to open local file: %w", err)
+		return errors.NewInternalError("failed to open local file", err)
 	}
 	defer file.Close()
 
@@ -127,7 +128,7 @@ func (c *Client) Upload(ctx context.Context, localPath, bucket, key string) erro
 		Body:   file,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to upload object to S3: %w", err)
+		return errors.NewInternalError("failed to upload object to S3", err)
 	}
 
 	log.Info("Successfully uploaded to S3", "bucket", bucket, "key", key)
@@ -139,7 +140,7 @@ func (c *Client) UploadDirectory(ctx context.Context, localDir, bucket, keyPrefi
 
 	files, err := filepath.Glob(filepath.Join(localDir, "*"))
 	if err != nil {
-		return fmt.Errorf("failed to find files in directory: %w", err)
+		return errors.NewInternalError("failed to find files in directory", err)
 	}
 
 	for _, file := range files {

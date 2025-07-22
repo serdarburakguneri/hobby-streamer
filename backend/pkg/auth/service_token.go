@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type ServiceTokenValidator struct {
@@ -58,32 +59,32 @@ func (s *ServiceTokenValidator) ValidateServiceToken(ctx context.Context, token 
 
 	parsedToken, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
 	if err != nil {
-		return nil, fmt.Errorf("invalid token format: %w", err)
+		return nil, errors.NewInternalError("invalid token format", err)
 	}
 
 	header, ok := parsedToken.Header["kid"].(string)
 	if !ok {
-		return nil, fmt.Errorf("missing key ID in token header")
+		return nil, errors.NewInternalError("missing key ID in token header", nil)
 	}
 
 	publicKey, err := s.getPublicKey(ctx, header)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get public key: %w", err)
+		return nil, errors.NewInternalError("failed to get public key", err)
 	}
 
 	parsedToken, err = jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, errors.NewInternalError(fmt.Sprintf("unexpected signing method: %v", token.Header["alg"]), nil)
 		}
 		return publicKey, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("token signature validation failed: %w", err)
+		return nil, errors.NewInternalError("token signature validation failed", err)
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return nil, errors.NewInternalError("invalid token claims", nil)
 	}
 
 	if err := s.validateServiceClaims(claims); err != nil {
@@ -124,20 +125,20 @@ func (s *ServiceTokenValidator) getPublicKey(ctx context.Context, kid string) (*
 	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", s.keycloakURL, s.realm)
 	resp, err := s.httpClient.Get(jwksURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch JWKS: %w", err)
+		return nil, errors.NewInternalError("failed to fetch JWKS", err)
 	}
 	defer resp.Body.Close()
 
 	var jwks JWKSResponse
 	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, fmt.Errorf("failed to decode JWKS: %w", err)
+		return nil, errors.NewInternalError("failed to decode JWKS", err)
 	}
 
 	for _, jwk := range jwks.Keys {
 		if jwk.Kid == kid {
 			publicKey, err := s.jwkToPublicKey(jwk)
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert JWK to public key: %w", err)
+				return nil, errors.NewInternalError("failed to convert JWK to public key", err)
 			}
 			s.keys[kid] = publicKey
 			s.lastFetch = time.Now()
@@ -145,18 +146,18 @@ func (s *ServiceTokenValidator) getPublicKey(ctx context.Context, kid string) (*
 		}
 	}
 
-	return nil, fmt.Errorf("key with kid %s not found", kid)
+	return nil, errors.NewInternalError(fmt.Sprintf("key with kid %s not found", kid), nil)
 }
 
 func (s *ServiceTokenValidator) jwkToPublicKey(jwk JWK) (*rsa.PublicKey, error) {
 	nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode modulus: %w", err)
+		return nil, errors.NewInternalError("failed to decode modulus", err)
 	}
 
 	eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode exponent: %w", err)
+		return nil, errors.NewInternalError("failed to decode exponent", err)
 	}
 
 	n := new(big.Int).SetBytes(nBytes)
@@ -171,26 +172,26 @@ func (s *ServiceTokenValidator) jwkToPublicKey(jwk JWK) (*rsa.PublicKey, error) 
 func (s *ServiceTokenValidator) validateServiceClaims(claims jwt.MapClaims) error {
 	if exp, ok := claims["exp"].(float64); ok {
 		if time.Unix(int64(exp), 0).Before(time.Now()) {
-			return fmt.Errorf(constants.ErrTokenExpired)
+			return errors.NewInternalError(constants.ErrTokenExpired, nil)
 		}
 	}
 
 	if iss, ok := claims["iss"].(string); ok {
 		expectedIss := fmt.Sprintf("%s/realms/%s", s.keycloakURL, s.realm)
 		if iss != expectedIss {
-			return fmt.Errorf("invalid issuer: expected %s, got %s", expectedIss, iss)
+			return errors.NewInternalError(fmt.Sprintf("invalid issuer: expected %s, got %s", expectedIss, iss), nil)
 		}
 	}
 
 	if aud, ok := claims["aud"].(string); ok {
 		if aud != s.clientID {
-			return fmt.Errorf("invalid audience: expected %s, got %s", s.clientID, aud)
+			return errors.NewInternalError(fmt.Sprintf("invalid audience: expected %s, got %s", s.clientID, aud), nil)
 		}
 	}
 
 	tokenType, ok := claims["typ"].(string)
 	if !ok || tokenType != "Bearer" {
-		return fmt.Errorf("invalid token type: expected Bearer")
+		return errors.NewInternalError("invalid token type: expected Bearer", nil)
 	}
 
 	return nil

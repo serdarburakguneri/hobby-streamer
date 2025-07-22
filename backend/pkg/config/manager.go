@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/spf13/viper"
 )
 
@@ -67,7 +69,7 @@ func NewManager(serviceName string) (*Manager, error) {
 	}
 
 	if err := manager.loadConfig(); err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, errors.NewInternalError("failed to load config", err)
 	}
 
 	return manager, nil
@@ -79,17 +81,17 @@ func (m *Manager) loadConfig() error {
 
 	if err := m.viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return fmt.Errorf("failed to read config file: %w", err)
+			return errors.NewInternalError("failed to read config file", err)
 		}
 	}
 
 	var config BaseConfig
 	if err := m.viper.Unmarshal(&config); err != nil {
-		return fmt.Errorf("failed to unmarshal config: %w", err)
+		return errors.NewInternalError("failed to unmarshal config", err)
 	}
 
 	if err := m.validateConfig(&config); err != nil {
-		return fmt.Errorf("config validation failed: %w", err)
+		return errors.NewInternalError("config validation failed", err)
 	}
 
 	m.config = &config
@@ -98,23 +100,23 @@ func (m *Manager) loadConfig() error {
 
 func (m *Manager) validateConfig(config *BaseConfig) error {
 	if config.Service == "" {
-		return fmt.Errorf("service name is required")
+		return errors.NewInternalError("service name is required", nil)
 	}
 
 	if config.Environment == "" {
-		return fmt.Errorf("environment is required")
+		return errors.NewInternalError("environment is required", nil)
 	}
 
 	if config.Log.Level == "" {
-		return fmt.Errorf("log level is required")
+		return errors.NewInternalError("log level is required", nil)
 	}
 
 	if config.Log.Format == "" {
-		return fmt.Errorf("log format is required")
+		return errors.NewInternalError("log format is required", nil)
 	}
 
 	if config.Server.Port == "" {
-		return fmt.Errorf("server port is required")
+		return errors.NewInternalError("server port is required", nil)
 	}
 
 	return nil
@@ -133,7 +135,7 @@ func (m *Manager) GetDynamicConfig() *DynamicConfig {
 func (m *Manager) WatchConfig() error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return fmt.Errorf("failed to create file watcher: %w", err)
+		return errors.NewInternalError("failed to create file watcher", err)
 	}
 
 	m.watcher = watcher
@@ -142,7 +144,7 @@ func (m *Manager) WatchConfig() error {
 	if configFile != "" {
 		configDir := filepath.Dir(configFile)
 		if err := watcher.Add(configDir); err != nil {
-			return fmt.Errorf("failed to watch config directory: %w", err)
+			return errors.NewInternalError("failed to watch config directory", err)
 		}
 	}
 
@@ -157,7 +159,7 @@ func (m *Manager) WatchConfig() error {
 					if strings.HasSuffix(event.Name, ".yaml") || strings.HasSuffix(event.Name, ".yml") {
 						time.Sleep(100 * time.Millisecond)
 						if err := m.loadConfig(); err != nil {
-							fmt.Printf("Failed to reload config: %v\n", err)
+							logger.Get().WithError(err).Error("Failed to reload config")
 							continue
 						}
 						m.notifyCallbacks()
@@ -167,7 +169,7 @@ func (m *Manager) WatchConfig() error {
 				if !ok {
 					return
 				}
-				fmt.Printf("Config watcher error: %v\n", err)
+				logger.Get().WithError(err).Error("Config watcher error")
 			}
 		}
 	}()

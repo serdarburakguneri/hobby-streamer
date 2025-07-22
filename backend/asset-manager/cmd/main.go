@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,16 +44,19 @@ func setupNeo4j(dynamicCfg *config.DynamicConfig, secretsManager *config.Secrets
 	neo4jUsername := dynamicCfg.GetStringFromComponent("neo4j", "username")
 	neo4jPassword := secretsManager.Get("neo4j_password")
 	if neo4jPassword == "" {
-		log.Fatal("Failed to create Neo4j driver: Neo4j password is empty")
+		logger.Get().Error("Failed to create Neo4j driver: Neo4j password is empty")
+		os.Exit(1)
 	}
 
 	neo4jDriver, err := neo4jdriver.NewDriver(neo4jURI, neo4jdriver.BasicAuth(neo4jUsername, neo4jPassword, ""))
 	if err != nil {
-		log.Fatalf("Failed to create Neo4j driver: %v", err)
+		logger.Get().Error("Failed to create Neo4j driver", "error", err)
+		os.Exit(1)
 	}
 
 	if err := neo4jDriver.VerifyConnectivity(); err != nil {
-		log.Fatalf("Failed to connect to Neo4j: %v", err)
+		logger.Get().Error("Failed to connect to Neo4j", "error", err)
+		os.Exit(1)
 	}
 
 	return neo4jDriver
@@ -66,12 +68,14 @@ func setupSQS(ctx context.Context, dynamicCfg *config.DynamicConfig) (*pkgsqs.Pr
 
 	domainEventProducer, err := pkgsqs.NewProducer(ctx, domainEventQueueURL)
 	if err != nil {
-		log.Fatalf("Failed to create domain event producer: %v", err)
+		logger.Get().Error("Failed to create domain event producer", "error", err)
+		os.Exit(1)
 	}
 
 	jobProducer, err := pkgsqs.NewProducer(ctx, jobQueueURL)
 	if err != nil {
-		log.Fatalf("Failed to create job producer: %v", err)
+		logger.Get().Error("Failed to create job producer", "error", err)
+		os.Exit(1)
 	}
 
 	return domainEventProducer, jobProducer
@@ -177,7 +181,8 @@ func main() {
 
 	configManager, err := config.NewManager("asset-manager")
 	if err != nil {
-		log.Fatalf("Failed to initialize config: %v", err)
+		logger.Get().Error("Failed to initialize config", "error", err)
+		os.Exit(1)
 	}
 	defer configManager.Close()
 
