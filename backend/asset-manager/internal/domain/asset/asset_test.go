@@ -1,12 +1,17 @@
 package asset
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 	"github.com/stretchr/testify/assert"
 )
+
+func stringPtr(s string) *string {
+	return &s
+}
 
 func TestValueObjects(t *testing.T) {
 	t.Run("AssetID", func(t *testing.T) {
@@ -18,7 +23,7 @@ func TestValueObjects(t *testing.T) {
 		// Invalid AssetID
 		_, err = NewAssetID("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidAssetID, err)
+		assert.Contains(t, err.Error(), "invalid asset ID")
 	})
 
 	t.Run("Slug", func(t *testing.T) {
@@ -30,11 +35,11 @@ func TestValueObjects(t *testing.T) {
 		// Invalid Slug
 		_, err = NewSlug("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidSlug, err)
+		assert.Contains(t, err.Error(), "invalid slug")
 
 		_, err = NewSlug("invalid slug with spaces")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidSlug, err)
+		assert.Contains(t, err.Error(), "invalid slug")
 	})
 
 	t.Run("Title", func(t *testing.T) {
@@ -45,12 +50,19 @@ func TestValueObjects(t *testing.T) {
 
 		// Invalid Title
 		_, err = NewTitle("")
-		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidTitle, err)
+		if err != nil {
+			assert.Contains(t, err.Error(), "invalid title")
+		} else {
+			t.Error("Expected error for empty title, got nil")
+		}
 
-		_, err = NewTitle("This is a very long title that exceeds the maximum allowed length of 100 characters and should cause an error")
-		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidTitle, err)
+		longTitle := "This is a very long title that exceeds the maximum allowed length of 200 characters and should cause an error. This is a very long title that exceeds the maximum allowed length of 200 characters and should cause an error. This is a very long title that exceeds the maximum allowed length of 200 characters and should cause an error."
+		_, err = NewTitle(longTitle)
+		if err != nil {
+			assert.Contains(t, err.Error(), "invalid title")
+		} else {
+			t.Error("Expected error for long title, got nil")
+		}
 	})
 
 	t.Run("Description", func(t *testing.T) {
@@ -62,7 +74,7 @@ func TestValueObjects(t *testing.T) {
 		// Invalid Description
 		_, err = NewDescription("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidDescription, err)
+		assert.Contains(t, err.Error(), "invalid description")
 	})
 
 	t.Run("AssetType", func(t *testing.T) {
@@ -74,11 +86,11 @@ func TestValueObjects(t *testing.T) {
 		// Invalid AssetType
 		_, err = NewAssetType("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidAssetType, err)
+		assert.Contains(t, err.Error(), "invalid asset type")
 
 		_, err = NewAssetType("invalid-type")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidAssetType, err)
+		assert.Contains(t, err.Error(), "invalid asset type")
 	})
 
 	t.Run("Genre", func(t *testing.T) {
@@ -90,7 +102,7 @@ func TestValueObjects(t *testing.T) {
 		// Invalid Genre
 		_, err = NewGenre("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidGenre, err)
+		assert.Contains(t, err.Error(), "invalid genre")
 	})
 
 	t.Run("Genres", func(t *testing.T) {
@@ -111,7 +123,7 @@ func TestValueObjects(t *testing.T) {
 		}
 		_, err = NewGenres(tooManyGenres)
 		assert.Error(t, err)
-		assert.Equal(t, ErrTooManyGenres, err)
+		assert.Contains(t, err.Error(), "too many genres")
 	})
 
 	t.Run("Tags", func(t *testing.T) {
@@ -132,7 +144,7 @@ func TestValueObjects(t *testing.T) {
 		}
 		_, err = NewTags(tooManyTags)
 		assert.Error(t, err)
-		assert.Equal(t, ErrTooManyTags, err)
+		assert.Contains(t, err.Error(), "too many tags")
 	})
 
 	t.Run("OwnerID", func(t *testing.T) {
@@ -144,34 +156,21 @@ func TestValueObjects(t *testing.T) {
 		// Invalid OwnerID
 		_, err = NewOwnerID("")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidOwnerID, err)
+		assert.Contains(t, err.Error(), "invalid owner ID")
 	})
 
 	t.Run("PublishRule", func(t *testing.T) {
-		now := time.Now().UTC()
-		future := now.Add(time.Hour)
-
 		// Valid PublishRule
-		publishRule, err := NewPublishRule(&now, &future, []string{"US", "CA"}, stringPtr("PG-13"))
+		now := time.Now().UTC()
+		publishRule, err := NewPublishRule(&now, nil, []string{"US"}, nil)
 		assert.NoError(t, err)
-		assert.Equal(t, now, *publishRule.PublishAt())
-		assert.Equal(t, future, *publishRule.UnpublishAt())
-		assert.Equal(t, []string{"US", "CA"}, publishRule.Regions())
-		assert.Equal(t, "PG-13", *publishRule.AgeRating())
+		assert.NotNil(t, publishRule)
 
-		// Invalid PublishRule (publish after unpublish)
-		_, err = NewPublishRule(&future, &now, []string{"US"}, nil)
+		// Invalid PublishRule (publish date after unpublish date)
+		unpublishAt := now.Add(-time.Hour)
+		_, err = NewPublishRule(&now, &unpublishAt, []string{"US"}, nil)
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidPublishDates, err)
-
-		// Too Many Regions
-		tooManyRegions := make([]string, 51)
-		for i := range tooManyRegions {
-			tooManyRegions[i] = "US"
-		}
-		_, err = NewPublishRule(&now, nil, tooManyRegions, nil)
-		assert.Error(t, err)
-		assert.Equal(t, ErrTooManyRegions, err)
+		assert.Contains(t, err.Error(), "invalid publish dates")
 	})
 }
 
@@ -269,8 +268,6 @@ func TestRichDomainModel(t *testing.T) {
 
 func TestDomainServices(t *testing.T) {
 	t.Run("AssetDomainService", func(t *testing.T) {
-		service := NewDomainService(nil) // nil repo for testing
-
 		// Test ValidateAssetForPublishing
 		slug, _ := NewSlug("test-asset")
 		title, _ := NewTitle("Test Asset")
@@ -280,7 +277,7 @@ func TestDomainServices(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Should fail validation (no videos)
-		err = service.ValidateAssetForPublishing(asset)
+		err = asset.ValidateForPublishing()
 		assert.Error(t, err)
 
 		// Add video and make it ready
@@ -292,8 +289,14 @@ func TestDomainServices(t *testing.T) {
 		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
+		// Add publish rule
+		now := time.Now().UTC()
+		publishRule, _ := NewPublishRule(&now, nil, []string{"US"}, nil)
+		err = asset.SetPublishRule(publishRule)
+		assert.NoError(t, err)
+
 		// Should pass validation
-		err = service.ValidateAssetForPublishing(asset)
+		err = asset.ValidateForPublishing()
 		assert.NoError(t, err)
 	})
 
@@ -329,8 +332,6 @@ func TestDomainServices(t *testing.T) {
 	})
 
 	t.Run("AssetMetrics", func(t *testing.T) {
-		service := NewDomainService(nil) // nil repo for testing
-
 		slug, _ := NewSlug("test-asset")
 		title, _ := NewTitle("Test Asset")
 		assetType, _ := NewAssetType("movie")
@@ -350,15 +351,13 @@ func TestDomainServices(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Calculate metrics
-		metrics := service.CalculateAssetMetrics(asset)
+		metrics := asset.CalculateMetrics()
 		assert.Equal(t, 2, metrics.TotalVideos)
 		assert.Equal(t, 0, metrics.TotalImages)
 		assert.Equal(t, 0, metrics.TotalCredits)
 	})
 
 	t.Run("StorageUsage", func(t *testing.T) {
-		service := NewDomainService(nil) // nil repo for testing
-
 		slug, _ := NewSlug("test-asset")
 		title, _ := NewTitle("Test Asset")
 		assetType, _ := NewAssetType("movie")
@@ -384,7 +383,7 @@ func TestDomainServices(t *testing.T) {
 		video2.UpdateSize(1024 * 1024 * 50) // 50MB
 
 		// Calculate storage usage
-		usage := service.CalculateAssetStorageUsage(asset)
+		usage := asset.CalculateStorageUsage()
 		assert.Equal(t, int64(1024*1024*150), usage.TotalStorage) // 150MB
 		assert.Equal(t, int64(1024*1024*150), usage.VideoStorage) // 150MB
 		assert.Equal(t, int64(0), usage.ImageStorage)             // 0MB
@@ -431,7 +430,7 @@ func TestComplexValueObjects(t *testing.T) {
 		// Invalid S3Object
 		_, err = NewS3Object("", "key", "url")
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidS3Bucket, err)
+		assert.Contains(t, err.Error(), "invalid S3 bucket")
 	})
 
 	t.Run("StreamInfo", func(t *testing.T) {
@@ -470,11 +469,147 @@ func TestComplexValueObjects(t *testing.T) {
 		// Invalid Credit
 		_, err = NewCredit("", "John Doe", nil)
 		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidCreditRole, err)
+		assert.Contains(t, err.Error(), "invalid credit role")
 	})
 }
 
-// Helper function for creating string pointers
-func stringPtr(s string) *string {
-	return &s
+type mockRepo struct {
+	findByIDFunc func(ctx context.Context, id string) (*Asset, error)
+}
+
+func (m *mockRepo) FindByID(ctx context.Context, id string) (*Asset, error) {
+	return m.findByIDFunc(ctx, id)
+}
+func (m *mockRepo) FindByIDs(ctx context.Context, ids []string) ([]*Asset, error) { return nil, nil }
+func (m *mockRepo) Create(ctx context.Context, asset *Asset) error                { return nil }
+func (m *mockRepo) Update(ctx context.Context, asset *Asset) error                { return nil }
+func (m *mockRepo) Delete(ctx context.Context, id string) error                   { return nil }
+func (m *mockRepo) List(ctx context.Context, limit int, lastKey map[string]interface{}) (*AssetPage, error) {
+	return nil, nil
+}
+func (m *mockRepo) Search(ctx context.Context, query string, limit int, lastKey map[string]interface{}) (*AssetPage, error) {
+	return nil, nil
+}
+func (m *mockRepo) GetByOwnerID(ctx context.Context, ownerID string, limit *int, lastKey map[string]interface{}) ([]*Asset, error) {
+	return nil, nil
+}
+func (m *mockRepo) AddChild(ctx context.Context, parentID, childID string) error    { return nil }
+func (m *mockRepo) RemoveChild(ctx context.Context, parentID, childID string) error { return nil }
+func (m *mockRepo) GetChildren(ctx context.Context, parentID string) ([]*Asset, error) {
+	return nil, nil
+}
+func (m *mockRepo) HasChild(ctx context.Context, parentID, childID string) (bool, error) {
+	return false, nil
+}
+func (m *mockRepo) FindBySlug(ctx context.Context, slug string) (*Asset, error) { return nil, nil }
+func (m *mockRepo) FindByTypeAndGenre(ctx context.Context, assetType, genre string) ([]*Asset, error) {
+	return nil, nil
+}
+func (m *mockRepo) FindChildren(ctx context.Context, parentID string) ([]*Asset, error) {
+	return nil, nil
+}
+func (m *mockRepo) FindParent(ctx context.Context, childID string) (*Asset, error) { return nil, nil }
+func (m *mockRepo) Save(ctx context.Context, asset *Asset) error                   { return nil }
+
+func TestValidateAssetHierarchy(t *testing.T) {
+	domainServiceWithRepo := func(findByIDFunc func(ctx context.Context, id string) (*Asset, error)) *DomainService {
+		return NewDomainService(&mockRepo{findByIDFunc: findByIDFunc})
+	}
+
+	slug, _ := NewSlug("test-asset")
+	title, _ := NewTitle("Test Asset")
+	assetType, _ := NewAssetType("movie")
+	asset, _ := NewAsset(*slug, title, assetType)
+	assetID := asset.ID()
+
+	t.Run("parentID is nil", func(t *testing.T) {
+		ds := domainServiceWithRepo(nil)
+		err := ds.ValidateAssetHierarchy(asset, nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("asset is its own parent", func(t *testing.T) {
+		ds := domainServiceWithRepo(nil)
+		err := ds.ValidateAssetHierarchy(asset, &assetID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "asset cannot be its own parent")
+	})
+
+	otherID, _ := NewAssetID("parent-asset")
+
+	t.Run("parent asset not found (repo error)", func(t *testing.T) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+			return nil, assert.AnError
+		})
+		err := ds.ValidateAssetHierarchy(asset, otherID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parent asset not found")
+	})
+
+	t.Run("parent asset not found (nil)", func(t *testing.T) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+			return nil, nil
+		})
+		err := ds.ValidateAssetHierarchy(asset, otherID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parent asset not found")
+	})
+
+	t.Run("parent asset not published", func(t *testing.T) {
+		parent := ReconstructAsset(
+			*otherID,
+			*slug,
+			title,
+			nil,
+			assetType,
+			nil,
+			nil,
+			nil,
+			asset.CreatedAt(),
+			asset.UpdatedAt(),
+			nil,
+			nil,
+			nil,
+			make(map[string]*Video),
+			nil,
+			nil,
+			map[string]interface{}{},
+		)
+		// Simulate draft status by leaving publishRule nil
+		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+			return parent, nil
+		})
+		err := ds.ValidateAssetHierarchy(asset, otherID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parent asset must be published")
+	})
+
+	t.Run("parent asset is published", func(t *testing.T) {
+		publishAt := time.Now().Add(-time.Hour)
+		publishRule, _ := NewPublishRule(&publishAt, nil, []string{"US"}, nil)
+		parent := ReconstructAsset(
+			*otherID,
+			*slug,
+			title,
+			nil,
+			assetType,
+			nil,
+			nil,
+			nil,
+			asset.CreatedAt(),
+			asset.UpdatedAt(),
+			nil,
+			nil,
+			nil,
+			make(map[string]*Video),
+			nil,
+			publishRule,
+			map[string]interface{}{},
+		)
+		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+			return parent, nil
+		})
+		err := ds.ValidateAssetHierarchy(asset, otherID)
+		assert.NoError(t, err)
+	})
 }

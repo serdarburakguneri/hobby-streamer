@@ -142,6 +142,45 @@ func (b *Bucket) ValidateName() error {
 	if b.name == "" {
 		return pkgerrors.NewValidationError("bucket name cannot be empty", nil)
 	}
+	if len(b.name) > 100 {
+		return pkgerrors.NewValidationError("bucket name too long", nil)
+	}
+	return nil
+}
+
+func (b *Bucket) ValidateKey() error {
+	if !isValidKey(b.key) {
+		return pkgerrors.NewValidationError("invalid bucket key format", nil)
+	}
+	return nil
+}
+
+func (b *Bucket) CanAddAsset(assetID string, hasAssetFunc func(bucketID, assetID string) (bool, error)) error {
+	exists, err := hasAssetFunc(b.id, assetID)
+	if err != nil {
+		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "CanAddAsset", "bucketID": b.id, "assetID": assetID})
+	}
+	if exists {
+		return pkgerrors.NewValidationError("asset already exists in bucket", nil)
+	}
+	return nil
+}
+
+func (b *Bucket) ValidateNotEmpty(assetCountFunc func(bucketID string) (int, error)) error {
+	count, err := assetCountFunc(b.id)
+	if err != nil {
+		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "ValidateNotEmpty", "bucketID": b.id})
+	}
+	if count == 0 {
+		return pkgerrors.NewValidationError("cannot perform operation on empty bucket", nil)
+	}
+	return nil
+}
+
+func (b *Bucket) ValidateOwnership(ownerID string) error {
+	if b.ownerID == nil || *b.ownerID != ownerID {
+		return pkgerrors.NewForbiddenError("unauthorized access to bucket", nil)
+	}
 	return nil
 }
 

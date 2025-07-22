@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type Asset struct {
@@ -478,6 +479,166 @@ func (a *Asset) CanBePublished() bool {
 
 func (a *Asset) CanBeUnpublished() bool {
 	return true
+}
+
+func (a *Asset) ValidateForPublishing() error {
+	if a.title == nil {
+		return pkgerrors.NewValidationError("asset title is required", nil)
+	}
+	if a.assetType == nil {
+		return pkgerrors.NewValidationError("asset type is required", nil)
+	}
+	if len(a.videos) == 0 {
+		return pkgerrors.NewValidationError("asset must have at least one video", nil)
+	}
+	hasReadyVideo := false
+	for _, video := range a.videos {
+		if video.IsReady() {
+			hasReadyVideo = true
+			break
+		}
+	}
+	if !hasReadyVideo {
+		return pkgerrors.NewValidationError("asset must have at least one ready video", nil)
+	}
+	if a.publishRule == nil {
+		return pkgerrors.NewValidationError("publish rule is required", nil)
+	}
+	if a.publishRule.PublishAt() == nil {
+		return pkgerrors.NewValidationError("publish date is required", nil)
+	}
+	return nil
+}
+
+func (a *Asset) ValidateVideoTranscoding(videoID string) error {
+	video, err := a.GetVideo(videoID)
+	if err != nil {
+		return err
+	}
+	if video.IsReady() {
+		return pkgerrors.NewValidationError("video is already ready", nil)
+	}
+	if video.IsFailed() {
+		return pkgerrors.NewValidationError("video transcoding failed", nil)
+	}
+	return nil
+}
+
+func (a *Asset) ValidateAccess(userID string) error {
+	if a.ownerID == nil {
+		return nil
+	}
+	if a.ownerID.Value() == userID {
+		return nil
+	}
+	if a.Status() == constants.AssetStatusPublished {
+		return nil
+	}
+	return pkgerrors.NewForbiddenError("access denied", nil)
+}
+
+func (a *Asset) ValidateForStreaming() error {
+	if a.Status() != constants.AssetStatusPublished {
+		return pkgerrors.NewValidationError("asset is not published", nil)
+	}
+	hasStreamableVideo := false
+	for _, video := range a.videos {
+		if video.IsReady() && video.StreamInfo() != nil {
+			hasStreamableVideo = true
+			break
+		}
+	}
+	if !hasStreamableVideo {
+		return pkgerrors.NewValidationError("asset has no streamable videos", nil)
+	}
+	return nil
+}
+
+func (a *Asset) CalculateStatus() string {
+	return a.Status()
+}
+
+func (a *Asset) CalculateMetrics() AssetMetrics {
+	metrics := AssetMetrics{
+		StorageBuckets: make(map[string]int64),
+	}
+	for _, video := range a.videos {
+		metrics.TotalVideos++
+		metrics.TotalDuration += video.Duration()
+		metrics.TotalSize += video.Size()
+		switch video.Status() {
+		case VideoStatus(constants.VideoStatusReady):
+			metrics.ReadyVideos++
+		case VideoStatus(constants.VideoStatusPending), VideoStatus(constants.VideoStatusAnalyzing), VideoStatus(constants.VideoStatusTranscoding):
+			metrics.ProcessingVideos++
+		case VideoStatus(constants.VideoStatusFailed):
+			metrics.FailedVideos++
+		}
+		if video.StorageLocation().Bucket() != "" {
+			metrics.StorageBuckets[video.StorageLocation().Bucket()] += video.Size()
+		}
+	}
+	metrics.TotalImages = len(a.images)
+	metrics.TotalCredits = len(a.credits)
+	for _, image := range a.images {
+		if image.Size() != nil {
+			metrics.TotalSize += *image.Size()
+		}
+		if image.StorageLocation() != nil && image.StorageLocation().Bucket() != "" {
+			metrics.StorageBuckets[image.StorageLocation().Bucket()] += *image.Size()
+		}
+	}
+	return metrics
+}
+
+func (a *Asset) CalculateStorageUsage() StorageUsage {
+	usage := StorageUsage{
+		StorageBuckets: make(map[string]int64),
+	}
+	for _, video := range a.videos {
+		usage.VideoStorage += video.Size()
+		usage.TotalStorage += video.Size()
+		if video.StorageLocation().Bucket() != "" {
+			usage.StorageBuckets[video.StorageLocation().Bucket()] += video.Size()
+		}
+	}
+	for _, image := range a.images {
+		if image.Size() != nil {
+			usage.ImageStorage += *image.Size()
+			usage.TotalStorage += *image.Size()
+		}
+		if image.StorageLocation() != nil && image.StorageLocation().Bucket() != "" {
+			usage.StorageBuckets[image.StorageLocation().Bucket()] += *image.Size()
+		}
+	}
+	return usage
+}
+
+func (a *Asset) ValidateMetadata() error {
+	if a.metadata == nil {
+		return nil
+	}
+	for key, value := range a.metadata {
+		if len(key) > 100 {
+			return pkgerrors.NewValidationError("metadata key too long", nil)
+		}
+		if strValue, ok := value.(string); ok {
+			if len(strValue) > 1000 {
+				return pkgerrors.NewValidationError("metadata value too long", nil)
+			}
+		}
+	}
+	return nil
+}
+
+func (a *Asset) DetermineVisibility(userID string) bool {
+	if a.Status() == constants.AssetStatusPublished {
+		return true
+	}
+	if a.ownerID != nil && a.ownerID.Value() == userID {
+		return true
+	}
+	return false
 }
 
 var (

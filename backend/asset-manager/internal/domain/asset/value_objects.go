@@ -1,12 +1,11 @@
 package asset
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type AssetID struct {
@@ -97,11 +96,19 @@ type Description struct {
 }
 
 func NewDescription(value string) (*Description, error) {
+	if value == "" {
+		return nil, ErrInvalidDescription
+	}
+
 	if len(value) > 1000 {
 		return nil, ErrInvalidDescription
 	}
 
 	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil, ErrInvalidDescription
+	}
+
 	return &Description{value: trimmed}, nil
 }
 
@@ -123,20 +130,16 @@ func NewAssetType(value string) (*AssetType, error) {
 	}
 
 	validTypes := map[string]bool{
-		constants.AssetTypeMovie:        true,
-		constants.AssetTypeTVShow:       true,
-		constants.AssetTypeSeries:       true,
-		constants.AssetTypeSeason:       true,
-		constants.AssetTypeEpisode:      true,
-		constants.AssetTypeDocumentary:  true,
-		constants.AssetTypeShort:        true,
-		constants.AssetTypeTrailer:      true,
-		constants.AssetTypeBonus:        true,
-		constants.AssetTypeBehindScenes: true,
-		constants.AssetTypeInterview:    true,
-		constants.AssetTypeMusicVideo:   true,
-		constants.AssetTypePodcast:      true,
-		constants.AssetTypeLive:         true,
+		"movie":             true,
+		"tv_show":           true,
+		"documentary":       true,
+		"short":             true,
+		"trailer":           true,
+		"behind_the_scenes": true,
+		"interview":         true,
+		"music_video":       true,
+		"podcast":           true,
+		"live_stream":       true,
 	}
 
 	if !validTypes[value] {
@@ -394,14 +397,14 @@ func (u UpdatedAt) Value() time.Time {
 }
 
 var (
-	ErrInvalidAssetID     = errors.New("invalid asset ID")
-	ErrInvalidSlug        = errors.New("invalid slug")
-	ErrInvalidTitle       = errors.New("invalid title")
-	ErrInvalidDescription = errors.New("invalid description")
-	ErrInvalidAssetType   = errors.New("invalid asset type")
-	ErrInvalidGenre       = errors.New("invalid genre")
-	ErrTooManyGenres      = errors.New("too many genres")
-	ErrInvalidTag         = errors.New("invalid tag")
-	ErrTooManyTags        = errors.New("too many tags")
-	ErrInvalidOwnerID     = errors.New("invalid owner ID")
+	ErrInvalidAssetID     = pkgerrors.NewValidationError("invalid asset ID", nil)
+	ErrInvalidSlug        = pkgerrors.NewValidationError("invalid slug", nil)
+	ErrInvalidTitle       = pkgerrors.NewValidationError("invalid title", nil)
+	ErrInvalidDescription = pkgerrors.NewValidationError("invalid description", nil)
+	ErrInvalidAssetType   = pkgerrors.NewValidationError("invalid asset type", nil)
+	ErrInvalidGenre       = pkgerrors.NewValidationError("invalid genre", nil)
+	ErrTooManyGenres      = pkgerrors.NewValidationError("too many genres", nil)
+	ErrInvalidTag         = pkgerrors.NewValidationError("invalid tag", nil)
+	ErrTooManyTags        = pkgerrors.NewValidationError("too many tags", nil)
+	ErrInvalidOwnerID     = pkgerrors.NewValidationError("invalid owner ID", nil)
 )

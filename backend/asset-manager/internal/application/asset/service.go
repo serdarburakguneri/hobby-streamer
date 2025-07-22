@@ -138,7 +138,7 @@ func (s *ApplicationService) CreateAsset(ctx context.Context, cmd CreateAssetCom
 		}
 	}
 
-	if err := s.domainService.ValidateAssetMetadata(asset); err != nil {
+	if err := asset.ValidateMetadata(); err != nil {
 		log.WithError(err).Error("Failed to validate asset metadata")
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (s *ApplicationService) UpdateAsset(ctx context.Context, cmd UpdateAssetCom
 		}
 	}
 
-	if err := s.domainService.ValidateAssetMetadata(asset); err != nil {
+	if err := asset.ValidateMetadata(); err != nil {
 		log.WithError(err).Error("Failed to validate asset metadata")
 		return err
 	}
@@ -821,7 +821,7 @@ func (s *ApplicationService) PublishAsset(ctx context.Context, cmd PublishAssetC
 		return err
 	}
 
-	if err := s.domainService.ValidateAssetForPublishing(asset); err != nil {
+	if err := asset.ValidateForPublishing(); err != nil {
 		log.WithError(err).Error("Failed to validate asset for publishing", "asset_id", assetID.Value())
 		return err
 	}
@@ -864,25 +864,7 @@ func (s *ApplicationService) UpdateVideoAnalysis(ctx context.Context, assetID, v
 	}
 
 	if metadata.Success {
-		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
-		if metadata.Duration > 0 {
-			video.UpdateDuration(metadata.Duration)
-		}
-		if metadata.Width > 0 && metadata.Height > 0 {
-			video.UpdateDimensions(metadata.Width, metadata.Height)
-		}
-		if metadata.Bitrate > 0 {
-			video.UpdateBitrate(metadata.Bitrate)
-		}
-		if metadata.Codec != "" {
-			video.UpdateCodec(metadata.Codec)
-		}
-		if metadata.Size > 0 {
-			video.UpdateSize(metadata.Size)
-		}
-		if metadata.ContentType != "" {
-			video.UpdateContentType(metadata.ContentType)
-		}
+		s.handleSuccessfulAnalysis(video, metadata)
 	} else {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusFailed))
 	}
@@ -895,8 +877,32 @@ func (s *ApplicationService) UpdateVideoAnalysis(ctx context.Context, assetID, v
 	if err := s.eventPublisher.PublishVideoStatusUpdated(ctx, asset, videoID, video.Status()); err != nil {
 		log.WithError(err).Error("Failed to publish video status updated event", "asset_id", assetID, "video_id", videoID)
 	}
+
 	log.Info("Video analysis updated successfully", "asset_id", assetID, "video_id", videoID, "success", metadata.Success)
 	return nil
+}
+
+func (s *ApplicationService) handleSuccessfulAnalysis(video *domainasset.Video, metadata *messages.JobCompletionPayload) {
+	video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
+
+	if metadata.Duration > 0 {
+		video.UpdateDuration(metadata.Duration)
+	}
+	if metadata.Width > 0 && metadata.Height > 0 {
+		video.UpdateDimensions(metadata.Width, metadata.Height)
+	}
+	if metadata.Bitrate > 0 {
+		video.UpdateBitrate(metadata.Bitrate)
+	}
+	if metadata.Codec != "" {
+		video.UpdateCodec(metadata.Codec)
+	}
+	if metadata.Size > 0 {
+		video.UpdateSize(metadata.Size)
+	}
+	if metadata.ContentType != "" {
+		video.UpdateContentType(metadata.ContentType)
+	}
 }
 
 func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID, videoID, format string, metadata *messages.JobCompletionPayload) error {
@@ -915,67 +921,16 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 	}
 
 	if metadata.Success {
-		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
-
-		if format == "hls" || format == "dash" {
-			log.Info("Processing HLS/DASH transcode completion", "format", format, "metadata_bucket", metadata.Bucket, "metadata_key", metadata.Key, "metadata_url", metadata.URL)
-			if metadata.Bucket != "" && metadata.Key != "" {
-				manifestS3Url := "s3://" + metadata.Bucket + "/" + metadata.Key
-				log.Info("Creating new S3Object", "bucket", metadata.Bucket, "key", metadata.Key, "url", manifestS3Url)
-				newS3Obj, err := domainasset.NewS3Object(metadata.Bucket, metadata.Key, manifestS3Url)
-				if err == nil {
-					video.SetStorageLocation(*newS3Obj)
-					log.Info("Successfully updated video storage location", "video_id", videoID, "new_storage_location", manifestS3Url)
-				} else {
-					log.WithError(err).Error("Failed to create S3Object", "bucket", metadata.Bucket, "key", metadata.Key)
-				}
-			} else {
-				log.Warn("Missing bucket or key in metadata", "bucket", metadata.Bucket, "key", metadata.Key)
-			}
-			if metadata.URL != "" {
-				cdnURL := s.convertS3URLToCDN(metadata.URL)
-				cdnPrefix := "http://localhost:8083/cdn"
-				log.Info("Creating StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL, "cdn_prefix", cdnPrefix)
-				streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, &cdnPrefix, &cdnURL)
-				if err != nil {
-					log.WithError(err).Error("Failed to create StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL)
-				} else {
-					log.Info("Successfully created StreamInfo", "stream_info", streamInfo)
-					video.SetStreamInfo(streamInfo)
-				}
-			} else {
-				log.Warn("Missing URL in metadata")
-			}
-
-			if metadata.SegmentCount > 0 {
-				video.SetSegmentCount(metadata.SegmentCount)
-			}
-			if metadata.VideoCodec != "" {
-				video.SetVideoCodec(metadata.VideoCodec)
-			}
-			if metadata.AudioCodec != "" {
-				video.SetAudioCodec(metadata.AudioCodec)
-			}
-			if metadata.AvgSegmentDuration > 0 {
-				video.SetAvgSegmentDuration(metadata.AvgSegmentDuration)
-			}
-			if len(metadata.Segments) > 0 {
-				video.SetSegments(metadata.Segments)
-			}
+		if err := s.handleSuccessfulTranscoding(ctx, video, format, metadata, log); err != nil {
+			return err
 		}
 	} else {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusFailed))
 	}
 
-	transcodingInfo, err := domainasset.NewTranscodingInfo(
-		metadata.VideoID,
-		100.0,
-		metadata.URL,
-		&metadata.Error,
-		nil,
-	)
-	if err == nil {
-		video.UpdateTranscodingInfo(*transcodingInfo)
+	if err := s.updateTranscodingInfo(video, metadata); err != nil {
+		log.WithError(err).Error("Failed to update transcoding info", "asset_id", assetID, "video_id", videoID)
+		return err
 	}
 
 	if err := s.repo.Update(ctx, asset); err != nil {
@@ -986,7 +941,99 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 	if err := s.eventPublisher.PublishVideoStatusUpdated(ctx, asset, videoID, video.Status()); err != nil {
 		log.WithError(err).Error("Failed to publish video status updated event", "asset_id", assetID, "video_id", videoID)
 	}
+
 	log.Info("Video transcoding updated successfully", "asset_id", assetID, "video_id", videoID, "format", format, "success", metadata.Success)
+	return nil
+}
+
+func (s *ApplicationService) handleSuccessfulTranscoding(ctx context.Context, video *domainasset.Video, format string, metadata *messages.JobCompletionPayload, log *logger.Logger) error {
+	video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
+
+	if format == "hls" || format == "dash" {
+		log.Info("Processing HLS/DASH transcode completion", "format", format, "metadata_bucket", metadata.Bucket, "metadata_key", metadata.Key, "metadata_url", metadata.URL)
+
+		if err := s.updateVideoStorageLocation(video, metadata, log); err != nil {
+			return err
+		}
+
+		if err := s.updateVideoStreamInfo(video, metadata, log); err != nil {
+			return err
+		}
+
+		s.updateVideoMetadata(video, metadata)
+	}
+
+	return nil
+}
+
+func (s *ApplicationService) updateVideoStorageLocation(video *domainasset.Video, metadata *messages.JobCompletionPayload, log *logger.Logger) error {
+	if metadata.Bucket != "" && metadata.Key != "" {
+		manifestS3Url := "s3://" + metadata.Bucket + "/" + metadata.Key
+		log.Info("Creating new S3Object", "bucket", metadata.Bucket, "key", metadata.Key, "url", manifestS3Url)
+		newS3Obj, err := domainasset.NewS3Object(metadata.Bucket, metadata.Key, manifestS3Url)
+		if err != nil {
+			log.WithError(err).Error("Failed to create S3Object", "bucket", metadata.Bucket, "key", metadata.Key)
+			return pkgerrors.NewInternalError("failed to create S3 object", err)
+		}
+		video.SetStorageLocation(*newS3Obj)
+		log.Info("Successfully updated video storage location", "new_storage_location", manifestS3Url)
+		return nil
+	} else {
+		log.Warn("Missing bucket or key in metadata", "bucket", metadata.Bucket, "key", metadata.Key)
+		return pkgerrors.NewValidationError("missing bucket or key in metadata", nil)
+	}
+}
+
+func (s *ApplicationService) updateVideoStreamInfo(video *domainasset.Video, metadata *messages.JobCompletionPayload, log *logger.Logger) error {
+	if metadata.URL != "" {
+		cdnURL := s.convertS3URLToCDN(metadata.URL)
+		cdnPrefix := "http://localhost:8083/cdn"
+		log.Info("Creating StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL, "cdn_prefix", cdnPrefix)
+		streamInfo, err := domainasset.NewStreamInfo(&metadata.URL, &cdnPrefix, &cdnURL)
+		if err != nil {
+			log.WithError(err).Error("Failed to create StreamInfo", "metadata_url", metadata.URL, "cdn_url", cdnURL)
+			return pkgerrors.NewInternalError("failed to create stream info", err)
+		}
+		log.Info("Successfully created StreamInfo")
+		video.SetStreamInfo(streamInfo)
+		return nil
+	} else {
+		log.Warn("Missing URL in metadata")
+		return pkgerrors.NewValidationError("missing URL in metadata", nil)
+	}
+}
+
+func (s *ApplicationService) updateVideoMetadata(video *domainasset.Video, metadata *messages.JobCompletionPayload) {
+	if metadata.SegmentCount > 0 {
+		video.SetSegmentCount(metadata.SegmentCount)
+	}
+	if metadata.VideoCodec != "" {
+		video.SetVideoCodec(metadata.VideoCodec)
+	}
+	if metadata.AudioCodec != "" {
+		video.SetAudioCodec(metadata.AudioCodec)
+	}
+	if metadata.AvgSegmentDuration > 0 {
+		video.SetAvgSegmentDuration(metadata.AvgSegmentDuration)
+	}
+	if len(metadata.Segments) > 0 {
+		video.SetSegments(metadata.Segments)
+	}
+}
+
+func (s *ApplicationService) updateTranscodingInfo(video *domainasset.Video, metadata *messages.JobCompletionPayload) error {
+	transcodingInfo, err := domainasset.NewTranscodingInfo(
+		metadata.VideoID,
+		100.0,
+		metadata.URL,
+		&metadata.Error,
+		nil,
+	)
+	if err != nil {
+		return pkgerrors.NewInternalError("failed to create transcoding info", err)
+	}
+
+	video.UpdateTranscodingInfo(*transcodingInfo)
 	return nil
 }
 
@@ -1015,7 +1062,7 @@ func (s *ApplicationService) GetAssetMetrics(ctx context.Context, assetID string
 		return nil, err
 	}
 
-	metrics := s.domainService.CalculateAssetMetrics(asset)
+	metrics := asset.CalculateMetrics()
 	return &metrics, nil
 }
 
@@ -1028,7 +1075,7 @@ func (s *ApplicationService) GetAssetStorageUsage(ctx context.Context, assetID s
 		return nil, err
 	}
 
-	usage := s.domainService.CalculateAssetStorageUsage(asset)
+	usage := asset.CalculateStorageUsage()
 	return &usage, nil
 }
 
@@ -1041,5 +1088,5 @@ func (s *ApplicationService) ValidateAssetAccess(ctx context.Context, assetID, u
 		return err
 	}
 
-	return s.domainService.ValidateAssetAccess(asset, userID)
+	return asset.ValidateAccess(userID)
 }

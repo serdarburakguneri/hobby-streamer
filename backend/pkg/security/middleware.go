@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -9,22 +10,26 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
-type RateLimiter struct {
+type RateLimiter interface {
+	Allow(ctx context.Context, key string) (bool, error)
+}
+
+type InMemoryRateLimiter struct {
 	requests map[string][]time.Time
 	mu       sync.RWMutex
 	limit    int
 	window   time.Duration
 }
 
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	return &RateLimiter{
+func NewInMemoryRateLimiter(limit int, window time.Duration) *InMemoryRateLimiter {
+	return &InMemoryRateLimiter{
 		requests: make(map[string][]time.Time),
 		limit:    limit,
 		window:   window,
 	}
 }
 
-func (rl *RateLimiter) Allow(key string) bool {
+func (rl *InMemoryRateLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -41,22 +46,32 @@ func (rl *RateLimiter) Allow(key string) bool {
 		rl.requests[key] = validRequests
 
 		if len(validRequests) >= rl.limit {
-			return false
+			return false, nil
 		}
 	}
 
 	rl.requests[key] = append(rl.requests[key], now)
-	return true
+	return true, nil
 }
 
 func RateLimitMiddleware(limit int, window time.Duration) func(http.Handler) http.Handler {
-	limiter := NewRateLimiter(limit, window)
+	limiter := NewInMemoryRateLimiter(limit, window)
+	return RateLimitMiddlewareWithLimiter(limiter)
+}
 
+func RateLimitMiddlewareWithLimiter(limiter RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			key := getClientIP(r)
 
-			if !limiter.Allow(key) {
+			allowed, err := limiter.Allow(r.Context(), key)
+			if err != nil {
+				logger.Get().WithError(err).Error("Rate limiter error")
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if !allowed {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				if _, err := w.Write([]byte(`{"error": "Rate limit exceeded"}`)); err != nil {
