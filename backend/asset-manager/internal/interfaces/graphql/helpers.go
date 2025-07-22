@@ -172,6 +172,12 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 		formatPtr = &formatEnum
 	}
 
+	segmentCount := video.SegmentCount()
+	videoCodec := video.VideoCodec()
+	audioCodec := video.AudioCodec()
+	avgSegmentDuration := video.AvgSegmentDuration()
+	segments := video.Segments()
+
 	return &Video{
 		ID:     video.ID(),
 		Label:  video.Label(),
@@ -182,24 +188,29 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 			Key:    video.StorageLocation().Key(),
 			URL:    video.StorageLocation().URL(),
 		},
-		Width:           &width,
-		Height:          &height,
-		Duration:        &duration,
-		Bitrate:         &bitrate,
-		Codec:           &codec,
-		Size:            &size,
-		ContentType:     &contentType,
-		StreamInfo:      streamInfo,
-		Metadata:        videoMetadata,
-		Status:          VideoStatus(video.Status()),
-		Thumbnail:       thumbnail,
-		TranscodingInfo: transcodingInfo,
-		CreatedAt:       video.CreatedAt(),
-		UpdatedAt:       video.UpdatedAt(),
-		Quality:         VideoQuality(video.Quality()),
-		IsReady:         video.IsReady(),
-		IsProcessing:    video.IsProcessing(),
-		IsFailed:        video.IsFailed(),
+		Width:              &width,
+		Height:             &height,
+		Duration:           &duration,
+		Bitrate:            &bitrate,
+		Codec:              &codec,
+		Size:               &size,
+		ContentType:        &contentType,
+		StreamInfo:         streamInfo,
+		Metadata:           videoMetadata,
+		Status:             VideoStatus(video.Status()),
+		Thumbnail:          thumbnail,
+		TranscodingInfo:    transcodingInfo,
+		CreatedAt:          video.CreatedAt(),
+		UpdatedAt:          video.UpdatedAt(),
+		Quality:            VideoQuality(video.Quality()),
+		IsReady:            video.IsReady(),
+		IsProcessing:       video.IsProcessing(),
+		IsFailed:           video.IsFailed(),
+		SegmentCount:       &segmentCount,
+		VideoCodec:         &videoCodec,
+		AudioCodec:         &audioCodec,
+		AvgSegmentDuration: &avgSegmentDuration,
+		Segments:           segments,
 	}
 }
 

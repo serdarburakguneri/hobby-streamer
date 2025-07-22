@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
@@ -51,12 +50,12 @@ func (p *EventPublisher) PublishJobCompleted(ctx context.Context, jobType, asset
 				payload.URL = transcodeMetadata.OutputURL
 				payload.Size = transcodeMetadata.Size
 				payload.ContentType = transcodeMetadata.ContentType
-
-				if strings.Contains(transcodeMetadata.ContentType, "hls") {
-					payload.Format = "hls"
-				} else if strings.Contains(transcodeMetadata.ContentType, "dash") {
-					payload.Format = "dash"
-				}
+				payload.Format = transcodeMetadata.Format
+				payload.SegmentCount = transcodeMetadata.SegmentCount
+				payload.VideoCodec = transcodeMetadata.VideoCodec
+				payload.AudioCodec = transcodeMetadata.AudioCodec
+				payload.AvgSegmentDuration = transcodeMetadata.AvgSegmentDuration
+				payload.Segments = transcodeMetadata.Segments
 			}
 		}
 	}

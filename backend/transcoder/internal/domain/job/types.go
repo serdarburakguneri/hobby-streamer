@@ -17,13 +17,19 @@ type VideoMetadata struct {
 }
 
 type TranscodeMetadata struct {
-	OutputURL   string  `json:"outputUrl"`
-	Bucket      string  `json:"bucket"`
-	Key         string  `json:"key"`
-	Duration    float64 `json:"duration"`
-	Bitrate     int     `json:"bitrate"`
-	Size        int64   `json:"size"`
-	ContentType string  `json:"contentType"`
+	OutputURL          string   `json:"outputUrl"`
+	Bucket             string   `json:"bucket"`
+	Key                string   `json:"key"`
+	Duration           float64  `json:"duration"`
+	Bitrate            int      `json:"bitrate"`
+	Size               int64    `json:"size"`
+	ContentType        string   `json:"contentType"`
+	Format             string   `json:"format"`
+	SegmentCount       int      `json:"segmentCount,omitempty"`
+	VideoCodec         string   `json:"videoCodec,omitempty"`
+	AudioCodec         string   `json:"audioCodec,omitempty"`
+	AvgSegmentDuration float64  `json:"avgSegmentDuration,omitempty"`
+	Segments           []string `json:"segments,omitempty"`
 }
 
 func generateJobID() string {

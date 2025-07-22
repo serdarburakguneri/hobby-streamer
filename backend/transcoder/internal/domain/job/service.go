@@ -2,12 +2,10 @@ package job
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -16,15 +14,17 @@ import (
 )
 
 type JobDomainService struct {
-	logger   *logger.Logger
-	s3Client *s3.Client
+	logger             *logger.Logger
+	s3Client           *s3.Client
+	transcoderRegistry *TranscoderRegistry
 }
 
 func NewJobDomainService() *JobDomainService {
 	s3Client, _ := s3.NewClient(context.Background())
 	return &JobDomainService{
-		logger:   logger.WithService("job-domain-service"),
-		s3Client: s3Client,
+		logger:             logger.WithService("job-domain-service"),
+		s3Client:           s3Client,
+		transcoderRegistry: NewTranscoderRegistry(),
 	}
 }
 
@@ -52,94 +52,69 @@ func (s *JobDomainService) ValidateJob(job *Job) error {
 	return nil
 }
 
-func (s *JobDomainService) AnalyzeVideo(ctx context.Context, job *Job) (*VideoMetadata, error) {
-	s.logger.Info("Starting video analysis", "job_id", job.ID(), "input", job.Input())
-
+func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{}, error) {
 	localPath, err := s.downloadFromS3(ctx, job.Input())
 	if err != nil {
 		return nil, errors.NewExternalError("failed to download input file", err)
 	}
 	defer os.Remove(localPath)
 
-	metadata, err := s.extractVideoMetadata(ctx, localPath)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to extract video metadata", err)
-	}
-
-	if err := s.validateVideo(ctx, localPath); err != nil {
-		return nil, errors.NewValidationError("video validation failed", err)
-	}
-
-	s.logger.Info("Video analysis completed", "job_id", job.ID(), "metadata", metadata)
-	return metadata, nil
-}
-
-func (s *JobDomainService) TranscodeVideo(ctx context.Context, job *Job) (*TranscodeMetadata, error) {
-	s.logger.Info("Starting video transcoding", "job_id", job.ID(), "input", job.Input(), "output", job.Output(), "format", job.Format())
-
-	localPath, err := s.downloadFromS3(ctx, job.Input())
-	if err != nil {
-		return nil, errors.NewExternalError("failed to download input file", err)
-	}
-	defer os.Remove(localPath)
-
-	outputDir := "/tmp/transcode/" + job.ID()
-	if err := os.MkdirAll(outputDir, 0750); err != nil {
-		return nil, errors.NewInternalError("failed to create output directory", err)
-	}
-	defer os.RemoveAll(outputDir)
-
-	var outputPath string
-	var transcodeErr error
-
-	switch job.Format() {
-	case JobFormatHLS:
-		outputPath, transcodeErr = s.transcodeToHLS(ctx, localPath, outputDir)
-	case JobFormatDASH:
-		outputPath, transcodeErr = s.transcodeToDASH(ctx, localPath, outputDir)
-	default:
-		return nil, errors.NewValidationError(fmt.Sprintf("unsupported format: %s", job.Format()), nil)
-	}
-
-	if transcodeErr != nil {
-		return nil, errors.NewInternalError("transcoding failed", transcodeErr)
-	}
-
-	if !strings.HasPrefix(job.Output(), "s3://") {
-		return nil, errors.NewValidationError("output must be an S3 path", nil)
-	}
-	parts := strings.SplitN(job.Output()[5:], "/", 2)
-	if len(parts) != 2 {
-		return nil, errors.NewValidationError(fmt.Sprintf("invalid S3 path: %s", job.Output()), nil)
-	}
-	bucket := parts[0]
-	manifestKey := parts[1]
-	dirKey := filepath.Dir(manifestKey)
-
-	uploadErr := s.s3Client.UploadDirectory(ctx, outputDir, bucket, dirKey)
-	if uploadErr != nil {
-		return nil, errors.NewExternalError("failed to upload directory to S3", uploadErr)
-	}
-
-	outputURL := "s3://" + bucket + "/" + manifestKey
-
-	metadata, metadataErr := s.extractTranscodeMetadata(ctx, outputPath)
-	if metadataErr != nil {
-		return nil, errors.NewInternalError("failed to extract transcode metadata", metadataErr)
-	}
-
-	metadata.OutputURL = outputURL
-
-	if strings.HasPrefix(outputURL, "s3://") {
-		parts := strings.SplitN(outputURL[5:], "/", 2)
-		if len(parts) == 2 {
-			metadata.Bucket = parts[0]
-			metadata.Key = parts[1]
+	var outputDir string
+	if job.Type() == JobTypeTranscode {
+		outputDir = "/tmp/transcode/" + job.ID()
+		if err := os.MkdirAll(outputDir, 0750); err != nil {
+			return nil, errors.NewInternalError("failed to create output directory", err)
 		}
+		defer os.RemoveAll(outputDir)
 	}
 
-	s.logger.Info("Video transcoding completed", "job_id", job.ID(), "output_url", outputURL)
-	return metadata, nil
+	var strategyKey string
+	if job.Type() == JobTypeAnalyze {
+		strategyKey = "analyze"
+	} else {
+		strategyKey = string(job.Format())
+	}
+	strategy := s.transcoderRegistry.Get(strategyKey)
+	if strategy == nil {
+		return nil, errors.NewValidationError("unsupported job type/format: "+strategyKey, nil)
+	}
+	outputPath, stratErr := strategy.Transcode(ctx, job, localPath, outputDir)
+	if stratErr != nil {
+		return nil, stratErr
+	}
+
+	if job.Type() == JobTypeTranscode {
+		if !strings.HasPrefix(job.Output(), "s3://") {
+			return nil, errors.NewValidationError("output must be an S3 path", nil)
+		}
+		parts := strings.SplitN(job.Output()[5:], "/", 2)
+		if len(parts) != 2 {
+			return nil, errors.NewValidationError("invalid S3 path: "+job.Output(), nil)
+		}
+		bucket := parts[0]
+		manifestKey := parts[1]
+		dirKey := filepath.Dir(manifestKey)
+
+		uploadErr := s.s3Client.UploadDirectory(ctx, outputDir, bucket, dirKey)
+		if uploadErr != nil {
+			return nil, errors.NewExternalError("failed to upload directory to S3", uploadErr)
+		}
+
+		outputURL := "s3://" + bucket + "/" + manifestKey
+		metadata, metadataErr := strategy.ExtractMetadata(ctx, outputPath)
+		if metadataErr != nil {
+			return nil, errors.NewInternalError("failed to extract transcode metadata", metadataErr)
+		}
+		if metadata != nil {
+			metadata.OutputURL = outputURL
+			metadata.Bucket = bucket
+			metadata.Key = manifestKey
+			metadata.Format = string(job.Format())
+		}
+		return metadata, nil
+	}
+
+	return nil, nil
 }
 
 func (s *JobDomainService) downloadFromS3(ctx context.Context, input string) (string, error) {
@@ -190,77 +165,6 @@ func (s *JobDomainService) uploadToS3(ctx context.Context, localPath, s3Path str
 	return s3Path, nil
 }
 
-func (s *JobDomainService) extractVideoMetadata(ctx context.Context, filePath string) (*VideoMetadata, error) {
-	var out []byte
-	var err error
-
-	retryFunc := func(ctx context.Context) error {
-		cmd := exec.CommandContext(ctx, "ffprobe", // nolint:gosec // ffprobe is a trusted binary with controlled arguments
-			"-v", "quiet",
-			"-print_format", "json",
-			"-show_format",
-			"-show_streams",
-			filePath)
-
-		out, err = cmd.Output()
-		return err
-	}
-
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
-	if retryErr != nil {
-		return nil, errors.NewInternalError("ffprobe command failed", retryErr)
-	}
-
-	var probeResult struct {
-		Format struct {
-			Duration string `json:"duration"`
-			BitRate  string `json:"bit_rate"`
-			Size     string `json:"size"`
-		} `json:"format"`
-		Streams []struct {
-			CodecType string `json:"codec_type"`
-			CodecName string `json:"codec_name"`
-			Width     int    `json:"width"`
-			Height    int    `json:"height"`
-		} `json:"streams"`
-	}
-
-	if err := json.Unmarshal(out, &probeResult); err != nil {
-		return nil, errors.NewInternalError("failed to parse ffprobe output", err)
-	}
-
-	metadata := &VideoMetadata{}
-
-	for _, stream := range probeResult.Streams {
-		if stream.CodecType == "video" {
-			metadata.Width = stream.Width
-			metadata.Height = stream.Height
-			metadata.Codec = stream.CodecName
-			break
-		}
-	}
-
-	if probeResult.Format.Duration != "" {
-		if duration, err := strconv.ParseFloat(probeResult.Format.Duration, 64); err == nil {
-			metadata.Duration = duration
-		}
-	}
-
-	if probeResult.Format.BitRate != "" {
-		if bitrate, err := strconv.Atoi(probeResult.Format.BitRate); err == nil {
-			metadata.Bitrate = bitrate
-		}
-	}
-
-	if probeResult.Format.Size != "" {
-		if size, err := strconv.ParseInt(probeResult.Format.Size, 10, 64); err == nil {
-			metadata.Size = size
-		}
-	}
-
-	return metadata, nil
-}
-
 func (s *JobDomainService) validateVideo(ctx context.Context, filePath string) error {
 	retryFunc := func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ffmpeg", "-i", filePath, "-f", "null", "-") // nolint:gosec // ffmpeg is a trusted binary with controlled arguments
@@ -273,73 +177,4 @@ func (s *JobDomainService) validateVideo(ctx context.Context, filePath string) e
 		return errors.NewValidationError("video validation failed", retryErr)
 	}
 	return nil
-}
-
-func (s *JobDomainService) transcodeToHLS(ctx context.Context, inputPath, outputDir string) (string, error) {
-	outputPath := filepath.Join(outputDir, "playlist.m3u8")
-
-	retryFunc := func(ctx context.Context) error {
-		cmd := exec.CommandContext(ctx, "ffmpeg", // nolint:gosec // ffmpeg is a trusted binary with controlled arguments
-			"-i", inputPath,
-			"-c:v", "libx264",
-			"-c:a", "aac",
-			"-hls_time", "10",
-			"-hls_list_size", "0",
-			"-hls_segment_filename", filepath.Join(outputDir, "segment_%03d.ts"),
-			outputPath)
-
-		return cmd.Run()
-	}
-
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
-	if retryErr != nil {
-		return "", errors.NewInternalError("HLS transcoding failed", retryErr)
-	}
-	return outputPath, nil
-}
-
-func (s *JobDomainService) transcodeToDASH(ctx context.Context, inputPath, outputDir string) (string, error) {
-	outputPath := filepath.Join(outputDir, "playlist.mpd")
-
-	retryFunc := func(ctx context.Context) error {
-		cmd := exec.CommandContext(ctx, "ffmpeg", // nolint:gosec // ffmpeg is a trusted binary with controlled arguments
-			"-i", inputPath,
-			"-c:v", "libx264",
-			"-c:a", "aac",
-			"-f", "dash",
-			"-seg_duration", "10",
-			"-use_template", "1",
-			"-use_timeline", "1",
-			"-init_seg_name", "init-$RepresentationID$.m4s",
-			"-media_seg_name", "chunk-$RepresentationID$-$Number%05d$.m4s",
-			outputPath)
-
-		return cmd.Run()
-	}
-
-	retryErr := errors.RetryWithBackoff(ctx, retryFunc, 2)
-	if retryErr != nil {
-		return "", errors.NewInternalError("DASH transcoding failed", retryErr)
-	}
-	return outputPath, nil
-}
-
-func (s *JobDomainService) extractTranscodeMetadata(ctx context.Context, filePath string) (*TranscodeMetadata, error) {
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to get file info", err)
-	}
-
-	metadata := &TranscodeMetadata{
-		Size:        fileInfo.Size(),
-		ContentType: "application/x-mpegURL",
-	}
-
-	if strings.Contains(filePath, "playlist.m3u8") {
-		metadata.ContentType = "application/x-mpegURL"
-	} else if strings.Contains(filePath, "playlist.mpd") {
-		metadata.ContentType = "application/dash+xml"
-	}
-
-	return metadata, nil
 }

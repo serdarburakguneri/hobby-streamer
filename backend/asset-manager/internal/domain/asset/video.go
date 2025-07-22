@@ -13,25 +13,30 @@ type VideoStatus string
 type VideoQuality string
 
 type Video struct {
-	id              string
-	label           string
-	videoType       VideoType
-	format          VideoFormat
-	storageLocation S3Object
-	width           int
-	height          int
-	duration        float64
-	bitrate         int
-	codec           string
-	size            int64
-	contentType     string
-	streamInfo      *StreamInfo
-	metadata        map[string]string
-	status          VideoStatus
-	thumbnail       *Image
-	transcodingInfo TranscodingInfo
-	createdAt       time.Time
-	updatedAt       time.Time
+	id                 string
+	label              string
+	videoType          VideoType
+	format             VideoFormat
+	storageLocation    S3Object
+	width              int
+	height             int
+	duration           float64
+	bitrate            int
+	codec              string
+	size               int64
+	contentType        string
+	streamInfo         *StreamInfo
+	metadata           map[string]string
+	status             VideoStatus
+	thumbnail          *Image
+	transcodingInfo    TranscodingInfo
+	createdAt          time.Time
+	updatedAt          time.Time
+	segmentCount       int
+	videoCodec         string
+	audioCodec         string
+	avgSegmentDuration float64
+	segments           []string
 }
 
 func NewVideoFormat(value string) (*VideoFormat, error) {
@@ -44,17 +49,22 @@ func NewVideoFormat(value string) (*VideoFormat, error) {
 	}
 }
 
-func NewVideo(label string, format *VideoFormat, storageLocation S3Object) *Video {
+func NewVideo(label string, format *VideoFormat, storageLocation S3Object, segmentCount int, videoCodec, audioCodec string, avgSegmentDuration float64, segments []string) *Video {
 	now := time.Now().UTC()
 	video := &Video{
-		id:              generateID(),
-		label:           label,
-		videoType:       VideoType(constants.VideoTypeMain),
-		storageLocation: storageLocation,
-		status:          VideoStatus(constants.VideoStatusPending),
-		metadata:        make(map[string]string),
-		createdAt:       now,
-		updatedAt:       now,
+		id:                 generateID(),
+		label:              label,
+		videoType:          VideoType(constants.VideoTypeMain),
+		storageLocation:    storageLocation,
+		status:             VideoStatus(constants.VideoStatusPending),
+		metadata:           make(map[string]string),
+		createdAt:          now,
+		updatedAt:          now,
+		segmentCount:       segmentCount,
+		videoCodec:         videoCodec,
+		audioCodec:         audioCodec,
+		avgSegmentDuration: avgSegmentDuration,
+		segments:           segments,
 	}
 
 	if format != nil {
@@ -80,24 +90,34 @@ func ReconstructVideo(
 	status VideoStatus,
 	createdAt time.Time,
 	updatedAt time.Time,
+	segmentCount int,
+	videoCodec string,
+	audioCodec string,
+	avgSegmentDuration float64,
+	segments []string,
 ) *Video {
 	return &Video{
-		id:              id,
-		label:           label,
-		videoType:       videoType,
-		format:          format,
-		storageLocation: storageLocation,
-		width:           width,
-		height:          height,
-		duration:        duration,
-		bitrate:         bitrate,
-		codec:           codec,
-		size:            size,
-		contentType:     contentType,
-		status:          status,
-		metadata:        make(map[string]string),
-		createdAt:       createdAt,
-		updatedAt:       updatedAt,
+		id:                 id,
+		label:              label,
+		videoType:          videoType,
+		format:             format,
+		storageLocation:    storageLocation,
+		width:              width,
+		height:             height,
+		duration:           duration,
+		bitrate:            bitrate,
+		codec:              codec,
+		size:               size,
+		contentType:        contentType,
+		status:             status,
+		metadata:           make(map[string]string),
+		createdAt:          createdAt,
+		updatedAt:          updatedAt,
+		segmentCount:       segmentCount,
+		videoCodec:         videoCodec,
+		audioCodec:         audioCodec,
+		avgSegmentDuration: avgSegmentDuration,
+		segments:           segments,
 	}
 }
 
@@ -264,4 +284,40 @@ func (v *Video) IsProcessing() bool {
 
 func (v *Video) IsFailed() bool {
 	return v.status == constants.VideoStatusFailed
+}
+
+func (v *Video) SegmentCount() int {
+	return v.segmentCount
+}
+func (v *Video) SetSegmentCount(count int) {
+	v.segmentCount = count
+	v.updatedAt = time.Now().UTC()
+}
+func (v *Video) VideoCodec() string {
+	return v.videoCodec
+}
+func (v *Video) SetVideoCodec(codec string) {
+	v.videoCodec = codec
+	v.updatedAt = time.Now().UTC()
+}
+func (v *Video) AudioCodec() string {
+	return v.audioCodec
+}
+func (v *Video) SetAudioCodec(codec string) {
+	v.audioCodec = codec
+	v.updatedAt = time.Now().UTC()
+}
+func (v *Video) AvgSegmentDuration() float64 {
+	return v.avgSegmentDuration
+}
+func (v *Video) SetAvgSegmentDuration(dur float64) {
+	v.avgSegmentDuration = dur
+	v.updatedAt = time.Now().UTC()
+}
+func (v *Video) Segments() []string {
+	return v.segments
+}
+func (v *Video) SetSegments(segs []string) {
+	v.segments = segs
+	v.updatedAt = time.Now().UTC()
 }

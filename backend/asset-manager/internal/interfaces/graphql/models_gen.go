@@ -196,29 +196,34 @@ type UpdateBucketInput struct {
 }
 
 type Video struct {
-	ID              string           `json:"id"`
-	Label           string           `json:"label"`
-	Type            VideoType        `json:"type"`
-	Format          *VideoFormat     `json:"format,omitempty"`
-	StorageLocation *S3Object        `json:"storageLocation"`
-	Width           *int             `json:"width,omitempty"`
-	Height          *int             `json:"height,omitempty"`
-	Duration        *float64         `json:"duration,omitempty"`
-	Bitrate         *int             `json:"bitrate,omitempty"`
-	Codec           *string          `json:"codec,omitempty"`
-	Size            *int             `json:"size,omitempty"`
-	ContentType     *string          `json:"contentType,omitempty"`
-	StreamInfo      *StreamInfo      `json:"streamInfo,omitempty"`
-	Metadata        []string         `json:"metadata"`
-	Status          VideoStatus      `json:"status"`
-	Thumbnail       *Image           `json:"thumbnail,omitempty"`
-	TranscodingInfo *TranscodingInfo `json:"transcodingInfo,omitempty"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
-	Quality         VideoQuality     `json:"quality"`
-	IsReady         bool             `json:"isReady"`
-	IsProcessing    bool             `json:"isProcessing"`
-	IsFailed        bool             `json:"isFailed"`
+	ID                 string           `json:"id"`
+	Label              string           `json:"label"`
+	Type               VideoType        `json:"type"`
+	Format             *VideoFormat     `json:"format,omitempty"`
+	StorageLocation    *S3Object        `json:"storageLocation"`
+	Width              *int             `json:"width,omitempty"`
+	Height             *int             `json:"height,omitempty"`
+	Duration           *float64         `json:"duration,omitempty"`
+	Bitrate            *int             `json:"bitrate,omitempty"`
+	Codec              *string          `json:"codec,omitempty"`
+	Size               *int             `json:"size,omitempty"`
+	ContentType        *string          `json:"contentType,omitempty"`
+	StreamInfo         *StreamInfo      `json:"streamInfo,omitempty"`
+	Metadata           []string         `json:"metadata"`
+	Status             VideoStatus      `json:"status"`
+	Thumbnail          *Image           `json:"thumbnail,omitempty"`
+	TranscodingInfo    *TranscodingInfo `json:"transcodingInfo,omitempty"`
+	CreatedAt          time.Time        `json:"createdAt"`
+	UpdatedAt          time.Time        `json:"updatedAt"`
+	Quality            VideoQuality     `json:"quality"`
+	IsReady            bool             `json:"isReady"`
+	IsProcessing       bool             `json:"isProcessing"`
+	IsFailed           bool             `json:"isFailed"`
+	SegmentCount       *int             `json:"segmentCount,omitempty"`
+	VideoCodec         *string          `json:"videoCodec,omitempty"`
+	AudioCodec         *string          `json:"audioCodec,omitempty"`
+	AvgSegmentDuration *float64         `json:"avgSegmentDuration,omitempty"`
+	Segments           []string         `json:"segments,omitempty"`
 }
 
 type ImageType string

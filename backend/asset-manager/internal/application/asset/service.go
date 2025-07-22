@@ -920,12 +920,19 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusReady))
 
 		if format == "hls" || format == "dash" {
+			log.Info("Processing HLS/DASH transcode completion", "format", format, "metadata_bucket", metadata.Bucket, "metadata_key", metadata.Key, "metadata_url", metadata.URL)
 			if metadata.Bucket != "" && metadata.Key != "" {
 				manifestS3Url := "s3://" + metadata.Bucket + "/" + metadata.Key
+				log.Info("Creating new S3Object", "bucket", metadata.Bucket, "key", metadata.Key, "url", manifestS3Url)
 				newS3Obj, err := domainasset.NewS3Object(metadata.Bucket, metadata.Key, manifestS3Url)
 				if err == nil {
 					video.SetStorageLocation(*newS3Obj)
+					log.Info("Successfully updated video storage location", "video_id", videoID, "new_storage_location", manifestS3Url)
+				} else {
+					log.WithError(err).Error("Failed to create S3Object", "bucket", metadata.Bucket, "key", metadata.Key)
 				}
+			} else {
+				log.Warn("Missing bucket or key in metadata", "bucket", metadata.Bucket, "key", metadata.Key)
 			}
 			if metadata.URL != "" {
 				cdnURL := s.convertS3URLToCDN(metadata.URL)
@@ -938,6 +945,24 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 					log.Info("Successfully created StreamInfo", "stream_info", streamInfo)
 					video.SetStreamInfo(streamInfo)
 				}
+			} else {
+				log.Warn("Missing URL in metadata")
+			}
+
+			if metadata.SegmentCount > 0 {
+				video.SetSegmentCount(metadata.SegmentCount)
+			}
+			if metadata.VideoCodec != "" {
+				video.SetVideoCodec(metadata.VideoCodec)
+			}
+			if metadata.AudioCodec != "" {
+				video.SetAudioCodec(metadata.AudioCodec)
+			}
+			if metadata.AvgSegmentDuration > 0 {
+				video.SetAvgSegmentDuration(metadata.AvgSegmentDuration)
+			}
+			if len(metadata.Segments) > 0 {
+				video.SetSegments(metadata.Segments)
 			}
 		}
 	} else {

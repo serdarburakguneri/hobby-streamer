@@ -306,7 +306,7 @@ func (a *Asset) AddVideo(label string, format *VideoFormat, storageLocation S3Ob
 		return nil, ErrCannotUpdateAsset
 	}
 
-	video := NewVideo(label, format, storageLocation)
+	video := NewVideo(label, format, storageLocation, 0, "", "", 0, nil)
 	a.videos[video.ID()] = video
 	a.updatedAt = UpdatedAt{value: time.Now().UTC()}
 	return video, nil

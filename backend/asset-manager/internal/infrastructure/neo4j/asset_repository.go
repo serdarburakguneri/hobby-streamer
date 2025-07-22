@@ -488,6 +488,13 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 			"createdAt":   video.CreatedAt(),
 			"updatedAt":   video.UpdatedAt(),
 		}
+		if si := video.StreamInfo(); si != nil {
+			videoData["streamInfo"] = map[string]interface{}{
+				"downloadURL": si.DownloadURL(),
+				"cdnPrefix":   si.CDNPrefix(),
+				"url":         si.URL(),
+			}
+		}
 		videosData = append(videosData, videoData)
 	}
 	videosJSON, _ := json.Marshal(videosData)
@@ -600,12 +607,12 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 	var videos []*asset.Video
 	if videosJSON, exists := props["videos"]; exists {
 		if videosStr, ok := videosJSON.(string); ok && videosStr != "" {
-			log.Info("Found videos JSON", "videos_json", videosStr)
+			log.Debug("Found videos JSON", "videos_json", videosStr)
 			var videosData []map[string]interface{}
 			if err := json.Unmarshal([]byte(videosStr), &videosData); err != nil {
 				log.WithError(err).Error("Failed to unmarshal videos JSON")
 			} else {
-				log.Info("Successfully unmarshaled videos", "video_count", len(videosData))
+				log.Debug("Successfully unmarshaled videos", "video_count", len(videosData))
 				for _, videoData := range videosData {
 					videoID, _ := videoData["id"].(string)
 					label, _ := videoData["label"].(string)
@@ -687,9 +694,28 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						videoStatus,
 						createdAtTime,
 						updatedAtTime,
+						0, "", "", 0, nil,
 					)
+					// Deserialize streamInfo if present
+					if streamInfoMap, ok := videoData["streamInfo"].(map[string]interface{}); ok {
+						var downloadURL, cdnPrefix, urlStr *string
+						if v, ok := streamInfoMap["downloadURL"].(string); ok && v != "" {
+							downloadURL = &v
+						}
+						if v, ok := streamInfoMap["cdnPrefix"].(string); ok && v != "" {
+							cdnPrefix = &v
+						}
+						if v, ok := streamInfoMap["url"].(string); ok && v != "" {
+							urlStr = &v
+						}
+						if downloadURL != nil || cdnPrefix != nil || urlStr != nil {
+							if si, err := asset.NewStreamInfo(downloadURL, cdnPrefix, urlStr); err == nil {
+								video.SetStreamInfo(si)
+							}
+						}
+					}
 
-					log.Info("Reconstructed video", "video_id", video.ID(), "label", video.Label())
+					log.Debug("Reconstructed video", "video_id", video.ID(), "label", video.Label())
 					videos = append(videos, video)
 				}
 			}
