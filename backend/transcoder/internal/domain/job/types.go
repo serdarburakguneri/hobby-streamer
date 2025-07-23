@@ -3,6 +3,7 @@ package job
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"time"
 )
 
@@ -30,6 +31,63 @@ type TranscodeMetadata struct {
 	AudioCodec         string   `json:"audioCodec,omitempty"`
 	AvgSegmentDuration float64  `json:"avgSegmentDuration,omitempty"`
 	Segments           []string `json:"segments,omitempty"`
+}
+
+type JobID struct {
+	value string
+}
+
+func NewJobID(value string) (*JobID, error) {
+	if value == "" {
+		return nil, errors.New("invalid job ID")
+	}
+	return &JobID{value: value}, nil
+}
+
+func (id JobID) Value() string {
+	return id.value
+}
+
+func (id JobID) Equals(other JobID) bool {
+	return id.value == other.value
+}
+
+type AssetID struct {
+	value string
+}
+
+func NewAssetID(value string) (*AssetID, error) {
+	if value == "" {
+		return nil, errors.New("invalid asset ID")
+	}
+	return &AssetID{value: value}, nil
+}
+
+func (id AssetID) Value() string {
+	return id.value
+}
+
+func (id AssetID) Equals(other AssetID) bool {
+	return id.value == other.value
+}
+
+type VideoID struct {
+	value string
+}
+
+func NewVideoID(value string) (*VideoID, error) {
+	if value == "" {
+		return nil, errors.New("invalid video ID")
+	}
+	return &VideoID{value: value}, nil
+}
+
+func (id VideoID) Value() string {
+	return id.value
+}
+
+func (id VideoID) Equals(other VideoID) bool {
+	return id.value == other.value
 }
 
 func generateJobID() string {

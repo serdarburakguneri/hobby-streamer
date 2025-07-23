@@ -28,11 +28,11 @@ func NewJobDomainService() *JobDomainService {
 }
 
 func (s *JobDomainService) ValidateJob(job *Job) error {
-	if job.AssetID() == "" {
+	if job.AssetID().Value() == "" {
 		return pkgerrors.NewValidationError("asset ID is required", nil)
 	}
 
-	if job.VideoID() == "" {
+	if job.VideoID().Value() == "" {
 		return pkgerrors.NewValidationError("video ID is required", nil)
 	}
 
@@ -60,7 +60,7 @@ func (s *JobDomainService) ProcessJob(ctx context.Context, job *Job) (interface{
 
 	var outputDir string
 	if job.Type() == JobTypeTranscode {
-		outputDir = "/tmp/transcode/" + job.ID()
+		outputDir = "/tmp/transcode/" + job.ID().Value()
 		if err := os.MkdirAll(outputDir, 0750); err != nil {
 			return nil, pkgerrors.NewInternalError("failed to create output directory", err)
 		}

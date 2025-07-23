@@ -37,9 +37,17 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 
 	var job *domainjob.Job
 	var format domainjob.JobFormat
+	assetIDVO, err := domainjob.NewAssetID(payload.AssetID)
+	if err != nil {
+		return errors.NewValidationError("invalid asset ID", err)
+	}
+	videoIDVO, err := domainjob.NewVideoID(payload.VideoID)
+	if err != nil {
+		return errors.NewValidationError("invalid video ID", err)
+	}
 	switch payload.JobType {
 	case string(domainjob.JobTypeAnalyze):
-		job = domainjob.NewAnalyzeJob(payload.AssetID, payload.VideoID, payload.Input)
+		job = domainjob.NewAnalyzeJob(*assetIDVO, *videoIDVO, payload.Input)
 	case string(domainjob.JobTypeTranscode):
 		switch payload.Format {
 		case string(domainjob.JobFormatHLS):
@@ -55,7 +63,7 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 			return errors.NewValidationError(errMsg, nil)
 		}
 		outputPath := fmt.Sprintf("s3://%s/%s", payload.OutputBucket, payload.OutputKey)
-		job = domainjob.NewTranscodeJob(payload.AssetID, payload.VideoID, payload.Input, outputPath, format)
+		job = domainjob.NewTranscodeJob(*assetIDVO, *videoIDVO, payload.Input, outputPath, format)
 	default:
 		errMsg := fmt.Sprintf("unsupported job type: %s", payload.JobType)
 		s.logger.Error("Unsupported job type", "job_type", payload.JobType)
@@ -66,8 +74,8 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 	}
 
 	if err := s.domainService.ValidateJob(job); err != nil {
-		s.logger.WithError(err).Error("Job validation failed", "job_id", job.ID())
-		if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, payload.AssetID, payload.VideoID, false, nil, err.Error()); pubErr != nil {
+		s.logger.WithError(err).Error("Job validation failed", "job_id", job.ID().Value())
+		if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, job.AssetID().Value(), job.VideoID().Value(), false, nil, err.Error()); pubErr != nil {
 			s.logger.WithError(pubErr).Error("Failed to publish job completed event", "job_type", payload.JobType)
 		}
 		return err
@@ -77,9 +85,9 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 
 	metadata, err := s.domainService.ProcessJob(ctx, job)
 	if err != nil {
-		s.logger.WithError(err).Error("Job processing failed", "job_id", job.ID())
+		s.logger.WithError(err).Error("Job processing failed", "job_id", job.ID().Value())
 		job.Fail(err.Error())
-		if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, payload.AssetID, payload.VideoID, false, nil, err.Error()); pubErr != nil {
+		if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, job.AssetID().Value(), job.VideoID().Value(), false, nil, err.Error()); pubErr != nil {
 			s.logger.WithError(pubErr).Error("Failed to publish job completed event", "job_type", payload.JobType)
 		}
 		return err
@@ -87,8 +95,8 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 
 	job.Complete(nil)
 
-	s.logger.Info("Job completed successfully", "job_id", job.ID(), "metadata", metadata)
-	if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, payload.AssetID, payload.VideoID, true, metadata, ""); pubErr != nil {
+	s.logger.Info("Job completed successfully", "job_id", job.ID().Value(), "metadata", metadata)
+	if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, job.AssetID().Value(), job.VideoID().Value(), true, metadata, ""); pubErr != nil {
 		s.logger.WithError(pubErr).Error("Failed to publish job completed event", "job_type", payload.JobType)
 	}
 	return nil

@@ -22,11 +22,11 @@ const (
 )
 
 type Job struct {
-	id          string
+	id          JobID
 	jobType     JobType
 	format      JobFormat
-	assetID     string
-	videoID     string
+	assetID     AssetID
+	videoID     VideoID
 	input       string
 	output      string
 	status      JobStatus
@@ -39,10 +39,11 @@ type Job struct {
 	updatedAt   time.Time
 }
 
-func NewAnalyzeJob(assetID, videoID, input string) *Job {
+func NewAnalyzeJob(assetID AssetID, videoID VideoID, input string) *Job {
 	now := time.Now().UTC()
+	jid, _ := NewJobID(generateJobID())
 	return &Job{
-		id:        generateJobID(),
+		id:        *jid,
 		jobType:   JobTypeAnalyze,
 		assetID:   assetID,
 		videoID:   videoID,
@@ -54,10 +55,11 @@ func NewAnalyzeJob(assetID, videoID, input string) *Job {
 	}
 }
 
-func NewTranscodeJob(assetID, videoID, input, output string, format JobFormat) *Job {
+func NewTranscodeJob(assetID AssetID, videoID VideoID, input, output string, format JobFormat) *Job {
 	now := time.Now().UTC()
+	jid, _ := NewJobID(generateJobID())
 	return &Job{
-		id:        generateJobID(),
+		id:        *jid,
 		jobType:   JobTypeTranscode,
 		format:    format,
 		assetID:   assetID,
@@ -71,7 +73,7 @@ func NewTranscodeJob(assetID, videoID, input, output string, format JobFormat) *
 	}
 }
 
-func (j *Job) ID() string {
+func (j *Job) ID() JobID {
 	return j.id
 }
 
@@ -83,11 +85,11 @@ func (j *Job) Format() JobFormat {
 	return j.format
 }
 
-func (j *Job) AssetID() string {
+func (j *Job) AssetID() AssetID {
 	return j.assetID
 }
 
-func (j *Job) VideoID() string {
+func (j *Job) VideoID() VideoID {
 	return j.videoID
 }
 
