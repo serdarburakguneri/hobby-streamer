@@ -64,7 +64,7 @@ func setupNeo4j(dynamicCfg *config.DynamicConfig, secretsManager *config.Secrets
 
 func setupSQS(ctx context.Context, dynamicCfg *config.DynamicConfig) (*pkgsqs.Producer, *pkgsqs.Producer) {
 	jobQueueURL := dynamicCfg.GetStringFromComponent("sqs", "job_queue_url")
-	domainEventQueueURL := "http://localhost:4566/000000000000/asset-events"
+	domainEventQueueURL := dynamicCfg.GetStringFromComponent("sqs", "asset_events_queue_url")
 
 	domainEventProducer, err := pkgsqs.NewProducer(ctx, domainEventQueueURL)
 	if err != nil {

@@ -69,10 +69,10 @@ func main() {
 	defer redisClient.Close()
 
 	cacheService := cache.NewService(redisClient, cache.TTLConfig{
-		Bucket:      30 * time.Minute,
-		BucketsList: 15 * time.Minute,
-		Asset:       30 * time.Minute,
-		AssetsList:  15 * time.Minute,
+		Bucket:      dynamicCfg.GetDurationFromComponent("redis", "ttl.bucket", 30*time.Minute),
+		BucketsList: dynamicCfg.GetDurationFromComponent("redis", "ttl.buckets_list", 15*time.Minute),
+		Asset:       dynamicCfg.GetDurationFromComponent("redis", "ttl.asset", 30*time.Minute),
+		AssetsList:  dynamicCfg.GetDurationFromComponent("redis", "ttl.assets_list", 15*time.Minute),
 	})
 
 	serviceClient := auth.NewServiceClient(keycloakURL, realm, clientID, clientSecret)

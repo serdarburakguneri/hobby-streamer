@@ -65,10 +65,10 @@ components:
     min_idle_conns: 5
     max_retries: 3
     ttl:
-      bucket: "2m"
-      buckets_list: "2m"
-      asset: "2m"
-      assets_list: "2m"
+      bucket: "1m"
+      buckets_list: "1m"
+      asset: "1m"
+      assets_list: "1m"
 
   keycloak:
     url: "https://keycloak:8443"

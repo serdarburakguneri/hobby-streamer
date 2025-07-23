@@ -63,6 +63,7 @@ components:
   sqs:
     job_queue_url: "http://localstack:4566/000000000000/job-queue"
     completion_queue_url: "http://localstack:4566/000000000000/completion-queue"
+    asset_events_queue_url: "http://localhost:4566/000000000000/asset-events"
 
   s3:
     content_bucket: "content-east"
