@@ -50,7 +50,7 @@ func (s *DomainService) ValidateAssetHierarchy(asset *Asset, parentID *AssetID) 
 		return errors.NewValidationError("asset cannot be its own parent", nil)
 	}
 
-	parent, err := s.repo.FindByID(context.Background(), parentID.Value())
+	parent, err := s.repo.FindByID(context.Background(), *parentID)
 	if err != nil {
 		return errors.NewNotFoundError("parent asset not found", err)
 	}

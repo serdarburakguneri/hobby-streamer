@@ -72,9 +72,10 @@ func TestReconstructBucket(t *testing.T) {
 	ownerID := "user123"
 	status := "active"
 	metadata := map[string]interface{}{"key": "value"}
+	bucketID, _ := NewBucketID("bucket123")
 
 	bucket := ReconstructBucket(
-		"bucket123",
+		*bucketID,
 		"Test Bucket",
 		&description,
 		"test-bucket",
@@ -85,7 +86,7 @@ func TestReconstructBucket(t *testing.T) {
 		now,
 	)
 
-	assert.Equal(t, "bucket123", bucket.ID())
+	assert.Equal(t, "bucket123", bucket.ID().Value())
 	assert.Equal(t, "Test Bucket", bucket.Name())
 	assert.Equal(t, &description, bucket.Description())
 	assert.Equal(t, "test-bucket", bucket.Key())
@@ -222,8 +223,9 @@ func TestBucket_ValidateKey(t *testing.T) {
 
 func TestBucket_ValidateOwnership(t *testing.T) {
 	ownerID := "user123"
+	bucketID, _ := NewBucketID("bucket123")
 	bucket := ReconstructBucket(
-		"bucket123",
+		*bucketID,
 		"Test Bucket",
 		nil,
 		"test-bucket",
@@ -265,8 +267,9 @@ func TestBucket_ValidateOwnership(t *testing.T) {
 }
 
 func TestBucket_ValidateOwnership_NoOwner(t *testing.T) {
+	bucketID, _ := NewBucketID("bucket123")
 	bucket := ReconstructBucket(
-		"bucket123",
+		*bucketID,
 		"Test Bucket",
 		nil,
 		"test-bucket",

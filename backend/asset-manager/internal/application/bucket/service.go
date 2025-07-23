@@ -67,7 +67,11 @@ func (s *ApplicationService) CreateBucket(ctx context.Context, cmd CreateBucketC
 }
 
 func (s *ApplicationService) GetBucket(ctx context.Context, cmd GetBucketCommand) (*domainbucket.Bucket, error) {
-	return s.repo.GetByID(ctx, cmd.ID)
+	idVO, err := cmd.ToDomainBucketID()
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetByID(ctx, *idVO)
 }
 
 func (s *ApplicationService) GetBucketByKey(ctx context.Context, cmd GetBucketByKeyCommand) (*domainbucket.Bucket, error) {
@@ -76,8 +80,11 @@ func (s *ApplicationService) GetBucketByKey(ctx context.Context, cmd GetBucketBy
 
 func (s *ApplicationService) UpdateBucket(ctx context.Context, cmd UpdateBucketCommand) (*domainbucket.Bucket, error) {
 	log := s.logger.WithContext(ctx)
-
-	bucket, err := s.repo.GetByID(ctx, cmd.ID)
+	idVO, err := cmd.ToDomainBucketID()
+	if err != nil {
+		return nil, err
+	}
+	bucket, err := s.repo.GetByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find bucket for update", "bucket_id", cmd.ID)
 		return nil, err
@@ -116,18 +123,19 @@ func (s *ApplicationService) UpdateBucket(ctx context.Context, cmd UpdateBucketC
 }
 
 func (s *ApplicationService) DeleteBucket(ctx context.Context, cmd DeleteBucketCommand) error {
+	idVO, err := cmd.ToDomainBucketID()
+	if err != nil {
+		return err
+	}
 	if err := s.domainService.ValidateBucketOwnership(ctx, cmd.ID, cmd.OwnerID); err != nil {
 		return err
 	}
-
-	if err := s.repo.Delete(ctx, cmd.ID); err != nil {
+	if err := s.repo.Delete(ctx, *idVO); err != nil {
 		return err
 	}
-
-	if err := s.eventPublisher.PublishBucketDeleted(ctx, cmd.ID); err != nil {
+	if err := s.eventPublisher.PublishBucketDeleted(ctx, idVO.Value()); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -144,48 +152,52 @@ func (s *ApplicationService) GetBucketsByOwner(ctx context.Context, cmd GetBucke
 }
 
 func (s *ApplicationService) AddAssetToBucket(ctx context.Context, cmd AddAssetToBucketCommand) error {
-	if err := s.domainService.ValidateBucketOwnership(ctx, cmd.BucketID, cmd.OwnerID); err != nil {
-		return err
-	}
-
-	bucket, err := s.repo.GetByID(ctx, cmd.BucketID)
+	idVO, err := cmd.ToDomainBucketID()
 	if err != nil {
 		return err
 	}
-
+	if err := s.domainService.ValidateBucketOwnership(ctx, cmd.BucketID, cmd.OwnerID); err != nil {
+		return err
+	}
+	bucket, err := s.repo.GetByID(ctx, *idVO)
+	if err != nil {
+		return err
+	}
 	if err := bucket.CanAddAsset(cmd.AssetID, func(bucketID, assetID string) (bool, error) {
-		return s.repo.HasAsset(ctx, bucketID, assetID)
+		return s.repo.HasAsset(ctx, *idVO, assetID)
 	}); err != nil {
 		return err
 	}
-
-	if err := s.repo.AddAsset(ctx, cmd.BucketID, cmd.AssetID); err != nil {
+	if err := s.repo.AddAsset(ctx, *idVO, cmd.AssetID); err != nil {
 		return err
 	}
-
-	if err := s.eventPublisher.PublishAssetAddedToBucket(ctx, cmd.BucketID, cmd.AssetID); err != nil {
+	if err := s.eventPublisher.PublishAssetAddedToBucket(ctx, idVO.Value(), cmd.AssetID); err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (s *ApplicationService) RemoveAssetFromBucket(ctx context.Context, cmd RemoveAssetFromBucketCommand) error {
+	idVO, err := cmd.ToDomainBucketID()
+	if err != nil {
+		return err
+	}
 	if err := s.domainService.ValidateBucketOwnership(ctx, cmd.BucketID, cmd.OwnerID); err != nil {
 		return err
 	}
-
-	if err := s.repo.RemoveAsset(ctx, cmd.BucketID, cmd.AssetID); err != nil {
+	if err := s.repo.RemoveAsset(ctx, *idVO, cmd.AssetID); err != nil {
 		return err
 	}
-
-	if err := s.eventPublisher.PublishAssetRemovedFromBucket(ctx, cmd.BucketID, cmd.AssetID); err != nil {
+	if err := s.eventPublisher.PublishAssetRemovedFromBucket(ctx, idVO.Value(), cmd.AssetID); err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (s *ApplicationService) GetBucketAssets(ctx context.Context, cmd GetBucketAssetsCommand) ([]string, error) {
-	return s.repo.GetAssetIDs(ctx, cmd.BucketID, cmd.Limit, cmd.LastKey)
+	idVO, err := cmd.ToDomainBucketID()
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetAssetIDs(ctx, *idVO, cmd.Limit, cmd.LastKey)
 }

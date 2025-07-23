@@ -474,16 +474,16 @@ func TestComplexValueObjects(t *testing.T) {
 }
 
 type mockRepo struct {
-	findByIDFunc func(ctx context.Context, id string) (*Asset, error)
+	findByIDFunc func(ctx context.Context, id AssetID) (*Asset, error)
 }
 
-func (m *mockRepo) FindByID(ctx context.Context, id string) (*Asset, error) {
+func (m *mockRepo) FindByID(ctx context.Context, id AssetID) (*Asset, error) {
 	return m.findByIDFunc(ctx, id)
 }
-func (m *mockRepo) FindByIDs(ctx context.Context, ids []string) ([]*Asset, error) { return nil, nil }
-func (m *mockRepo) Create(ctx context.Context, asset *Asset) error                { return nil }
-func (m *mockRepo) Update(ctx context.Context, asset *Asset) error                { return nil }
-func (m *mockRepo) Delete(ctx context.Context, id string) error                   { return nil }
+func (m *mockRepo) FindByIDs(ctx context.Context, ids []AssetID) ([]*Asset, error) { return nil, nil }
+func (m *mockRepo) Create(ctx context.Context, asset *Asset) error                 { return nil }
+func (m *mockRepo) Update(ctx context.Context, asset *Asset) error                 { return nil }
+func (m *mockRepo) Delete(ctx context.Context, id AssetID) error                   { return nil }
 func (m *mockRepo) List(ctx context.Context, limit int, lastKey map[string]interface{}) (*AssetPage, error) {
 	return nil, nil
 }
@@ -493,26 +493,26 @@ func (m *mockRepo) Search(ctx context.Context, query string, limit int, lastKey 
 func (m *mockRepo) GetByOwnerID(ctx context.Context, ownerID string, limit *int, lastKey map[string]interface{}) ([]*Asset, error) {
 	return nil, nil
 }
-func (m *mockRepo) AddChild(ctx context.Context, parentID, childID string) error    { return nil }
-func (m *mockRepo) RemoveChild(ctx context.Context, parentID, childID string) error { return nil }
-func (m *mockRepo) GetChildren(ctx context.Context, parentID string) ([]*Asset, error) {
+func (m *mockRepo) AddChild(ctx context.Context, parentID, childID AssetID) error    { return nil }
+func (m *mockRepo) RemoveChild(ctx context.Context, parentID, childID AssetID) error { return nil }
+func (m *mockRepo) GetChildren(ctx context.Context, parentID AssetID) ([]*Asset, error) {
 	return nil, nil
 }
-func (m *mockRepo) HasChild(ctx context.Context, parentID, childID string) (bool, error) {
+func (m *mockRepo) HasChild(ctx context.Context, parentID, childID AssetID) (bool, error) {
 	return false, nil
 }
-func (m *mockRepo) FindBySlug(ctx context.Context, slug string) (*Asset, error) { return nil, nil }
-func (m *mockRepo) FindByTypeAndGenre(ctx context.Context, assetType, genre string) ([]*Asset, error) {
+func (m *mockRepo) FindBySlug(ctx context.Context, slug Slug) (*Asset, error) { return nil, nil }
+func (m *mockRepo) FindByTypeAndGenre(ctx context.Context, assetType *AssetType, genre *Genre) ([]*Asset, error) {
 	return nil, nil
 }
-func (m *mockRepo) FindChildren(ctx context.Context, parentID string) ([]*Asset, error) {
+func (m *mockRepo) FindChildren(ctx context.Context, parentID AssetID) ([]*Asset, error) {
 	return nil, nil
 }
-func (m *mockRepo) FindParent(ctx context.Context, childID string) (*Asset, error) { return nil, nil }
-func (m *mockRepo) Save(ctx context.Context, asset *Asset) error                   { return nil }
+func (m *mockRepo) FindParent(ctx context.Context, childID AssetID) (*Asset, error) { return nil, nil }
+func (m *mockRepo) Save(ctx context.Context, asset *Asset) error                    { return nil }
 
 func TestValidateAssetHierarchy(t *testing.T) {
-	domainServiceWithRepo := func(findByIDFunc func(ctx context.Context, id string) (*Asset, error)) *DomainService {
+	domainServiceWithRepo := func(findByIDFunc func(ctx context.Context, id AssetID) (*Asset, error)) *DomainService {
 		return NewDomainService(&mockRepo{findByIDFunc: findByIDFunc})
 	}
 
@@ -538,7 +538,7 @@ func TestValidateAssetHierarchy(t *testing.T) {
 	otherID, _ := NewAssetID("parent-asset")
 
 	t.Run("parent asset not found (repo error)", func(t *testing.T) {
-		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id AssetID) (*Asset, error) {
 			return nil, assert.AnError
 		})
 		err := ds.ValidateAssetHierarchy(asset, otherID)
@@ -547,7 +547,7 @@ func TestValidateAssetHierarchy(t *testing.T) {
 	})
 
 	t.Run("parent asset not found (nil)", func(t *testing.T) {
-		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id AssetID) (*Asset, error) {
 			return nil, nil
 		})
 		err := ds.ValidateAssetHierarchy(asset, otherID)
@@ -560,23 +560,23 @@ func TestValidateAssetHierarchy(t *testing.T) {
 			*otherID,
 			*slug,
 			title,
-			nil,
+			nil, // description
 			assetType,
-			nil,
-			nil,
-			nil,
+			nil, // genre
+			nil, // genres
+			nil, // tags
 			asset.CreatedAt(),
 			asset.UpdatedAt(),
-			nil,
-			nil,
-			nil,
+			nil,       // ownerID
+			nil,       // parentID
+			[]Image{}, // images
 			make(map[string]*Video),
-			nil,
-			nil,
+			[]Credit{}, // credits
+			nil,        // publishRule
 			map[string]interface{}{},
 		)
 		// Simulate draft status by leaving publishRule nil
-		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id AssetID) (*Asset, error) {
 			return parent, nil
 		})
 		err := ds.ValidateAssetHierarchy(asset, otherID)
@@ -591,22 +591,22 @@ func TestValidateAssetHierarchy(t *testing.T) {
 			*otherID,
 			*slug,
 			title,
-			nil,
+			nil, // description
 			assetType,
-			nil,
-			nil,
-			nil,
+			nil, // genre
+			nil, // genres
+			nil, // tags
 			asset.CreatedAt(),
 			asset.UpdatedAt(),
-			nil,
-			nil,
-			nil,
+			nil,       // ownerID
+			nil,       // parentID
+			[]Image{}, // images
 			make(map[string]*Video),
-			nil,
+			[]Credit{}, // credits
 			publishRule,
 			map[string]interface{}{},
 		)
-		ds := domainServiceWithRepo(func(ctx context.Context, id string) (*Asset, error) {
+		ds := domainServiceWithRepo(func(ctx context.Context, id AssetID) (*Asset, error) {
 			return parent, nil
 		})
 		err := ds.ValidateAssetHierarchy(asset, otherID)

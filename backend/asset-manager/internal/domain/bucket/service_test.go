@@ -19,7 +19,7 @@ func (m *MockRepository) Create(ctx context.Context, bucket *Bucket) error {
 	return args.Error(0)
 }
 
-func (m *MockRepository) GetByID(ctx context.Context, id string) (*Bucket, error) {
+func (m *MockRepository) GetByID(ctx context.Context, id BucketID) (*Bucket, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -40,7 +40,7 @@ func (m *MockRepository) Update(ctx context.Context, bucket *Bucket) error {
 	return args.Error(0)
 }
 
-func (m *MockRepository) Delete(ctx context.Context, id string) error {
+func (m *MockRepository) Delete(ctx context.Context, id BucketID) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
@@ -69,17 +69,17 @@ func (m *MockRepository) GetByOwnerID(ctx context.Context, ownerID string, limit
 	return args.Get(0).(*BucketPage), args.Error(1)
 }
 
-func (m *MockRepository) AddAsset(ctx context.Context, bucketID string, assetID string) error {
+func (m *MockRepository) AddAsset(ctx context.Context, bucketID BucketID, assetID string) error {
 	args := m.Called(ctx, bucketID, assetID)
 	return args.Error(0)
 }
 
-func (m *MockRepository) RemoveAsset(ctx context.Context, bucketID string, assetID string) error {
+func (m *MockRepository) RemoveAsset(ctx context.Context, bucketID BucketID, assetID string) error {
 	args := m.Called(ctx, bucketID, assetID)
 	return args.Error(0)
 }
 
-func (m *MockRepository) GetAssetIDs(ctx context.Context, bucketID string, limit *int, lastKey map[string]interface{}) ([]string, error) {
+func (m *MockRepository) GetAssetIDs(ctx context.Context, bucketID BucketID, limit *int, lastKey map[string]interface{}) ([]string, error) {
 	args := m.Called(ctx, bucketID, limit, lastKey)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -87,12 +87,12 @@ func (m *MockRepository) GetAssetIDs(ctx context.Context, bucketID string, limit
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (m *MockRepository) HasAsset(ctx context.Context, bucketID string, assetID string) (bool, error) {
+func (m *MockRepository) HasAsset(ctx context.Context, bucketID BucketID, assetID string) (bool, error) {
 	args := m.Called(ctx, bucketID, assetID)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRepository) AssetCount(ctx context.Context, bucketID string) (int, error) {
+func (m *MockRepository) AssetCount(ctx context.Context, bucketID BucketID) (int, error) {
 	args := m.Called(ctx, bucketID)
 	return args.Int(0), args.Error(1)
 }
@@ -122,7 +122,9 @@ func TestDomainService_IsKeyAvailable(t *testing.T) {
 			name: "key not available",
 			key:  "existing-key",
 			setupMock: func() {
-				bucket, _ := NewBucket("Existing Bucket", "existing-key")
+				bucketID, _ := NewBucketID("bucket123")
+				desc := "Existing Bucket"
+				bucket := ReconstructBucket(*bucketID, "Existing Bucket", &desc, "existing-key", nil, nil, map[string]interface{}{}, time.Now(), time.Now())
 				mockRepo.On("GetByKey", ctx, "existing-key").Return(bucket, nil)
 			},
 			expected:    false,
@@ -164,17 +166,8 @@ func TestDomainService_ValidateBucketOwnership(t *testing.T) {
 	service := NewDomainService(mockRepo)
 
 	ownerID := "user123"
-	bucket := ReconstructBucket(
-		"bucket123",
-		"Test Bucket",
-		nil,
-		"test-bucket",
-		&ownerID,
-		nil,
-		nil,
-		time.Now(),
-		time.Now(),
-	)
+	bucketID, _ := NewBucketID("bucket123")
+	bucket := ReconstructBucket(*bucketID, "Test Bucket", nil, "test-bucket", &ownerID, nil, nil, time.Now(), time.Now())
 
 	tests := []struct {
 		name        string
@@ -188,7 +181,7 @@ func TestDomainService_ValidateBucketOwnership(t *testing.T) {
 			bucketID: "bucket123",
 			userID:   "user123",
 			setupMock: func() {
-				mockRepo.On("GetByID", ctx, "bucket123").Return(bucket, nil)
+				mockRepo.On("GetByID", ctx, *bucketID).Return(bucket, nil)
 			},
 			expectError: false,
 		},
@@ -197,7 +190,7 @@ func TestDomainService_ValidateBucketOwnership(t *testing.T) {
 			bucketID: "bucket123",
 			userID:   "user456",
 			setupMock: func() {
-				mockRepo.On("GetByID", ctx, "bucket123").Return(bucket, nil)
+				mockRepo.On("GetByID", ctx, *bucketID).Return(bucket, nil)
 			},
 			expectError: true,
 		},
@@ -206,7 +199,8 @@ func TestDomainService_ValidateBucketOwnership(t *testing.T) {
 			bucketID: "nonexistent",
 			userID:   "user123",
 			setupMock: func() {
-				mockRepo.On("GetByID", ctx, "nonexistent").Return(nil, pkgerrors.NewNotFoundError("bucket not found", nil))
+				notFoundID, _ := NewBucketID("nonexistent")
+				mockRepo.On("GetByID", ctx, *notFoundID).Return(nil, pkgerrors.NewNotFoundError("bucket not found", nil))
 			},
 			expectError: true,
 		},
@@ -245,7 +239,8 @@ func TestDomainService_ValidateBucketNotEmpty(t *testing.T) {
 			name:     "bucket has assets",
 			bucketID: "bucket123",
 			setupMock: func() {
-				mockRepo.On("AssetCount", ctx, "bucket123").Return(5, nil)
+				bucketID, _ := NewBucketID("bucket123")
+				mockRepo.On("AssetCount", ctx, *bucketID).Return(5, nil)
 			},
 			expectError: false,
 		},
@@ -253,7 +248,8 @@ func TestDomainService_ValidateBucketNotEmpty(t *testing.T) {
 			name:     "bucket is empty",
 			bucketID: "bucket123",
 			setupMock: func() {
-				mockRepo.On("AssetCount", ctx, "bucket123").Return(0, nil)
+				bucketID, _ := NewBucketID("bucket123")
+				mockRepo.On("AssetCount", ctx, *bucketID).Return(0, nil)
 			},
 			expectError: true,
 		},
@@ -261,7 +257,8 @@ func TestDomainService_ValidateBucketNotEmpty(t *testing.T) {
 			name:     "repository error",
 			bucketID: "bucket123",
 			setupMock: func() {
-				mockRepo.On("AssetCount", ctx, "bucket123").Return(0, pkgerrors.NewInternalError("database error", nil))
+				bucketID, _ := NewBucketID("bucket123")
+				mockRepo.On("AssetCount", ctx, *bucketID).Return(0, pkgerrors.NewInternalError("database error", nil))
 			},
 			expectError: true,
 		},
@@ -290,19 +287,10 @@ func TestDomainService_ValidateBucketOwnership_NoOwner(t *testing.T) {
 	mockRepo := new(MockRepository)
 	service := NewDomainService(mockRepo)
 
-	bucket := ReconstructBucket(
-		"bucket123",
-		"Test Bucket",
-		nil,
-		"test-bucket",
-		nil,
-		nil,
-		nil,
-		time.Now(),
-		time.Now(),
-	)
+	bucketID, _ := NewBucketID("bucket123")
+	bucket := ReconstructBucket(*bucketID, "Test Bucket", nil, "test-bucket", nil, nil, nil, time.Now(), time.Now())
 
-	mockRepo.On("GetByID", ctx, "bucket123").Return(bucket, nil)
+	mockRepo.On("GetByID", ctx, *bucketID).Return(bucket, nil)
 
 	err := service.ValidateBucketOwnership(ctx, "bucket123", "user123")
 	assert.Error(t, err)

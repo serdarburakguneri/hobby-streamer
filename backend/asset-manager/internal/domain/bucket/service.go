@@ -28,7 +28,11 @@ func (s *DomainService) IsKeyAvailable(ctx context.Context, key string) (bool, e
 }
 
 func (s *DomainService) ValidateBucketOwnership(ctx context.Context, bucketID string, ownerID string) error {
-	bucket, err := s.repo.GetByID(ctx, bucketID)
+	idVO, err := NewBucketID(bucketID)
+	if err != nil {
+		return err
+	}
+	bucket, err := s.repo.GetByID(ctx, *idVO)
 	if err != nil {
 		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "ValidateBucketOwnership", "bucketID": bucketID, "ownerID": ownerID})
 	}
@@ -37,7 +41,11 @@ func (s *DomainService) ValidateBucketOwnership(ctx context.Context, bucketID st
 }
 
 func (s *DomainService) ValidateBucketNotEmpty(ctx context.Context, bucketID string) error {
-	count, err := s.repo.AssetCount(ctx, bucketID)
+	idVO, err := NewBucketID(bucketID)
+	if err != nil {
+		return err
+	}
+	count, err := s.repo.AssetCount(ctx, *idVO)
 	if err != nil {
 		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "ValidateBucketNotEmpty", "bucketID": bucketID})
 	}

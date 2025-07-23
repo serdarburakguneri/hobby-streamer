@@ -83,7 +83,7 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 	return nil
 }
 
-func (r *BucketRepository) GetByID(ctx context.Context, id string) (*domainbucket.Bucket, error) {
+func (r *BucketRepository) GetByID(ctx context.Context, id domainbucket.BucketID) (*domainbucket.Bucket, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -93,7 +93,7 @@ func (r *BucketRepository) GetByID(ctx context.Context, id string) (*domainbucke
 		RETURN b, collect(a) as assets
 	`
 
-	result, err := session.Run(query, map[string]interface{}{"id": id})
+	result, err := session.Run(query, map[string]interface{}{"id": id.Value()})
 	if err != nil {
 		return nil, pkgerrors.NewInternalError("failed to get bucket", err)
 	}
@@ -158,7 +158,7 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 	return err
 }
 
-func (r *BucketRepository) Delete(ctx context.Context, id string) error {
+func (r *BucketRepository) Delete(ctx context.Context, id domainbucket.BucketID) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -168,7 +168,7 @@ func (r *BucketRepository) Delete(ctx context.Context, id string) error {
 		DELETE r, b
 	`
 
-	_, err := session.Run(query, map[string]interface{}{"id": id})
+	_, err := session.Run(query, map[string]interface{}{"id": id.Value()})
 	return err
 }
 
@@ -287,7 +287,7 @@ func (r *BucketRepository) GetByOwnerID(ctx context.Context, ownerID string, lim
 	}, nil
 }
 
-func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetID string) error {
+func (r *BucketRepository) AddAsset(ctx context.Context, bucketID domainbucket.BucketID, assetID string) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -301,11 +301,11 @@ func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetI
 	`
 
 	params := map[string]interface{}{
-		"bucketID": bucketID,
+		"bucketID": bucketID.Value(),
 		"assetID":  assetID,
 	}
 
-	log.Info(fmt.Sprintf("AddAsset: bucketID=%s assetID=%s query=%s", bucketID, assetID, query))
+	log.Info(fmt.Sprintf("AddAsset: bucketID=%s assetID=%s query=%s", bucketID.Value(), assetID, query))
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.Error(fmt.Sprintf("AddAsset error: %v", err))
@@ -323,7 +323,7 @@ func (r *BucketRepository) AddAsset(ctx context.Context, bucketID string, assetI
 	return nil
 }
 
-func (r *BucketRepository) RemoveAsset(ctx context.Context, bucketID string, assetID string) error {
+func (r *BucketRepository) RemoveAsset(ctx context.Context, bucketID domainbucket.BucketID, assetID string) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -333,7 +333,7 @@ func (r *BucketRepository) RemoveAsset(ctx context.Context, bucketID string, ass
 	`
 
 	params := map[string]interface{}{
-		"bucketID": bucketID,
+		"bucketID": bucketID.Value(),
 		"assetID":  assetID,
 	}
 
@@ -341,7 +341,7 @@ func (r *BucketRepository) RemoveAsset(ctx context.Context, bucketID string, ass
 	return err
 }
 
-func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, limit *int, lastKey map[string]interface{}) ([]string, error) {
+func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID domainbucket.BucketID, limit *int, lastKey map[string]interface{}) ([]string, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -360,11 +360,11 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID string, lim
 	`
 
 	params := map[string]interface{}{
-		"bucketID": bucketID,
+		"bucketID": bucketID.Value(),
 		"limit":    *limit,
 	}
 
-	log.Info(fmt.Sprintf("GetAssetIDs: bucketID=%s query=%s params=%+v", bucketID, query, params))
+	log.Info(fmt.Sprintf("GetAssetIDs: bucketID=%s query=%s params=%+v", bucketID.Value(), query, params))
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.Error(fmt.Sprintf("GetAssetIDs error: %v", err))
@@ -440,8 +440,10 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 		}
 	}
 
+	bucketID, _ := domainbucket.NewBucketID(bucketProps["id"].(string))
+
 	return domainbucket.ReconstructBucket(
-		bucketProps["id"].(string),
+		*bucketID,
 		bucketProps["name"].(string),
 		descriptionPtr,
 		bucketProps["key"].(string),
@@ -453,7 +455,7 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 	), nil
 }
 
-func (r *BucketRepository) HasAsset(ctx context.Context, bucketID string, assetID string) (bool, error) {
+func (r *BucketRepository) HasAsset(ctx context.Context, bucketID domainbucket.BucketID, assetID string) (bool, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -463,7 +465,7 @@ func (r *BucketRepository) HasAsset(ctx context.Context, bucketID string, assetI
 	`
 
 	params := map[string]interface{}{
-		"bucketID": bucketID,
+		"bucketID": bucketID.Value(),
 		"assetID":  assetID,
 	}
 
@@ -481,7 +483,7 @@ func (r *BucketRepository) HasAsset(ctx context.Context, bucketID string, assetI
 	return false, nil
 }
 
-func (r *BucketRepository) AssetCount(ctx context.Context, bucketID string) (int, error) {
+func (r *BucketRepository) AssetCount(ctx context.Context, bucketID domainbucket.BucketID) (int, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -491,7 +493,7 @@ func (r *BucketRepository) AssetCount(ctx context.Context, bucketID string) (int
 	`
 
 	params := map[string]interface{}{
-		"bucketID": bucketID,
+		"bucketID": bucketID.Value(),
 	}
 
 	result, err := session.Run(query, params)

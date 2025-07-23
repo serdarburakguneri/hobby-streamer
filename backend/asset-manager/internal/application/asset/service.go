@@ -169,7 +169,7 @@ func (s *ApplicationService) UpdateAsset(ctx context.Context, cmd UpdateAssetCom
 		return pkgerrors.NewValidationError("invalid value objects", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for update", "asset_id", assetID.Value())
 		return err
@@ -225,10 +225,6 @@ func (s *ApplicationService) UpdateAsset(ctx context.Context, cmd UpdateAssetCom
 	}
 
 	if parentID != nil {
-		if err := s.domainService.ValidateAssetHierarchy(asset, parentID); err != nil {
-			log.WithError(err).Error("Failed to validate asset hierarchy", "parent_id", parentID.Value())
-			return err
-		}
 		if err := asset.SetParentID(parentID); err != nil {
 			log.WithError(err).Error("Failed to set parent ID")
 			return err
@@ -280,7 +276,7 @@ func (s *ApplicationService) PatchAsset(ctx context.Context, cmd PatchAssetComma
 		return nil, pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for patching", "asset_id", assetID.Value())
 		return nil, err
@@ -522,13 +518,13 @@ func (s *ApplicationService) DeleteAsset(ctx context.Context, cmd DeleteAssetCom
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for deletion", "asset_id", assetID.Value())
 		return err
 	}
 
-	if err := s.repo.Delete(ctx, assetID.Value()); err != nil {
+	if err := s.repo.Delete(ctx, *assetID); err != nil {
 		log.WithError(err).Error("Failed to delete asset", "asset_id", assetID.Value())
 		return err
 	}
@@ -557,14 +553,14 @@ func (s *ApplicationService) GetAsset(ctx context.Context, query GetAssetQuery) 
 			log.WithError(err).Error("Failed to convert query to domain asset ID")
 			return nil, pkgerrors.NewValidationError("invalid asset ID", err)
 		}
-		asset, err = s.repo.FindByID(ctx, assetID.Value())
+		asset, err = s.repo.FindByID(ctx, *assetID)
 	} else {
 		slug, err := query.ToDomainSlug()
 		if err != nil {
 			log.WithError(err).Error("Failed to convert query to domain slug")
 			return nil, pkgerrors.NewValidationError("invalid slug", err)
 		}
-		asset, err = s.repo.FindBySlug(ctx, slug.Value())
+		asset, err = s.repo.FindBySlug(ctx, *slug)
 	}
 
 	if err != nil {
@@ -623,7 +619,7 @@ func (s *ApplicationService) AddVideo(ctx context.Context, cmd AddVideoCommand) 
 		return nil, pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for video addition", "asset_id", assetID.Value())
 		return nil, err
@@ -667,7 +663,7 @@ func (s *ApplicationService) RemoveVideo(ctx context.Context, cmd RemoveVideoCom
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for video removal", "asset_id", assetID.Value())
 		return err
@@ -704,7 +700,7 @@ func (s *ApplicationService) UpdateVideoStatus(ctx context.Context, cmd UpdateVi
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for video status update", "asset_id", assetID.Value())
 		return err
@@ -741,7 +737,7 @@ func (s *ApplicationService) AddImage(ctx context.Context, cmd AddImageCommand) 
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for image addition", "asset_id", assetID.Value())
 		return err
@@ -778,7 +774,7 @@ func (s *ApplicationService) RemoveImage(ctx context.Context, cmd RemoveImageCom
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for image removal", "asset_id", assetID.Value())
 		return err
@@ -815,7 +811,7 @@ func (s *ApplicationService) PublishAsset(ctx context.Context, cmd PublishAssetC
 		return pkgerrors.NewValidationError("invalid asset ID", err)
 	}
 
-	asset, err := s.repo.FindByID(ctx, assetID.Value())
+	asset, err := s.repo.FindByID(ctx, *assetID)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for publishing", "asset_id", assetID.Value())
 		return err
@@ -850,34 +846,32 @@ func (s *ApplicationService) PublishAsset(ctx context.Context, cmd PublishAssetC
 
 func (s *ApplicationService) UpdateVideoAnalysis(ctx context.Context, assetID, videoID string, metadata *messages.JobCompletionPayload) error {
 	log := s.logger.WithContext(ctx)
-
-	asset, err := s.repo.FindByID(ctx, assetID)
+	idVO, err := domainasset.NewAssetID(assetID)
+	if err != nil {
+		return err
+	}
+	asset, err := s.repo.FindByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for video analysis update", "asset_id", assetID)
 		return err
 	}
-
 	video, err := asset.GetVideo(videoID)
 	if err != nil {
 		log.WithError(err).Error("Failed to get video for analysis update", "asset_id", assetID, "video_id", videoID)
 		return err
 	}
-
 	if metadata.Success {
 		s.handleSuccessfulAnalysis(video, metadata)
 	} else {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusFailed))
 	}
-
 	if err := s.repo.Update(ctx, asset); err != nil {
 		log.WithError(err).Error("Failed to update asset after video analysis", "asset_id", assetID)
 		return err
 	}
-
 	if err := s.eventPublisher.PublishVideoStatusUpdated(ctx, asset, videoID, video.Status()); err != nil {
 		log.WithError(err).Error("Failed to publish video status updated event", "asset_id", assetID, "video_id", videoID)
 	}
-
 	log.Info("Video analysis updated successfully", "asset_id", assetID, "video_id", videoID, "success", metadata.Success)
 	return nil
 }
@@ -907,19 +901,20 @@ func (s *ApplicationService) handleSuccessfulAnalysis(video *domainasset.Video, 
 
 func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID, videoID, format string, metadata *messages.JobCompletionPayload) error {
 	log := s.logger.WithContext(ctx)
-
-	asset, err := s.repo.FindByID(ctx, assetID)
+	idVO, err := domainasset.NewAssetID(assetID)
+	if err != nil {
+		return err
+	}
+	asset, err := s.repo.FindByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for video transcoding update", "asset_id", assetID)
 		return err
 	}
-
 	video, err := asset.GetVideo(videoID)
 	if err != nil {
 		log.WithError(err).Error("Failed to get video for transcoding update", "asset_id", assetID, "video_id", videoID)
 		return err
 	}
-
 	if metadata.Success {
 		if err := s.handleSuccessfulTranscoding(ctx, video, format, metadata, log); err != nil {
 			return err
@@ -927,21 +922,17 @@ func (s *ApplicationService) UpdateVideoTranscoding(ctx context.Context, assetID
 	} else {
 		video.UpdateStatus(domainasset.VideoStatus(constants.VideoStatusFailed))
 	}
-
 	if err := s.updateTranscodingInfo(video, metadata); err != nil {
 		log.WithError(err).Error("Failed to update transcoding info", "asset_id", assetID, "video_id", videoID)
 		return err
 	}
-
 	if err := s.repo.Update(ctx, asset); err != nil {
 		log.WithError(err).Error("Failed to update asset after video transcoding", "asset_id", assetID)
 		return err
 	}
-
 	if err := s.eventPublisher.PublishVideoStatusUpdated(ctx, asset, videoID, video.Status()); err != nil {
 		log.WithError(err).Error("Failed to publish video status updated event", "asset_id", assetID, "video_id", videoID)
 	}
-
 	log.Info("Video transcoding updated successfully", "asset_id", assetID, "video_id", videoID, "format", format, "success", metadata.Success)
 	return nil
 }
@@ -1055,38 +1046,44 @@ func (s *ApplicationService) convertS3URLToCDN(s3URL string) string {
 
 func (s *ApplicationService) GetAssetMetrics(ctx context.Context, assetID string) (*domainasset.AssetMetrics, error) {
 	log := s.logger.WithContext(ctx)
-
-	asset, err := s.repo.FindByID(ctx, assetID)
+	idVO, err := domainasset.NewAssetID(assetID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.FindByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for metrics", "asset_id", assetID)
 		return nil, err
 	}
-
 	metrics := asset.CalculateMetrics()
 	return &metrics, nil
 }
 
 func (s *ApplicationService) GetAssetStorageUsage(ctx context.Context, assetID string) (*domainasset.StorageUsage, error) {
 	log := s.logger.WithContext(ctx)
-
-	asset, err := s.repo.FindByID(ctx, assetID)
+	idVO, err := domainasset.NewAssetID(assetID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.FindByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for storage usage", "asset_id", assetID)
 		return nil, err
 	}
-
 	usage := asset.CalculateStorageUsage()
 	return &usage, nil
 }
 
 func (s *ApplicationService) ValidateAssetAccess(ctx context.Context, assetID, userID string) error {
 	log := s.logger.WithContext(ctx)
-
-	asset, err := s.repo.FindByID(ctx, assetID)
+	idVO, err := domainasset.NewAssetID(assetID)
+	if err != nil {
+		return err
+	}
+	asset, err := s.repo.FindByID(ctx, *idVO)
 	if err != nil {
 		log.WithError(err).Error("Failed to find asset for access validation", "asset_id", assetID)
 		return err
 	}
-
 	return asset.ValidateAccess(userID)
 }

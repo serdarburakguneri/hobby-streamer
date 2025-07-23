@@ -8,7 +8,7 @@ import (
 )
 
 type Bucket struct {
-	id          string
+	id          BucketID
 	key         string
 	name        string
 	description *string
@@ -30,8 +30,9 @@ func NewBucket(name, key string) (*Bucket, error) {
 	}
 
 	now := time.Now().UTC()
+	id, _ := NewBucketID(generateID())
 	return &Bucket{
-		id:          generateID(),
+		id:          *id,
 		key:         key,
 		name:        name,
 		description: nil,
@@ -45,7 +46,7 @@ func NewBucket(name, key string) (*Bucket, error) {
 }
 
 func ReconstructBucket(
-	id string,
+	id BucketID,
 	name string,
 	description *string,
 	key string,
@@ -69,7 +70,7 @@ func ReconstructBucket(
 	}
 }
 
-func (b *Bucket) ID() string {
+func (b *Bucket) ID() BucketID {
 	return b.id
 }
 
@@ -156,9 +157,9 @@ func (b *Bucket) ValidateKey() error {
 }
 
 func (b *Bucket) CanAddAsset(assetID string, hasAssetFunc func(bucketID, assetID string) (bool, error)) error {
-	exists, err := hasAssetFunc(b.id, assetID)
+	exists, err := hasAssetFunc(b.id.Value(), assetID)
 	if err != nil {
-		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "CanAddAsset", "bucketID": b.id, "assetID": assetID})
+		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "CanAddAsset", "bucketID": b.id.Value(), "assetID": assetID})
 	}
 	if exists {
 		return pkgerrors.NewValidationError("asset already exists in bucket", nil)
@@ -167,9 +168,9 @@ func (b *Bucket) CanAddAsset(assetID string, hasAssetFunc func(bucketID, assetID
 }
 
 func (b *Bucket) ValidateNotEmpty(assetCountFunc func(bucketID string) (int, error)) error {
-	count, err := assetCountFunc(b.id)
+	count, err := assetCountFunc(b.id.Value())
 	if err != nil {
-		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "ValidateNotEmpty", "bucketID": b.id})
+		return pkgerrors.WithContext(err, map[string]interface{}{"operation": "ValidateNotEmpty", "bucketID": b.id.Value()})
 	}
 	if count == 0 {
 		return pkgerrors.NewValidationError("cannot perform operation on empty bucket", nil)

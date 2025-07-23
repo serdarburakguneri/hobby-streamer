@@ -249,7 +249,7 @@ func domainBucketToGraphQL(bucket *domainbucket.Bucket) *Bucket {
 	}
 
 	return &Bucket{
-		ID:          bucket.ID(),
+		ID:          bucket.ID().Value(),
 		Key:         bucket.Key(),
 		Name:        bucket.Name(),
 		Description: &description,

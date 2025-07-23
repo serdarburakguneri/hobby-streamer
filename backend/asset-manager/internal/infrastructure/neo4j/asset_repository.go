@@ -87,7 +87,7 @@ func (r *AssetRepository) Save(ctx context.Context, a *asset.Asset) error {
 	return nil
 }
 
-func (r *AssetRepository) FindByID(ctx context.Context, id string) (*asset.Asset, error) {
+func (r *AssetRepository) FindByID(ctx context.Context, id asset.AssetID) (*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -99,28 +99,28 @@ func (r *AssetRepository) FindByID(ctx context.Context, id string) (*asset.Asset
 		RETURN a, parent
 	`
 
-	result, err := session.Run(query, map[string]interface{}{"id": id})
+	result, err := session.Run(query, map[string]interface{}{"id": id.Value()})
 	if err != nil {
-		log.WithError(err).Error("Failed to get asset from Neo4j", "asset_id", id)
+		log.WithError(err).Error("Failed to get asset from Neo4j", "asset_id", id.Value())
 		return nil, pkgerrors.NewInternalError("get asset failed", err)
 	}
 
 	record, err := result.Single()
 	if err != nil {
-		log.Debug("Asset not found in Neo4j", "asset_id", id)
+		log.Debug("Asset not found in Neo4j", "asset_id", id.Value())
 		return nil, pkgerrors.NewNotFoundError("asset not found", err)
 	}
 
 	asset, err := r.recordToAsset(record)
 	if err != nil {
-		log.WithError(err).Error("Failed to convert Neo4j record to asset", "asset_id", id)
+		log.WithError(err).Error("Failed to convert Neo4j record to asset", "asset_id", id.Value())
 		return nil, pkgerrors.NewInternalError("convert record to asset failed", err)
 	}
 
 	return asset, nil
 }
 
-func (r *AssetRepository) FindBySlug(ctx context.Context, slug string) (*asset.Asset, error) {
+func (r *AssetRepository) FindBySlug(ctx context.Context, slug asset.Slug) (*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -132,21 +132,21 @@ func (r *AssetRepository) FindBySlug(ctx context.Context, slug string) (*asset.A
 		RETURN a, parent
 	`
 
-	result, err := session.Run(query, map[string]interface{}{"slug": slug})
+	result, err := session.Run(query, map[string]interface{}{"slug": slug.Value()})
 	if err != nil {
-		log.WithError(err).Error("Failed to get asset by slug from Neo4j", "slug", slug)
+		log.WithError(err).Error("Failed to get asset by slug from Neo4j", "slug", slug.Value())
 		return nil, pkgerrors.NewInternalError("get asset by slug failed", err)
 	}
 
 	record, err := result.Single()
 	if err != nil {
-		log.Debug("Asset not found in Neo4j", "slug", slug)
+		log.Debug("Asset not found in Neo4j", "slug", slug.Value())
 		return nil, pkgerrors.NewNotFoundError("asset not found", err)
 	}
 
 	asset, err := r.recordToAsset(record)
 	if err != nil {
-		log.WithError(err).Error("Failed to convert Neo4j record to asset", "slug", slug)
+		log.WithError(err).Error("Failed to convert Neo4j record to asset", "slug", slug.Value())
 		return nil, pkgerrors.NewInternalError("convert record to asset failed", err)
 	}
 
@@ -157,7 +157,7 @@ func (r *AssetRepository) Update(ctx context.Context, a *asset.Asset) error {
 	return r.Save(ctx, a)
 }
 
-func (r *AssetRepository) Delete(ctx context.Context, id string) error {
+func (r *AssetRepository) Delete(ctx context.Context, id asset.AssetID) error {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -169,9 +169,9 @@ func (r *AssetRepository) Delete(ctx context.Context, id string) error {
 		DELETE r, a
 	`
 
-	_, err := session.Run(query, map[string]interface{}{"id": id})
+	_, err := session.Run(query, map[string]interface{}{"id": id.Value()})
 	if err != nil {
-		log.WithError(err).Error("Failed to delete asset from Neo4j", "asset_id", id)
+		log.WithError(err).Error("Failed to delete asset from Neo4j", "asset_id", id.Value())
 		return pkgerrors.NewInternalError("failed to delete asset", err)
 	}
 
@@ -262,11 +262,16 @@ func (r *AssetRepository) Search(ctx context.Context, query string, limit int, l
 	}, nil
 }
 
-func (r *AssetRepository) FindByIDs(ctx context.Context, ids []string) ([]*asset.Asset, error) {
+func (r *AssetRepository) FindByIDs(ctx context.Context, ids []asset.AssetID) ([]*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
+
+	idStrings := make([]string, len(ids))
+	for i, id := range ids {
+		idStrings[i] = id.Value()
+	}
 
 	query := `
 		MATCH (a:Asset)
@@ -275,7 +280,7 @@ func (r *AssetRepository) FindByIDs(ctx context.Context, ids []string) ([]*asset
 	`
 
 	params := map[string]interface{}{
-		"ids": ids,
+		"ids": idStrings,
 	}
 
 	result, err := session.Run(query, params)
@@ -298,7 +303,7 @@ func (r *AssetRepository) FindByIDs(ctx context.Context, ids []string) ([]*asset
 	return assets, nil
 }
 
-func (r *AssetRepository) FindParent(ctx context.Context, childID string) (*asset.Asset, error) {
+func (r *AssetRepository) FindParent(ctx context.Context, childID asset.AssetID) (*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -309,28 +314,28 @@ func (r *AssetRepository) FindParent(ctx context.Context, childID string) (*asse
 		RETURN parent
 	`
 
-	result, err := session.Run(query, map[string]interface{}{"childId": childID})
+	result, err := session.Run(query, map[string]interface{}{"childId": childID.Value()})
 	if err != nil {
-		log.WithError(err).Error("Failed to get parent asset from Neo4j", "child_id", childID)
+		log.WithError(err).Error("Failed to get parent asset from Neo4j", "child_id", childID.Value())
 		return nil, pkgerrors.NewInternalError("get parent asset failed", err)
 	}
 
 	record, err := result.Single()
 	if err != nil {
-		log.Debug("Parent asset not found in Neo4j", "child_id", childID)
+		log.Debug("Parent asset not found in Neo4j", "child_id", childID.Value())
 		return nil, pkgerrors.NewNotFoundError("parent asset not found", err)
 	}
 
 	asset, err := r.recordToAsset(record)
 	if err != nil {
-		log.WithError(err).Error("Failed to convert Neo4j record to asset", "child_id", childID)
+		log.WithError(err).Error("Failed to convert Neo4j record to asset", "child_id", childID.Value())
 		return nil, pkgerrors.NewInternalError("convert record to asset failed", err)
 	}
 
 	return asset, nil
 }
 
-func (r *AssetRepository) FindChildren(ctx context.Context, parentID string) ([]*asset.Asset, error) {
+func (r *AssetRepository) FindChildren(ctx context.Context, parentID asset.AssetID) ([]*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -341,9 +346,9 @@ func (r *AssetRepository) FindChildren(ctx context.Context, parentID string) ([]
 		RETURN child
 	`
 
-	result, err := session.Run(query, map[string]interface{}{"parentId": parentID})
+	result, err := session.Run(query, map[string]interface{}{"parentId": parentID.Value()})
 	if err != nil {
-		log.WithError(err).Error("Failed to get children assets from Neo4j", "parent_id", parentID)
+		log.WithError(err).Error("Failed to get children assets from Neo4j", "parent_id", parentID.Value())
 		return nil, pkgerrors.NewInternalError("get children assets failed", err)
 	}
 
@@ -361,7 +366,7 @@ func (r *AssetRepository) FindChildren(ctx context.Context, parentID string) ([]
 	return assets, nil
 }
 
-func (r *AssetRepository) FindByTypeAndGenre(ctx context.Context, assetType, genre string) ([]*asset.Asset, error) {
+func (r *AssetRepository) FindByTypeAndGenre(ctx context.Context, assetType *asset.AssetType, genre *asset.Genre) ([]*asset.Asset, error) {
 	log := r.logger.WithContext(ctx)
 
 	session := r.driver.NewSession(neo4j.SessionConfig{})
@@ -375,8 +380,8 @@ func (r *AssetRepository) FindByTypeAndGenre(ctx context.Context, assetType, gen
 	`
 
 	params := map[string]interface{}{
-		"type":  assetType,
-		"genre": genre,
+		"type":  assetType.Value(),
+		"genre": genre.Value(),
 	}
 
 	result, err := session.Run(query, params)

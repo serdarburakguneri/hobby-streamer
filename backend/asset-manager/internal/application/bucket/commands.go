@@ -1,5 +1,9 @@
 package bucket
 
+import (
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+)
+
 type CreateBucketCommand struct {
 	Name        string
 	Key         string
@@ -63,4 +67,28 @@ type GetBucketAssetsCommand struct {
 	BucketID string
 	Limit    *int
 	LastKey  map[string]interface{}
+}
+
+func (c GetBucketCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.ID)
+}
+
+func (c UpdateBucketCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.ID)
+}
+
+func (c DeleteBucketCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.ID)
+}
+
+func (c AddAssetToBucketCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.BucketID)
+}
+
+func (c RemoveAssetFromBucketCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.BucketID)
+}
+
+func (c GetBucketAssetsCommand) ToDomainBucketID() (*bucket.BucketID, error) {
+	return bucket.NewBucketID(c.BucketID)
 }

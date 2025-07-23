@@ -23,9 +23,9 @@ func NewBucketEventPublisher(producer *sqs.Producer) *BucketEventPublisher {
 func (p *BucketEventPublisher) PublishBucketCreated(ctx context.Context, bucket *domainbucket.Bucket) error {
 	event := BucketCreatedEvent{
 		EventType: "bucket.created",
-		BucketID:  bucket.ID(),
+		BucketID:  bucket.ID().Value(),
 		Data: BucketEventData{
-			ID:          bucket.ID(),
+			ID:          bucket.ID().Value(),
 			Name:        bucket.Name(),
 			Description: stringPtrToString(bucket.Description()),
 			Key:         bucket.Key(),
@@ -42,9 +42,9 @@ func (p *BucketEventPublisher) PublishBucketCreated(ctx context.Context, bucket 
 func (p *BucketEventPublisher) PublishBucketUpdated(ctx context.Context, bucket *domainbucket.Bucket) error {
 	event := BucketUpdatedEvent{
 		EventType: "bucket.updated",
-		BucketID:  bucket.ID(),
+		BucketID:  bucket.ID().Value(),
 		Data: BucketEventData{
-			ID:          bucket.ID(),
+			ID:          bucket.ID().Value(),
 			Name:        bucket.Name(),
 			Description: stringPtrToString(bucket.Description()),
 			Key:         bucket.Key(),
