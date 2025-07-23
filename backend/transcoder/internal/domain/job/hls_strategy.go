@@ -34,7 +34,22 @@ func (h *HLSTranscoder) Transcode(ctx context.Context, job *Job, localPath, outp
 	return outputPath, nil
 }
 
-func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string) (*TranscodeMetadata, error) {
+func (h *HLSTranscoder) ValidateOutput(job *Job) error {
+	if !strings.HasPrefix(job.Output(), "s3://") {
+		return errors.NewValidationError("output must be an S3 path", nil)
+	}
+	parts := strings.SplitN(job.Output()[5:], "/", 2)
+	if len(parts) != 2 {
+		return errors.NewValidationError("invalid S3 path: "+job.Output(), nil)
+	}
+	return nil
+}
+
+func (h *HLSTranscoder) ValidateInput(ctx context.Context, job *Job) error {
+	return nil
+}
+
+func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return nil, errors.NewInternalError("failed to get file info", err)
@@ -84,6 +99,16 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string) (*
 			metadata.AvgSegmentDuration = totalDuration / float64(segmentCount)
 		}
 		metadata.Duration = totalDuration
+	}
+
+	if job != nil && strings.HasPrefix(job.Output(), "s3://") {
+		parts := strings.SplitN(job.Output()[5:], "/", 2)
+		if len(parts) == 2 {
+			metadata.OutputURL = "s3://" + parts[0] + "/" + parts[1]
+			metadata.Bucket = parts[0]
+			metadata.Key = parts[1]
+			metadata.Format = string(JobFormatHLS)
+		}
 	}
 	return metadata, nil
 }

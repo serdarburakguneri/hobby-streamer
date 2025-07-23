@@ -5,8 +5,10 @@ import (
 )
 
 type TranscoderStrategy interface {
+	ValidateOutput(job *Job) error
 	Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error)
-	ExtractMetadata(ctx context.Context, filePath string) (*TranscodeMetadata, error)
+	ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error)
+	ValidateInput(ctx context.Context, job *Job) error
 }
 
 type TranscoderRegistry struct {

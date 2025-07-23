@@ -39,7 +39,7 @@ func (d *DASHTranscoder) Transcode(ctx context.Context, job *Job, localPath, out
 	return outputPath, nil
 }
 
-func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string) (*TranscodeMetadata, error) {
+func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return nil, errors.NewInternalError("failed to get file info", err)
@@ -100,5 +100,30 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string) (
 			metadata.Duration = totalDuration
 		}
 	}
+
+	if job != nil && strings.HasPrefix(job.Output(), "s3://") {
+		parts := strings.SplitN(job.Output()[5:], "/", 2)
+		if len(parts) == 2 {
+			metadata.OutputURL = "s3://" + parts[0] + "/" + parts[1]
+			metadata.Bucket = parts[0]
+			metadata.Key = parts[1]
+			metadata.Format = string(JobFormatDASH)
+		}
+	}
 	return metadata, nil
+}
+
+func (d *DASHTranscoder) ValidateOutput(job *Job) error {
+	if !strings.HasPrefix(job.Output(), "s3://") {
+		return errors.NewValidationError("output must be an S3 path", nil)
+	}
+	parts := strings.SplitN(job.Output()[5:], "/", 2)
+	if len(parts) != 2 {
+		return errors.NewValidationError("invalid S3 path: "+job.Output(), nil)
+	}
+	return nil
+}
+
+func (d *DASHTranscoder) ValidateInput(ctx context.Context, job *Job) error {
+	return nil
 }

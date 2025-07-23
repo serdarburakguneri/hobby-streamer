@@ -32,31 +32,23 @@ func (p *EventPublisher) PublishJobCompleted(ctx context.Context, jobType, asset
 	}
 
 	if success && metadata != nil {
-		switch jobType {
-		case "analyze":
-			if videoMetadata, ok := metadata.(*domainjob.VideoMetadata); ok {
-				payload.Width = videoMetadata.Width
-				payload.Height = videoMetadata.Height
-				payload.Duration = videoMetadata.Duration
-				payload.Bitrate = videoMetadata.Bitrate
-				payload.Codec = videoMetadata.Codec
-				payload.Size = videoMetadata.Size
-				payload.ContentType = videoMetadata.ContentType
-			}
-		case "transcode":
-			if transcodeMetadata, ok := metadata.(*domainjob.TranscodeMetadata); ok {
-				payload.Bucket = transcodeMetadata.Bucket
-				payload.Key = transcodeMetadata.Key
-				payload.URL = transcodeMetadata.OutputURL
-				payload.Size = transcodeMetadata.Size
-				payload.ContentType = transcodeMetadata.ContentType
-				payload.Format = transcodeMetadata.Format
-				payload.SegmentCount = transcodeMetadata.SegmentCount
-				payload.VideoCodec = transcodeMetadata.VideoCodec
-				payload.AudioCodec = transcodeMetadata.AudioCodec
-				payload.AvgSegmentDuration = transcodeMetadata.AvgSegmentDuration
-				payload.Segments = transcodeMetadata.Segments
-			}
+		if meta, ok := metadata.(*domainjob.TranscodeMetadata); ok {
+			payload.Width = 0
+			payload.Height = 0
+			payload.Duration = meta.Duration
+			payload.Bitrate = meta.Bitrate
+			payload.Codec = meta.VideoCodec
+			payload.Size = meta.Size
+			payload.ContentType = meta.ContentType
+			payload.Bucket = meta.Bucket
+			payload.Key = meta.Key
+			payload.URL = meta.OutputURL
+			payload.Format = meta.Format
+			payload.SegmentCount = meta.SegmentCount
+			payload.VideoCodec = meta.VideoCodec
+			payload.AudioCodec = meta.AudioCodec
+			payload.AvgSegmentDuration = meta.AvgSegmentDuration
+			payload.Segments = meta.Segments
 		}
 	}
 

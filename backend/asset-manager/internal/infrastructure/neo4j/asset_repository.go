@@ -107,7 +107,7 @@ func (r *AssetRepository) FindByID(ctx context.Context, id asset.AssetID) (*asse
 
 	record, err := result.Single()
 	if err != nil {
-		log.Debug("Asset not found in Neo4j", "asset_id", id.Value())
+		log.Warn("Asset not found in Neo4j", "asset_id", id.Value())
 		return nil, pkgerrors.NewNotFoundError("asset not found", err)
 	}
 
@@ -140,7 +140,7 @@ func (r *AssetRepository) FindBySlug(ctx context.Context, slug asset.Slug) (*ass
 
 	record, err := result.Single()
 	if err != nil {
-		log.Debug("Asset not found in Neo4j", "slug", slug.Value())
+		log.Warn("Asset not found in Neo4j", "slug", slug.Value())
 		return nil, pkgerrors.NewNotFoundError("asset not found", err)
 	}
 
@@ -612,12 +612,11 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 	var videos []*asset.Video
 	if videosJSON, exists := props["videos"]; exists {
 		if videosStr, ok := videosJSON.(string); ok && videosStr != "" {
-			log.Debug("Found videos JSON", "videos_json", videosStr)
+
 			var videosData []map[string]interface{}
 			if err := json.Unmarshal([]byte(videosStr), &videosData); err != nil {
 				log.WithError(err).Error("Failed to unmarshal videos JSON")
 			} else {
-				log.Debug("Successfully unmarshaled videos", "video_count", len(videosData))
 				for _, videoData := range videosData {
 					videoID, _ := videoData["id"].(string)
 					label, _ := videoData["label"].(string)
@@ -701,7 +700,7 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						updatedAtTime,
 						0, "", "", 0, nil,
 					)
-					// Deserialize streamInfo if present
+
 					if streamInfoMap, ok := videoData["streamInfo"].(map[string]interface{}); ok {
 						var downloadURL, cdnPrefix, urlStr *string
 						if v, ok := streamInfoMap["downloadURL"].(string); ok && v != "" {
@@ -720,7 +719,6 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						}
 					}
 
-					log.Debug("Reconstructed video", "video_id", video.ID(), "label", video.Label())
 					videos = append(videos, video)
 				}
 			}

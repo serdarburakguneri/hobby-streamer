@@ -12,7 +12,7 @@ import (
 type AnalyzeStrategy struct{}
 
 func (a *AnalyzeStrategy) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
-	metadata, err := a.ExtractMetadata(ctx, localPath)
+	metadata, err := a.ExtractMetadata(ctx, localPath, job)
 	if err != nil {
 		return "", pkgerrors.NewInternalError("failed to extract video metadata", err)
 	}
@@ -23,7 +23,15 @@ func (a *AnalyzeStrategy) Transcode(ctx context.Context, job *Job, localPath, ou
 	return "", nil
 }
 
-func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string) (*TranscodeMetadata, error) {
+func (a *AnalyzeStrategy) ValidateOutput(job *Job) error {
+	return nil
+}
+
+func (a *AnalyzeStrategy) ValidateInput(ctx context.Context, job *Job) error {
+	return nil
+}
+
+func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
 	var out []byte
 	var err error
 
