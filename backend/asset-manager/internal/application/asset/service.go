@@ -1028,6 +1028,15 @@ func (s *ApplicationService) updateVideoMetadata(video *domainasset.Video, metad
 	if metadata.ContentType != "" {
 		video.UpdateContentType(metadata.ContentType)
 	}
+	if metadata.FrameRate != "" {
+		video.SetFrameRate(metadata.FrameRate)
+	}
+	if metadata.AudioChannels > 0 {
+		video.SetAudioChannels(metadata.AudioChannels)
+	}
+	if metadata.AudioSampleRate > 0 {
+		video.SetAudioSampleRate(metadata.AudioSampleRate)
+	}
 }
 
 func (s *ApplicationService) updateTranscodingInfo(video *domainasset.Video, metadata *messages.JobCompletionPayload) error {

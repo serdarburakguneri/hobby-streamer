@@ -33,6 +33,9 @@ type JobCompletionPayload struct {
 	AudioCodec         string   `json:"audioCodec,omitempty"`
 	AvgSegmentDuration float64  `json:"avgSegmentDuration,omitempty"`
 	Segments           []string `json:"segments,omitempty"`
+	FrameRate          string   `json:"frameRate,omitempty"`
+	AudioChannels      int      `json:"audioChannels,omitempty"`
+	AudioSampleRate    int      `json:"audioSampleRate,omitempty"`
 }
 
 const (

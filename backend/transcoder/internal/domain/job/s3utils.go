@@ -71,7 +71,7 @@ func uploadToS3(ctx context.Context, s3Client *s3.Client, localDir, s3Path strin
 		}
 
 		retryFunc := func(ctx context.Context) error {
-			return s3Client.Upload(ctx, bucket, s3Key, path)
+			return s3Client.Upload(ctx, path, bucket, s3Key)
 		}
 
 		retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 3)

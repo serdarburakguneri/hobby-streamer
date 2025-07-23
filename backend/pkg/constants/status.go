@@ -49,10 +49,11 @@ const (
 )
 
 const (
-	VideoQualitySD  = "sd"
-	VideoQualityHD  = "hd"
-	VideoQualityFHD = "fhd"
-	VideoQuality4K  = "4k"
+	VideoQualityMain = "main"
+	VideoQualitySD   = "sd"
+	VideoQualityHD   = "hd"
+	VideoQualityFHD  = "fhd"
+	VideoQuality4K   = "4k"
 )
 
 const (

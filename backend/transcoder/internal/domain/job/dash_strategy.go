@@ -25,7 +25,7 @@ func NewDASHTranscoder(s3Client *s3.Client) *DASHTranscoder {
 }
 
 func (d *DASHTranscoder) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
-	outputPath := filepath.Join(outputDir, "playlist.mpd")
+	outputPath := filepath.Join(outputDir, "manifest.mpd")
 	retryFunc := func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ffmpeg",
 			"-i", localPath,
@@ -60,11 +60,26 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 	if err != nil {
 		return nil, errors.NewInternalError("failed to get file info", err)
 	}
+
+	outputPath := job.Output()
+	var bucket, key string
+	if strings.HasPrefix(outputPath, "s3://") {
+		parts := strings.SplitN(outputPath[5:], "/", 2)
+		if len(parts) == 2 {
+			bucket = parts[0]
+			key = parts[1]
+		}
+	}
+
 	metadata := &TranscodeMetadata{
 		Size:        fileInfo.Size(),
 		Format:      string(JobFormatDASH),
 		ContentType: "application/dash+xml",
+		Bucket:      bucket,
+		Key:         key,
+		OutputURL:   outputPath,
 	}
+
 	manifest, err := ioutil.ReadFile(filePath)
 	if err == nil {
 		type Segment struct {
@@ -96,7 +111,7 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 			for _, as := range mpd.Period.AdaptationSets {
 				for _, rep := range as.Representations {
 					if rep.Codecs != "" {
-						metadata.VideoCodec = rep.Codecs
+						metadata.Codec = rep.Codecs
 					}
 					if rep.SegmentTemplate.Media != "" && rep.SegmentTemplate.Duration != "" {
 						segmentCount = 0
@@ -117,13 +132,16 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 		}
 	}
 
-	if job != nil && job.Input() != "" {
+	outputDir := filepath.Dir(filePath)
+	segmentFiles, err := filepath.Glob(filepath.Join(outputDir, "*.m4s"))
+	if err == nil && len(segmentFiles) > 0 {
+		segmentPath := segmentFiles[0]
 		cmd := exec.CommandContext(ctx, "ffprobe",
 			"-v", "quiet",
 			"-print_format", "json",
 			"-show_format",
 			"-show_streams",
-			job.Input())
+			segmentPath)
 		if out, err := cmd.Output(); err == nil {
 			var probeResult struct {
 				Format struct {
@@ -131,10 +149,13 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 					BitRate  string `json:"bit_rate"`
 				} `json:"format"`
 				Streams []struct {
-					CodecType string `json:"codec_type"`
-					CodecName string `json:"codec_name"`
-					Width     int    `json:"width"`
-					Height    int    `json:"height"`
+					CodecType  string `json:"codec_type"`
+					CodecName  string `json:"codec_name"`
+					Width      int    `json:"width"`
+					Height     int    `json:"height"`
+					RFrameRate string `json:"r_frame_rate"`
+					SampleRate string `json:"sample_rate"`
+					Channels   int    `json:"channels"`
 				} `json:"streams"`
 			}
 			if json.Unmarshal(out, &probeResult) == nil {
@@ -143,6 +164,22 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 						metadata.Width = stream.Width
 						metadata.Height = stream.Height
 						metadata.Codec = stream.CodecName
+						metadata.VideoCodec = stream.CodecName
+						if stream.RFrameRate != "" {
+							metadata.FrameRate = stream.RFrameRate
+						}
+						break
+					}
+				}
+				for _, stream := range probeResult.Streams {
+					if stream.CodecType == "audio" {
+						metadata.AudioCodec = stream.CodecName
+						metadata.AudioChannels = stream.Channels
+						if stream.SampleRate != "" {
+							if sampleRate, err := strconv.Atoi(stream.SampleRate); err == nil {
+								metadata.AudioSampleRate = sampleRate
+							}
+						}
 						break
 					}
 				}
@@ -160,15 +197,6 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 		}
 	}
 
-	if job != nil && strings.HasPrefix(job.Output(), "s3://") {
-		parts := strings.SplitN(job.Output()[5:], "/", 2)
-		if len(parts) == 2 {
-			metadata.OutputURL = "s3://" + parts[0] + "/" + parts[1]
-			metadata.Bucket = parts[0]
-			metadata.Key = parts[1]
-			metadata.Format = string(JobFormatDASH)
-		}
-	}
 	return metadata, nil
 }
 

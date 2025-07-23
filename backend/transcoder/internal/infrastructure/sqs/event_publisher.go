@@ -49,6 +49,9 @@ func (p *EventPublisher) PublishJobCompleted(ctx context.Context, jobType, asset
 			payload.AudioCodec = meta.AudioCodec
 			payload.AvgSegmentDuration = meta.AvgSegmentDuration
 			payload.Segments = meta.Segments
+			payload.FrameRate = meta.FrameRate
+			payload.AudioChannels = meta.AudioChannels
+			payload.AudioSampleRate = meta.AudioSampleRate
 		}
 	}
 

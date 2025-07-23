@@ -61,7 +61,7 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
           hlsRef.current = hls;
           
           hls.loadSource(videoUrl);
-          hls.attachMedia(video);
+          hls.attachMedia(videoElement);
           
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             console.log('HLS manifest parsed successfully');

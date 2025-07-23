@@ -82,6 +82,9 @@ type Video {
   audioCodec: String
   avgSegmentDuration: Float
   segments: [String!]
+  frameRate: String
+  audioChannels: Int
+  audioSampleRate: Int
 }
 
 type Image {

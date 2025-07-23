@@ -37,6 +37,7 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 
 	var job *domainjob.Job
 	var format domainjob.JobFormat
+	var outputKey string
 	assetIDVO, err := domainjob.NewAssetID(payload.AssetID)
 	if err != nil {
 		return errors.NewValidationError("invalid asset ID", err)
@@ -52,8 +53,10 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 		switch payload.Format {
 		case string(domainjob.JobFormatHLS):
 			format = domainjob.JobFormatHLS
+			outputKey = fmt.Sprintf("%s/hls/%s/playlist.m3u8", payload.AssetID, payload.Quality)
 		case string(domainjob.JobFormatDASH):
 			format = domainjob.JobFormatDASH
+			outputKey = fmt.Sprintf("%s/dash/%s/manifest.mpd", payload.AssetID, payload.Quality)
 		default:
 			errMsg := fmt.Sprintf("unsupported format: %s", payload.Format)
 			s.logger.Error("Unsupported format", "format", payload.Format)
@@ -62,8 +65,8 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 			}
 			return errors.NewValidationError(errMsg, nil)
 		}
-		outputPath := fmt.Sprintf("s3://%s/%s", payload.OutputBucket, payload.OutputKey)
-		job = domainjob.NewTranscodeJob(*assetIDVO, *videoIDVO, payload.Input, outputPath, format)
+		outputPath := fmt.Sprintf("s3://%s/%s", payload.OutputBucket, outputKey)
+		job = domainjob.NewTranscodeJob(*assetIDVO, *videoIDVO, payload.Input, outputPath, payload.Quality, format)
 	default:
 		errMsg := fmt.Sprintf("unsupported job type: %s", payload.JobType)
 		s.logger.Error("Unsupported job type", "job_type", payload.JobType)

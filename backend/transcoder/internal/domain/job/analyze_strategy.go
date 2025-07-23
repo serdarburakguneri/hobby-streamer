@@ -3,24 +3,23 @@ package job
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
 type AnalyzeTranscoder struct{}
 
 func (a *AnalyzeTranscoder) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
-	metadata, err := a.ExtractMetadata(ctx, localPath, job)
-	if err != nil {
-		return "", pkgerrors.NewInternalError("failed to extract video metadata", err)
-	}
 	if err := a.validateVideo(ctx, localPath); err != nil {
 		return "", pkgerrors.NewValidationError("video validation failed", err)
 	}
-	_ = metadata
-	return "", nil
+
+	return localPath, nil
 }
 
 func (a *AnalyzeTranscoder) ValidateOutput(job *Job) error {
@@ -31,9 +30,34 @@ func (a *AnalyzeTranscoder) ValidateInput(ctx context.Context, job *Job) error {
 	return nil
 }
 
+func getContentTypeFromFormat(formatName string) string {
+	switch formatName {
+	case "mov,mp4,m4a,3gp,3g2,mj2":
+		return "video/mp4"
+	case "matroska,webm":
+		return "video/webm"
+	case "avi":
+		return "video/x-msvideo"
+	case "wmv":
+		return "video/x-ms-wmv"
+	case "flv":
+		return "video/x-flv"
+	case "m4v":
+		return "video/x-m4v"
+	default:
+		return "video/mp4"
+	}
+}
+
 func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
 	var out []byte
 	var err error
+
+	if fileInfo, statErr := os.Stat(filePath); statErr != nil {
+		return nil, pkgerrors.NewInternalError(fmt.Sprintf("file does not exist or cannot be accessed: %s", filePath), statErr)
+	} else {
+		logger.Get().Info("File exists and is accessible", "file_path", filePath, "file_size", fileInfo.Size())
+	}
 
 	retryFunc := func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ffprobe",
@@ -43,7 +67,10 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 			"-show_streams",
 			filePath)
 
-		out, err = cmd.Output()
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			logger.Get().WithError(err).Error("ffprobe command failed", "file_path", filePath, "output", string(out))
+		}
 		return err
 	}
 
@@ -54,9 +81,10 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 
 	var probeResult struct {
 		Format struct {
-			Duration string `json:"duration"`
-			BitRate  string `json:"bit_rate"`
-			Size     string `json:"size"`
+			Duration   string `json:"duration"`
+			BitRate    string `json:"bit_rate"`
+			Size       string `json:"size"`
+			FormatName string `json:"format_name"`
 		} `json:"format"`
 		Streams []struct {
 			CodecType string `json:"codec_type"`
@@ -67,6 +95,7 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 	}
 
 	if err := json.Unmarshal(out, &probeResult); err != nil {
+		logger.Get().WithError(err).Error("Failed to parse ffprobe output", "output", string(out))
 		return nil, pkgerrors.NewInternalError("failed to parse ffprobe output", err)
 	}
 
@@ -75,6 +104,9 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 	for _, stream := range probeResult.Streams {
 		if stream.CodecType == "video" {
 			metadata.VideoCodec = stream.CodecName
+			metadata.Codec = stream.CodecName
+			metadata.Width = stream.Width
+			metadata.Height = stream.Height
 			break
 		}
 	}
@@ -95,6 +127,10 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 		if size, err := strconv.ParseInt(probeResult.Format.Size, 10, 64); err == nil {
 			metadata.Size = size
 		}
+	}
+
+	if probeResult.Format.FormatName != "" {
+		metadata.ContentType = getContentTypeFromFormat(probeResult.Format.FormatName)
 	}
 
 	return metadata, nil

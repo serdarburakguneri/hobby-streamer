@@ -31,6 +31,7 @@ type Job struct {
 	videoID     VideoID
 	input       string
 	output      string
+	quality     string
 	status      JobStatus
 	progress    float64
 	error       string
@@ -57,7 +58,7 @@ func NewAnalyzeJob(assetID AssetID, videoID VideoID, input string) *Job {
 	}
 }
 
-func NewTranscodeJob(assetID AssetID, videoID VideoID, input, output string, format JobFormat) *Job {
+func NewTranscodeJob(assetID AssetID, videoID VideoID, input, output, quality string, format JobFormat) *Job {
 	now := time.Now().UTC()
 	jid, _ := NewJobID(generateJobID())
 	return &Job{
@@ -68,6 +69,7 @@ func NewTranscodeJob(assetID AssetID, videoID VideoID, input, output string, for
 		videoID:   videoID,
 		input:     input,
 		output:    output,
+		quality:   quality,
 		status:    JobStatusPending,
 		progress:  0.0,
 		createdAt: now,
@@ -103,6 +105,13 @@ func (j *Job) Output() string {
 	return j.output
 }
 
+func (j *Job) Quality() string {
+	if j.quality == "" {
+		return "main"
+	}
+	return j.quality
+}
+
 func (j *Job) Status() JobStatus {
 	return j.status
 }
@@ -117,6 +126,10 @@ func (j *Job) Error() string {
 
 func (j *Job) Metadata() *VideoMetadata {
 	return j.metadata
+}
+
+func (j *Job) SetMetadata(metadata *VideoMetadata) {
+	j.metadata = metadata
 }
 
 func (j *Job) StartedAt() *time.Time {

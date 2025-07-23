@@ -177,6 +177,9 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 	audioCodec := video.AudioCodec()
 	avgSegmentDuration := video.AvgSegmentDuration()
 	segments := video.Segments()
+	frameRate := video.FrameRate()
+	audioChannels := video.AudioChannels()
+	audioSampleRate := video.AudioSampleRate()
 
 	return &Video{
 		ID:     video.ID(),
@@ -211,6 +214,9 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 		AudioCodec:         &audioCodec,
 		AvgSegmentDuration: &avgSegmentDuration,
 		Segments:           segments,
+		FrameRate:          &frameRate,
+		AudioChannels:      &audioChannels,
+		AudioSampleRate:    &audioSampleRate,
 	}
 }
 

@@ -31,12 +31,12 @@ func TestJobDomainService_ProcessJob_Errors(t *testing.T) {
 		},
 		{
 			name:    "transcode job missing output",
-			job:     NewTranscodeJob(AssetID{"aid"}, VideoID{"vid"}, "input.mp4", "", JobFormatHLS),
+			job:     NewTranscodeJob(AssetID{"aid"}, VideoID{"vid"}, "input.mp4", "", "1080p", JobFormatHLS),
 			wantErr: true,
 		},
 		{
 			name:    "transcode job missing format",
-			job:     NewTranscodeJob(AssetID{"aid"}, VideoID{"vid"}, "input.mp4", "s3://bucket/key", ""),
+			job:     NewTranscodeJob(AssetID{"aid"}, VideoID{"vid"}, "input.mp4", "s3://bucket/key", "1080p", ""),
 			wantErr: true,
 		},
 	}

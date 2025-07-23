@@ -482,16 +482,24 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 				"key":    video.StorageLocation().Key(),
 				"url":    video.StorageLocation().URL(),
 			},
-			"width":       video.Width(),
-			"height":      video.Height(),
-			"duration":    video.Duration(),
-			"bitrate":     video.Bitrate(),
-			"codec":       video.Codec(),
-			"size":        video.Size(),
-			"contentType": video.ContentType(),
-			"status":      string(video.Status()),
-			"createdAt":   video.CreatedAt(),
-			"updatedAt":   video.UpdatedAt(),
+			"width":              video.Width(),
+			"height":             video.Height(),
+			"duration":           video.Duration(),
+			"bitrate":            video.Bitrate(),
+			"codec":              video.Codec(),
+			"size":               video.Size(),
+			"contentType":        video.ContentType(),
+			"status":             string(video.Status()),
+			"createdAt":          video.CreatedAt(),
+			"updatedAt":          video.UpdatedAt(),
+			"segmentCount":       video.SegmentCount(),
+			"videoCodec":         video.VideoCodec(),
+			"audioCodec":         video.AudioCodec(),
+			"avgSegmentDuration": video.AvgSegmentDuration(),
+			"segments":           video.Segments(),
+			"frameRate":          video.FrameRate(),
+			"audioChannels":      video.AudioChannels(),
+			"audioSampleRate":    video.AudioSampleRate(),
 		}
 		if si := video.StreamInfo(); si != nil {
 			videoData["streamInfo"] = map[string]interface{}{
@@ -657,6 +665,22 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 					codec, _ := videoData["codec"].(string)
 					size, _ := videoData["size"].(float64)
 					contentType, _ := videoData["contentType"].(string)
+					segmentCount, _ := videoData["segmentCount"].(float64)
+					videoCodec, _ := videoData["videoCodec"].(string)
+					audioCodec, _ := videoData["audioCodec"].(string)
+					avgSegmentDuration, _ := videoData["avgSegmentDuration"].(float64)
+					frameRate, _ := videoData["frameRate"].(string)
+					audioChannels, _ := videoData["audioChannels"].(float64)
+					audioSampleRate, _ := videoData["audioSampleRate"].(float64)
+
+					var segments []string
+					if segmentsInterface, ok := videoData["segments"].([]interface{}); ok {
+						for _, seg := range segmentsInterface {
+							if segStr, ok := seg.(string); ok {
+								segments = append(segments, segStr)
+							}
+						}
+					}
 
 					createdAt, _ := videoData["createdAt"].(string)
 					updatedAt, _ := videoData["updatedAt"].(string)
@@ -698,7 +722,14 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						videoStatus,
 						createdAtTime,
 						updatedAtTime,
-						0, "", "", 0, nil,
+						int(segmentCount),
+						videoCodec,
+						audioCodec,
+						avgSegmentDuration,
+						segments,
+						frameRate,
+						int(audioChannels),
+						int(audioSampleRate),
 					)
 
 					if streamInfoMap, ok := videoData["streamInfo"].(map[string]interface{}); ok {

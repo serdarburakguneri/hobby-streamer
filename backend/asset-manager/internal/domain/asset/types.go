@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -92,6 +93,22 @@ func (s S3Object) Equals(other S3Object) bool {
 	return s.bucket == other.bucket &&
 		s.key == other.key &&
 		s.url == other.url
+}
+
+func (s S3Object) BuildS3URL() string {
+	return fmt.Sprintf("s3://%s/%s", s.bucket, s.key)
+}
+
+func BuildS3URL(bucket, key string) string {
+	return fmt.Sprintf("s3://%s/%s", bucket, key)
+}
+
+func BuildHLSOutputKey(assetID, quality string) string {
+	return fmt.Sprintf("%s/hls/%s/playlist.m3u8", assetID, quality)
+}
+
+func BuildDASHOutputKey(assetID, quality string) string {
+	return fmt.Sprintf("%s/dash/%s/manifest.mpd", assetID, quality)
 }
 
 type StreamInfo struct {

@@ -70,11 +70,26 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 	if err != nil {
 		return nil, errors.NewInternalError("failed to get file info", err)
 	}
+
+	outputPath := job.Output()
+	var bucket, key string
+	if strings.HasPrefix(outputPath, "s3://") {
+		parts := strings.SplitN(outputPath[5:], "/", 2)
+		if len(parts) == 2 {
+			bucket = parts[0]
+			key = parts[1]
+		}
+	}
+
 	metadata := &TranscodeMetadata{
 		Size:        fileInfo.Size(),
 		Format:      string(JobFormatHLS),
 		ContentType: "application/x-mpegURL",
+		Bucket:      bucket,
+		Key:         key,
+		OutputURL:   outputPath,
 	}
+
 	playlist, err := ioutil.ReadFile(filePath)
 	if err == nil {
 		lines := strings.Split(string(playlist), "\n")
@@ -117,13 +132,16 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 		metadata.Duration = totalDuration
 	}
 
-	if job != nil && job.Input() != "" {
+	outputDir := filepath.Dir(filePath)
+	segmentFiles, err := filepath.Glob(filepath.Join(outputDir, "*.ts"))
+	if err == nil && len(segmentFiles) > 0 {
+		segmentPath := segmentFiles[0]
 		cmd := exec.CommandContext(ctx, "ffprobe",
 			"-v", "quiet",
 			"-print_format", "json",
 			"-show_format",
 			"-show_streams",
-			job.Input())
+			segmentPath)
 		if out, err := cmd.Output(); err == nil {
 			var probeResult struct {
 				Format struct {
@@ -131,10 +149,13 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 					BitRate  string `json:"bit_rate"`
 				} `json:"format"`
 				Streams []struct {
-					CodecType string `json:"codec_type"`
-					CodecName string `json:"codec_name"`
-					Width     int    `json:"width"`
-					Height    int    `json:"height"`
+					CodecType  string `json:"codec_type"`
+					CodecName  string `json:"codec_name"`
+					Width      int    `json:"width"`
+					Height     int    `json:"height"`
+					RFrameRate string `json:"r_frame_rate"`
+					SampleRate string `json:"sample_rate"`
+					Channels   int    `json:"channels"`
 				} `json:"streams"`
 			}
 			if json.Unmarshal(out, &probeResult) == nil {
@@ -143,6 +164,22 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 						metadata.Width = stream.Width
 						metadata.Height = stream.Height
 						metadata.Codec = stream.CodecName
+						metadata.VideoCodec = stream.CodecName
+						if stream.RFrameRate != "" {
+							metadata.FrameRate = stream.RFrameRate
+						}
+						break
+					}
+				}
+				for _, stream := range probeResult.Streams {
+					if stream.CodecType == "audio" {
+						metadata.AudioCodec = stream.CodecName
+						metadata.AudioChannels = stream.Channels
+						if stream.SampleRate != "" {
+							if sampleRate, err := strconv.Atoi(stream.SampleRate); err == nil {
+								metadata.AudioSampleRate = sampleRate
+							}
+						}
 						break
 					}
 				}
@@ -160,14 +197,5 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 		}
 	}
 
-	if job != nil && strings.HasPrefix(job.Output(), "s3://") {
-		parts := strings.SplitN(job.Output()[5:], "/", 2)
-		if len(parts) == 2 {
-			metadata.OutputURL = "s3://" + parts[0] + "/" + parts[1]
-			metadata.Bucket = parts[0]
-			metadata.Key = parts[1]
-			metadata.Format = string(JobFormatHLS)
-		}
-	}
 	return metadata, nil
 }

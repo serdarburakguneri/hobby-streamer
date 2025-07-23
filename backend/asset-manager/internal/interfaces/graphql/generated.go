@@ -189,7 +189,9 @@ type ComplexityRoot struct {
 	}
 
 	Video struct {
+		AudioChannels      func(childComplexity int) int
 		AudioCodec         func(childComplexity int) int
+		AudioSampleRate    func(childComplexity int) int
 		AvgSegmentDuration func(childComplexity int) int
 		Bitrate            func(childComplexity int) int
 		Codec              func(childComplexity int) int
@@ -197,6 +199,7 @@ type ComplexityRoot struct {
 		CreatedAt          func(childComplexity int) int
 		Duration           func(childComplexity int) int
 		Format             func(childComplexity int) int
+		FrameRate          func(childComplexity int) int
 		Height             func(childComplexity int) int
 		ID                 func(childComplexity int) int
 		IsFailed           func(childComplexity int) int
@@ -1062,12 +1065,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TranscodingInfo.Progress(childComplexity), true
 
+	case "Video.audioChannels":
+		if e.complexity.Video.AudioChannels == nil {
+			break
+		}
+
+		return e.complexity.Video.AudioChannels(childComplexity), true
+
 	case "Video.audioCodec":
 		if e.complexity.Video.AudioCodec == nil {
 			break
 		}
 
 		return e.complexity.Video.AudioCodec(childComplexity), true
+
+	case "Video.audioSampleRate":
+		if e.complexity.Video.AudioSampleRate == nil {
+			break
+		}
+
+		return e.complexity.Video.AudioSampleRate(childComplexity), true
 
 	case "Video.avgSegmentDuration":
 		if e.complexity.Video.AvgSegmentDuration == nil {
@@ -1117,6 +1134,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Video.Format(childComplexity), true
+
+	case "Video.frameRate":
+		if e.complexity.Video.FrameRate == nil {
+			break
+		}
+
+		return e.complexity.Video.FrameRate(childComplexity), true
 
 	case "Video.height":
 		if e.complexity.Video.Height == nil {
@@ -3118,6 +3142,12 @@ func (ec *executionContext) fieldContext_Asset_videos(_ context.Context, field g
 				return ec.fieldContext_Video_avgSegmentDuration(ctx, field)
 			case "segments":
 				return ec.fieldContext_Video_segments(ctx, field)
+			case "frameRate":
+				return ec.fieldContext_Video_frameRate(ctx, field)
+			case "audioChannels":
+				return ec.fieldContext_Video_audioChannels(ctx, field)
+			case "audioSampleRate":
+				return ec.fieldContext_Video_audioSampleRate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
 		},
@@ -5834,6 +5864,12 @@ func (ec *executionContext) fieldContext_Mutation_addVideo(ctx context.Context, 
 				return ec.fieldContext_Video_avgSegmentDuration(ctx, field)
 			case "segments":
 				return ec.fieldContext_Video_segments(ctx, field)
+			case "frameRate":
+				return ec.fieldContext_Video_frameRate(ctx, field)
+			case "audioChannels":
+				return ec.fieldContext_Video_audioChannels(ctx, field)
+			case "audioSampleRate":
+				return ec.fieldContext_Video_audioSampleRate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
 		},
@@ -8842,6 +8878,129 @@ func (ec *executionContext) fieldContext_Video_segments(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_frameRate(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_frameRate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FrameRate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_frameRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_audioChannels(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_audioChannels(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AudioChannels, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_audioChannels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_audioSampleRate(ctx context.Context, field graphql.CollectedField, obj *Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_audioSampleRate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AudioSampleRate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_audioSampleRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -12382,6 +12541,12 @@ func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Video_avgSegmentDuration(ctx, field, obj)
 		case "segments":
 			out.Values[i] = ec._Video_segments(ctx, field, obj)
+		case "frameRate":
+			out.Values[i] = ec._Video_frameRate(ctx, field, obj)
+		case "audioChannels":
+			out.Values[i] = ec._Video_audioChannels(ctx, field, obj)
+		case "audioSampleRate":
+			out.Values[i] = ec._Video_audioSampleRate(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

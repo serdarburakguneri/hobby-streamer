@@ -37,6 +37,9 @@ type Video struct {
 	audioCodec         string
 	avgSegmentDuration float64
 	segments           []string
+	frameRate          string
+	audioChannels      int
+	audioSampleRate    int
 }
 
 func NewVideoFormat(value string) (*VideoFormat, error) {
@@ -95,6 +98,9 @@ func ReconstructVideo(
 	audioCodec string,
 	avgSegmentDuration float64,
 	segments []string,
+	frameRate string,
+	audioChannels int,
+	audioSampleRate int,
 ) *Video {
 	return &Video{
 		id:                 id,
@@ -118,6 +124,9 @@ func ReconstructVideo(
 		audioCodec:         audioCodec,
 		avgSegmentDuration: avgSegmentDuration,
 		segments:           segments,
+		frameRate:          frameRate,
+		audioChannels:      audioChannels,
+		audioSampleRate:    audioSampleRate,
 	}
 }
 
@@ -319,5 +328,32 @@ func (v *Video) Segments() []string {
 }
 func (v *Video) SetSegments(segs []string) {
 	v.segments = segs
+	v.updatedAt = time.Now().UTC()
+}
+
+func (v *Video) FrameRate() string {
+	return v.frameRate
+}
+
+func (v *Video) SetFrameRate(frameRate string) {
+	v.frameRate = frameRate
+	v.updatedAt = time.Now().UTC()
+}
+
+func (v *Video) AudioChannels() int {
+	return v.audioChannels
+}
+
+func (v *Video) SetAudioChannels(channels int) {
+	v.audioChannels = channels
+	v.updatedAt = time.Now().UTC()
+}
+
+func (v *Video) AudioSampleRate() int {
+	return v.audioSampleRate
+}
+
+func (v *Video) SetAudioSampleRate(sampleRate int) {
+	v.audioSampleRate = sampleRate
 	v.updatedAt = time.Now().UTC()
 }

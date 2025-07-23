@@ -81,11 +81,11 @@ func setupSQS(ctx context.Context, dynamicCfg *config.DynamicConfig) (*pkgsqs.Pr
 	return domainEventProducer, jobProducer
 }
 
-func setupServices(neo4jDriver neo4jdriver.Driver, domainEventProducer, jobProducer *pkgsqs.Producer) (*appasset.ApplicationService, *appbucket.ApplicationService) {
+func setupServices(neo4jDriver neo4jdriver.Driver, domainEventProducer, jobProducer *pkgsqs.Producer, dynamicCfg *config.DynamicConfig) (*appasset.ApplicationService, *appbucket.ApplicationService) {
 	assetRepo := neo4jrepo.NewAssetRepository(neo4jDriver)
 	bucketRepo := neo4jrepo.NewBucketRepository(neo4jDriver)
 
-	eventPublisher := sqsevents.NewEventPublisherWithJobProducer(domainEventProducer, jobProducer)
+	eventPublisher := sqsevents.NewEventPublisherWithJobProducer(domainEventProducer, jobProducer, dynamicCfg)
 
 	assetDomainService := domainasset.NewDomainService(assetRepo)
 	assetPublishingService := domainasset.NewPublishingService(assetDomainService)
@@ -200,7 +200,7 @@ func main() {
 	defer neo4jDriver.Close()
 
 	domainEventProducer, jobProducer := setupSQS(ctx, dynamicCfg)
-	assetAppService, bucketAppService := setupServices(neo4jDriver, domainEventProducer, jobProducer)
+	assetAppService, bucketAppService := setupServices(neo4jDriver, domainEventProducer, jobProducer, dynamicCfg)
 
 	eventConsumer := sqsevents.NewEventConsumer(assetAppService)
 	completionQueueURL := dynamicCfg.GetStringFromComponent("sqs", "completion_queue_url")

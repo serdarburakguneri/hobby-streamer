@@ -3,11 +3,11 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	domainasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
@@ -19,20 +19,23 @@ type EventPublisher struct {
 	producer    *sqs.Producer
 	jobProducer *sqs.Producer
 	logger      *logger.Logger
+	config      *config.DynamicConfig
 }
 
-func NewEventPublisher(producer *sqs.Producer) *EventPublisher {
+func NewEventPublisher(producer *sqs.Producer, config *config.DynamicConfig) *EventPublisher {
 	return &EventPublisher{
 		producer: producer,
 		logger:   logger.WithService("sqs-event-publisher"),
+		config:   config,
 	}
 }
 
-func NewEventPublisherWithJobProducer(producer *sqs.Producer, jobProducer *sqs.Producer) *EventPublisher {
+func NewEventPublisherWithJobProducer(producer *sqs.Producer, jobProducer *sqs.Producer, config *config.DynamicConfig) *EventPublisher {
 	return &EventPublisher{
 		producer:    producer,
 		jobProducer: jobProducer,
 		logger:      logger.WithService("sqs-event-publisher"),
+		config:      config,
 	}
 }
 
@@ -232,13 +235,14 @@ func (p *EventPublisher) triggerAnalyzeJob(ctx context.Context, assetID, videoID
 		return nil
 	}
 
-	input := fmt.Sprintf("s3://%s/%s", storageLocation.Bucket(), storageLocation.Key())
+	input := storageLocation.BuildS3URL()
 
 	payload := messages.JobPayload{
 		JobType: "analyze",
 		Input:   input,
 		AssetID: assetID,
 		VideoID: videoID,
+		Quality: constants.VideoQualityMain,
 	}
 
 	err := p.jobProducer.SendMessage(ctx, messages.MessageTypeJob, payload)
@@ -257,23 +261,27 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 	}
 
 	var input string
-	if format == "hls" || format == "dash" {
+	if format == constants.VideoStreamingFormatHLS || format == constants.VideoStreamingFormatDASH {
 		rawVideo := p.findRawVideo(asset)
 		if rawVideo == nil {
 			p.logger.Error("No raw video found for transcode job", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format)
 			return pkgerrors.NewInternalError("no raw video found for transcode job", nil)
 		}
-		input = fmt.Sprintf("s3://%s/%s", rawVideo.StorageLocation().Bucket(), rawVideo.StorageLocation().Key())
+		input = rawVideo.StorageLocation().BuildS3URL()
 	} else {
-		input = fmt.Sprintf("s3://%s/%s", storageLocation.Bucket(), storageLocation.Key())
+		input = storageLocation.BuildS3URL()
 	}
 
-	outputBucket := "content-east"
+	outputBucket := p.config.GetStringFromComponent("s3", "content_bucket")
+	if outputBucket == "" {
+		outputBucket = "content-east"
+	}
+	quality := constants.VideoQualityMain
 	var outputKey string
-	if format == "dash" {
-		outputKey = fmt.Sprintf("%s/%s/%s/playlist.mpd", asset.ID().Value(), videoID, format)
+	if format == constants.VideoStreamingFormatDASH {
+		outputKey = domainasset.BuildDASHOutputKey(asset.ID().Value(), quality)
 	} else {
-		outputKey = fmt.Sprintf("%s/%s/%s/playlist.%s", asset.ID().Value(), videoID, format, p.getOutputExtension(format))
+		outputKey = domainasset.BuildHLSOutputKey(asset.ID().Value(), quality)
 	}
 
 	payload := messages.JobPayload{
@@ -282,6 +290,7 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 		AssetID:      asset.ID().Value(),
 		VideoID:      videoID,
 		Format:       format,
+		Quality:      quality,
 		OutputBucket: outputBucket,
 		OutputKey:    outputKey,
 	}
@@ -291,7 +300,7 @@ func (p *EventPublisher) triggerTranscodeJob(ctx context.Context, asset *domaina
 		return pkgerrors.NewInternalError("failed to send transcode job", err)
 	}
 
-	p.logger.Info("Transcode job triggered successfully", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format, "input", input, "output", fmt.Sprintf("s3://%s/%s", outputBucket, outputKey))
+	p.logger.Info("Transcode job triggered successfully", "asset_id", asset.ID().Value(), "video_id", videoID, "format", format, "input", input, "output", domainasset.BuildS3URL(outputBucket, outputKey))
 	return nil
 }
 
@@ -302,15 +311,4 @@ func (p *EventPublisher) findRawVideo(asset *domainasset.Asset) *domainasset.Vid
 		}
 	}
 	return nil
-}
-
-func (p *EventPublisher) getOutputExtension(format string) string {
-	switch format {
-	case "hls":
-		return "m3u8"
-	case "dash":
-		return "mpd"
-	default:
-		return "mp4"
-	}
 }
