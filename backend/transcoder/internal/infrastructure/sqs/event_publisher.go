@@ -33,8 +33,8 @@ func (p *EventPublisher) PublishJobCompleted(ctx context.Context, jobType, asset
 
 	if success && metadata != nil {
 		if meta, ok := metadata.(*domainjob.TranscodeMetadata); ok {
-			payload.Width = 0
-			payload.Height = 0
+			payload.Width = meta.Width
+			payload.Height = meta.Height
 			payload.Duration = meta.Duration
 			payload.Bitrate = meta.Bitrate
 			payload.Codec = meta.VideoCodec

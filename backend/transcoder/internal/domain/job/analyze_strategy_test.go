@@ -13,7 +13,7 @@ func TestAnalyzeStrategy_Transcode_Failure(t *testing.T) {
 	}
 	defer os.Remove(tmpFile.Name())
 
-	a := &AnalyzeStrategy{}
+	a := &AnalyzeTranscoder{}
 	_, err = a.Transcode(context.Background(), nil, tmpFile.Name(), "")
 	if err == nil {
 		t.Error("expected error when input is invalid or ffprobe/ffmpeg is not available")
@@ -21,7 +21,7 @@ func TestAnalyzeStrategy_Transcode_Failure(t *testing.T) {
 }
 
 func TestAnalyzeStrategy_ExtractMetadata_InvalidFile(t *testing.T) {
-	a := &AnalyzeStrategy{}
+	a := &AnalyzeTranscoder{}
 	_, err := a.ExtractMetadata(context.Background(), "/nonexistent/file.mp4", nil)
 	if err == nil {
 		t.Error("expected error for nonexistent file")
@@ -29,7 +29,7 @@ func TestAnalyzeStrategy_ExtractMetadata_InvalidFile(t *testing.T) {
 }
 
 func TestAnalyzeStrategy_ValidateInputOutput(t *testing.T) {
-	a := &AnalyzeStrategy{}
+	a := &AnalyzeTranscoder{}
 	if err := a.ValidateInput(context.Background(), nil); err != nil {
 		t.Errorf("expected nil error for ValidateInput, got %v", err)
 	}

@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
@@ -12,9 +13,16 @@ import (
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
 
-type DASHTranscoder struct{}
+type DASHTranscoder struct {
+	s3Client *s3.Client
+}
+
+func NewDASHTranscoder(s3Client *s3.Client) *DASHTranscoder {
+	return &DASHTranscoder{s3Client: s3Client}
+}
 
 func (d *DASHTranscoder) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
 	outputPath := filepath.Join(outputDir, "playlist.mpd")
@@ -36,6 +44,14 @@ func (d *DASHTranscoder) Transcode(ctx context.Context, job *Job, localPath, out
 	if retryErr != nil {
 		return "", errors.NewInternalError("DASH transcoding failed", retryErr)
 	}
+
+	if job.Type() == JobTypeTranscode && d.s3Client != nil && strings.HasPrefix(job.Output(), "s3://") {
+		err := uploadToS3(ctx, d.s3Client, outputDir, job.Output())
+		if err != nil {
+			return "", errors.NewExternalError("failed to upload DASH output to S3", err)
+		}
+	}
+
 	return outputPath, nil
 }
 
@@ -98,6 +114,49 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 			metadata.SegmentCount = segmentCount
 			metadata.Segments = segments
 			metadata.Duration = totalDuration
+		}
+	}
+
+	if job != nil && job.Input() != "" {
+		cmd := exec.CommandContext(ctx, "ffprobe",
+			"-v", "quiet",
+			"-print_format", "json",
+			"-show_format",
+			"-show_streams",
+			job.Input())
+		if out, err := cmd.Output(); err == nil {
+			var probeResult struct {
+				Format struct {
+					Duration string `json:"duration"`
+					BitRate  string `json:"bit_rate"`
+				} `json:"format"`
+				Streams []struct {
+					CodecType string `json:"codec_type"`
+					CodecName string `json:"codec_name"`
+					Width     int    `json:"width"`
+					Height    int    `json:"height"`
+				} `json:"streams"`
+			}
+			if json.Unmarshal(out, &probeResult) == nil {
+				for _, stream := range probeResult.Streams {
+					if stream.CodecType == "video" {
+						metadata.Width = stream.Width
+						metadata.Height = stream.Height
+						metadata.Codec = stream.CodecName
+						break
+					}
+				}
+				if probeResult.Format.Duration != "" {
+					if duration, err := strconv.ParseFloat(probeResult.Format.Duration, 64); err == nil {
+						metadata.Duration = duration
+					}
+				}
+				if probeResult.Format.BitRate != "" {
+					if bitrate, err := strconv.Atoi(probeResult.Format.BitRate); err == nil {
+						metadata.Bitrate = bitrate
+					}
+				}
+			}
 		}
 	}
 

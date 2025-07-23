@@ -2,6 +2,8 @@ package job
 
 import (
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type JobType string
@@ -176,4 +178,28 @@ func (j *Job) IsRunning() bool {
 
 func (j *Job) IsPending() bool {
 	return j.status == JobStatusPending
+}
+
+func (j *Job) Validate() error {
+	if j.AssetID().Value() == "" {
+		return pkgerrors.NewValidationError("asset ID is required", nil)
+	}
+
+	if j.VideoID().Value() == "" {
+		return pkgerrors.NewValidationError("video ID is required", nil)
+	}
+
+	if j.Input() == "" {
+		return pkgerrors.NewValidationError("input is required", nil)
+	}
+
+	if j.Type() == JobTypeTranscode && j.Output() == "" {
+		return pkgerrors.NewValidationError("output is required for transcode jobs", nil)
+	}
+
+	if j.Type() == JobTypeTranscode && j.Format() == "" {
+		return pkgerrors.NewValidationError("format is required for transcode jobs", nil)
+	}
+
+	return nil
 }

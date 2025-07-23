@@ -2,6 +2,8 @@ package job
 
 import (
 	"context"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
 
 type TranscoderStrategy interface {
@@ -15,12 +17,12 @@ type TranscoderRegistry struct {
 	strategies map[string]TranscoderStrategy
 }
 
-func NewTranscoderRegistry() *TranscoderRegistry {
+func NewTranscoderRegistry(s3Client *s3.Client) *TranscoderRegistry {
 	return &TranscoderRegistry{
 		strategies: map[string]TranscoderStrategy{
-			"analyze": &AnalyzeStrategy{},
-			"hls":     &HLSTranscoder{},
-			"dash":    &DASHTranscoder{},
+			"analyze": &AnalyzeTranscoder{},
+			"hls":     NewHLSTranscoder(s3Client),
+			"dash":    NewDASHTranscoder(s3Client),
 		},
 	}
 }

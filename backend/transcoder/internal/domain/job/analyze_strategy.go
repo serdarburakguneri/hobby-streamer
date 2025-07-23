@@ -9,9 +9,9 @@ import (
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
-type AnalyzeStrategy struct{}
+type AnalyzeTranscoder struct{}
 
-func (a *AnalyzeStrategy) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
+func (a *AnalyzeTranscoder) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
 	metadata, err := a.ExtractMetadata(ctx, localPath, job)
 	if err != nil {
 		return "", pkgerrors.NewInternalError("failed to extract video metadata", err)
@@ -23,15 +23,15 @@ func (a *AnalyzeStrategy) Transcode(ctx context.Context, job *Job, localPath, ou
 	return "", nil
 }
 
-func (a *AnalyzeStrategy) ValidateOutput(job *Job) error {
+func (a *AnalyzeTranscoder) ValidateOutput(job *Job) error {
 	return nil
 }
 
-func (a *AnalyzeStrategy) ValidateInput(ctx context.Context, job *Job) error {
+func (a *AnalyzeTranscoder) ValidateInput(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
+func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error) {
 	var out []byte
 	var err error
 
@@ -100,7 +100,7 @@ func (a *AnalyzeStrategy) ExtractMetadata(ctx context.Context, filePath string, 
 	return metadata, nil
 }
 
-func (a *AnalyzeStrategy) validateVideo(ctx context.Context, filePath string) error {
+func (a *AnalyzeTranscoder) validateVideo(ctx context.Context, filePath string) error {
 	retryFunc := func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ffmpeg", "-i", filePath, "-f", "null", "-")
 		_, err := cmd.CombinedOutput()

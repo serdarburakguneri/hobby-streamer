@@ -73,7 +73,7 @@ func (s *ApplicationService) ProcessJob(ctx context.Context, payload messages.Jo
 		return errors.NewValidationError(errMsg, nil)
 	}
 
-	if err := s.domainService.ValidateJob(job); err != nil {
+	if err := job.Validate(); err != nil {
 		s.logger.WithError(err).Error("Job validation failed", "job_id", job.ID().Value())
 		if pubErr := s.eventPublisher.PublishJobCompleted(ctx, payload.JobType, job.AssetID().Value(), job.VideoID().Value(), false, nil, err.Error()); pubErr != nil {
 			s.logger.WithError(pubErr).Error("Failed to publish job completed event", "job_type", payload.JobType)

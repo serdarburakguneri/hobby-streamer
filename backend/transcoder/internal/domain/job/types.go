@@ -1,10 +1,13 @@
 package job
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"time"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
 
 type VideoMetadata struct {
@@ -21,8 +24,11 @@ type TranscodeMetadata struct {
 	OutputURL          string   `json:"outputUrl"`
 	Bucket             string   `json:"bucket"`
 	Key                string   `json:"key"`
+	Width              int      `json:"width,omitempty"`
+	Height             int      `json:"height,omitempty"`
 	Duration           float64  `json:"duration"`
 	Bitrate            int      `json:"bitrate"`
+	Codec              string   `json:"codec,omitempty"`
 	Size               int64    `json:"size"`
 	ContentType        string   `json:"contentType"`
 	Format             string   `json:"format"`
@@ -97,4 +103,11 @@ func generateJobID() string {
 		return time.Now().Format("20060102150405") + "-fallback"
 	}
 	return time.Now().Format("20060102150405") + "-" + hex.EncodeToString(bytes)
+}
+
+type TranscodeStrategy interface {
+	ValidateInput(ctx context.Context, job *Job) error
+	Transcode(ctx context.Context, job *Job, localPath, outputDir string, s3Client *s3.Client) (string, error)
+	ExtractMetadata(ctx context.Context, filePath string, job *Job) (*TranscodeMetadata, error)
+	ValidateOutput(job *Job) error
 }

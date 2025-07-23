@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -10,9 +11,16 @@ import (
 	"strings"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
 
-type HLSTranscoder struct{}
+type HLSTranscoder struct {
+	s3Client *s3.Client
+}
+
+func NewHLSTranscoder(s3Client *s3.Client) *HLSTranscoder {
+	return &HLSTranscoder{s3Client: s3Client}
+}
 
 func (h *HLSTranscoder) Transcode(ctx context.Context, job *Job, localPath, outputDir string) (string, error) {
 	outputPath := filepath.Join(outputDir, "playlist.m3u8")
@@ -31,6 +39,14 @@ func (h *HLSTranscoder) Transcode(ctx context.Context, job *Job, localPath, outp
 	if retryErr != nil {
 		return "", errors.NewInternalError("HLS transcoding failed", retryErr)
 	}
+
+	if job.Type() == JobTypeTranscode && h.s3Client != nil && strings.HasPrefix(job.Output(), "s3://") {
+		err := uploadToS3(ctx, h.s3Client, outputDir, job.Output())
+		if err != nil {
+			return "", errors.NewExternalError("failed to upload HLS output to S3", err)
+		}
+	}
+
 	return outputPath, nil
 }
 
@@ -99,6 +115,49 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 			metadata.AvgSegmentDuration = totalDuration / float64(segmentCount)
 		}
 		metadata.Duration = totalDuration
+	}
+
+	if job != nil && job.Input() != "" {
+		cmd := exec.CommandContext(ctx, "ffprobe",
+			"-v", "quiet",
+			"-print_format", "json",
+			"-show_format",
+			"-show_streams",
+			job.Input())
+		if out, err := cmd.Output(); err == nil {
+			var probeResult struct {
+				Format struct {
+					Duration string `json:"duration"`
+					BitRate  string `json:"bit_rate"`
+				} `json:"format"`
+				Streams []struct {
+					CodecType string `json:"codec_type"`
+					CodecName string `json:"codec_name"`
+					Width     int    `json:"width"`
+					Height    int    `json:"height"`
+				} `json:"streams"`
+			}
+			if json.Unmarshal(out, &probeResult) == nil {
+				for _, stream := range probeResult.Streams {
+					if stream.CodecType == "video" {
+						metadata.Width = stream.Width
+						metadata.Height = stream.Height
+						metadata.Codec = stream.CodecName
+						break
+					}
+				}
+				if probeResult.Format.Duration != "" {
+					if duration, err := strconv.ParseFloat(probeResult.Format.Duration, 64); err == nil {
+						metadata.Duration = duration
+					}
+				}
+				if probeResult.Format.BitRate != "" {
+					if bitrate, err := strconv.Atoi(probeResult.Format.BitRate); err == nil {
+						metadata.Bitrate = bitrate
+					}
+				}
+			}
+		}
 	}
 
 	if job != nil && strings.HasPrefix(job.Output(), "s3://") {

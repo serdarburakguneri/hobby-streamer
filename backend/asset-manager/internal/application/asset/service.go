@@ -1010,6 +1010,24 @@ func (s *ApplicationService) updateVideoMetadata(video *domainasset.Video, metad
 	if len(metadata.Segments) > 0 {
 		video.SetSegments(metadata.Segments)
 	}
+	if metadata.Codec != "" {
+		video.UpdateCodec(metadata.Codec)
+	}
+	if metadata.Width > 0 && metadata.Height > 0 {
+		video.UpdateDimensions(metadata.Width, metadata.Height)
+	}
+	if metadata.Duration > 0 {
+		video.UpdateDuration(metadata.Duration)
+	}
+	if metadata.Bitrate > 0 {
+		video.UpdateBitrate(metadata.Bitrate)
+	}
+	if metadata.Size > 0 {
+		video.UpdateSize(metadata.Size)
+	}
+	if metadata.ContentType != "" {
+		video.UpdateContentType(metadata.ContentType)
+	}
 }
 
 func (s *ApplicationService) updateTranscodingInfo(video *domainasset.Video, metadata *messages.JobCompletionPayload) error {
