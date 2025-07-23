@@ -56,7 +56,7 @@ func (r *Repository) Login(ctx context.Context, req *appauth.LoginRequest) (*tok
 	data := url.Values{}
 	data.Set("grant_type", "password")
 	data.Set("client_id", req.ClientID())
-	data.Set("username", req.Username())
+	data.Set("username", req.Username().Value())
 	data.Set("password", req.Password())
 
 	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", r.keycloakURL, r.realm)
@@ -125,7 +125,7 @@ func (r *Repository) Login(ctx context.Context, req *appauth.LoginRequest) (*tok
 }
 
 func (r *Repository) ValidateToken(ctx context.Context, req *appauth.TokenValidationRequest) (*appauth.TokenValidationResponse, error) {
-	tokenString := strings.TrimPrefix(req.Token(), "Bearer ")
+	tokenString := strings.TrimPrefix(req.Token().Value(), "Bearer ")
 
 	validation, err := r.tokenValidationService.ValidateToken(tokenString)
 	if err != nil {
@@ -152,7 +152,7 @@ func (r *Repository) RefreshToken(ctx context.Context, req *appauth.TokenRefresh
 	data.Set("grant_type", "refresh_token")
 	data.Set("client_id", r.clientID)
 	data.Set("client_secret", r.clientSecret)
-	data.Set("refresh_token", req.RefreshToken())
+	data.Set("refresh_token", req.RefreshToken().Value())
 
 	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", r.keycloakURL, r.realm)
 	resp, err := r.httpClient.PostForm(tokenURL, data)

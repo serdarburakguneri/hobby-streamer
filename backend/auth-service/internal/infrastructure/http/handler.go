@@ -43,7 +43,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loginReq := appauth.NewLoginRequest(req.Username, req.Password, req.ClientID)
+	loginReq, err := appauth.NewLoginRequest(req.Username, req.Password, req.ClientID)
+	if err != nil {
+		log.WithError(err).Warn("Invalid login request fields")
+		h.writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	log.Debug("Processing login request", "username", req.Username, "client_id", req.ClientID)
 
 	domainToken, err := h.authService.Login(r.Context(), loginReq)
@@ -82,7 +87,12 @@ func (h *Handler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validationReq := appauth.NewTokenValidationRequest(req.Token)
+	validationReq, err := appauth.NewTokenValidationRequest(req.Token)
+	if err != nil {
+		log.WithError(err).Warn("Invalid token value")
+		h.writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	log.Debug("Validating token")
 
 	validation, err := h.authService.ValidateToken(r.Context(), validationReq)
@@ -137,7 +147,12 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshReq := appauth.NewTokenRefreshRequest(req.RefreshToken)
+	refreshReq, err := appauth.NewTokenRefreshRequest(req.RefreshToken)
+	if err != nil {
+		log.WithError(err).Warn("Invalid refresh token value")
+		h.writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	log.Debug("Refreshing token")
 
 	domainToken, err := h.authService.RefreshToken(r.Context(), refreshReq)
