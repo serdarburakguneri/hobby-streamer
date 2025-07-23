@@ -40,36 +40,31 @@ func NewApplicationService(
 	}
 }
 
-func (s *ApplicationService) GetBucket(ctx context.Context, key string) (*bucketdomain.Bucket, error) {
-	bucketKeyVO, err := bucketdomain.NewBucketKey(key)
+func (s *ApplicationService) GetBucket(ctx context.Context, key bucketdomain.BucketKey) (*bucketdomain.Bucket, error) {
+	bucket, err := s.cacheService.GetBucket(ctx, key.Value())
 	if err != nil {
-		return nil, errors.NewValidationError("invalid bucket key", err)
-	}
-
-	bucket, err := s.cacheService.GetBucket(ctx, key)
-	if err != nil {
-		s.logger.WithError(err).Error("Failed to get bucket from cache", "key", key)
+		s.logger.WithError(err).Error("Failed to get bucket from cache", "key", key.Value())
 		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if bucket != nil {
-		s.logger.Debug("Bucket found in cache", "key", key)
+		s.logger.Debug("Bucket found in cache", "key", key.Value())
 		return bucket, nil
 	}
 
-	s.logger.Debug("Bucket not found in cache, fetching from repository", "key", key)
+	s.logger.Debug("Bucket not found in cache, fetching from repository", "key", key.Value())
 
-	bucket, err = s.repo.GetByKey(ctx, *bucketKeyVO)
+	bucket, err = s.repo.GetByKey(ctx, key)
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_bucket",
-			"key":       key,
+			"key":       key.Value(),
 		})
 	}
 
 	if bucket != nil {
 		if err := s.cacheService.SetBucket(ctx, bucket); err != nil {
-			s.logger.WithError(err).Warn("Failed to cache bucket", "key", key)
+			s.logger.WithError(err).Warn("Failed to cache bucket", "key", key.Value())
 		}
 	}
 
@@ -134,7 +129,7 @@ func (s *ApplicationService) GetActiveBuckets(ctx context.Context) ([]*bucketdom
 	return buckets, nil
 }
 
-func (s *ApplicationService) GetBucketStats(ctx context.Context, key string) (*bucketdomain.BucketStats, error) {
+func (s *ApplicationService) GetBucketStats(ctx context.Context, key bucketdomain.BucketKey) (*bucketdomain.BucketStats, error) {
 	bucket, err := s.GetBucket(ctx, key)
 	if err != nil {
 		return nil, err
@@ -144,7 +139,7 @@ func (s *ApplicationService) GetBucketStats(ctx context.Context, key string) (*b
 	return stats, nil
 }
 
-func (s *ApplicationService) GetRecommendedAssets(ctx context.Context, key string, limit int) ([]*assetdomain.Asset, error) {
+func (s *ApplicationService) GetRecommendedAssets(ctx context.Context, key bucketdomain.BucketKey, limit int) ([]*assetdomain.Asset, error) {
 	bucket, err := s.GetBucket(ctx, key)
 	if err != nil {
 		return nil, err

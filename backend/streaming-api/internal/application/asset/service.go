@@ -7,6 +7,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	assetdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset"
+	bucketdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/bucket"
 )
 
 type CacheService interface {
@@ -42,36 +43,31 @@ func NewApplicationService(
 	}
 }
 
-func (s *ApplicationService) GetAsset(ctx context.Context, slug string) (*assetdomain.Asset, error) {
-	slugVO, err := assetdomain.NewSlug(slug)
+func (s *ApplicationService) GetAsset(ctx context.Context, slug assetdomain.Slug) (*assetdomain.Asset, error) {
+	asset, err := s.cacheService.GetAsset(ctx, slug.Value())
 	if err != nil {
-		return nil, errors.NewValidationError("invalid slug", err)
-	}
-
-	asset, err := s.cacheService.GetAsset(ctx, slug)
-	if err != nil {
-		s.logger.WithError(err).Error("Failed to get asset from cache", "slug", slug)
+		s.logger.WithError(err).Error("Failed to get asset from cache", "slug", slug.Value())
 		return nil, errors.NewTransientError("cache error", err)
 	}
 
 	if asset != nil {
-		s.logger.Debug("Asset found in cache", "slug", slug)
+		s.logger.Debug("Asset found in cache", "slug", slug.Value())
 		return asset, nil
 	}
 
-	s.logger.Debug("Asset not found in cache, fetching from repository", "slug", slug)
+	s.logger.Debug("Asset not found in cache, fetching from repository", "slug", slug.Value())
 
-	asset, err = s.repo.GetBySlug(ctx, *slugVO)
+	asset, err = s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_asset",
-			"slug":      slug,
+			"slug":      slug.Value(),
 		})
 	}
 
 	if asset != nil {
 		if err := s.cacheService.SetAsset(ctx, asset); err != nil {
-			s.logger.WithError(err).Warn("Failed to cache asset", "slug", slug)
+			s.logger.WithError(err).Warn("Failed to cache asset", "slug", slug.Value())
 		}
 	}
 
@@ -119,41 +115,31 @@ func (s *ApplicationService) GetPublicAssets(ctx context.Context) ([]*assetdomai
 	return assets, nil
 }
 
-func (s *ApplicationService) GetAssetsByType(ctx context.Context, assetType string) ([]*assetdomain.Asset, error) {
-	assetTypeVO, err := assetdomain.NewAssetType(assetType)
-	if err != nil {
-		return nil, errors.NewValidationError("invalid asset type", err)
-	}
-
-	assets, err := s.repo.GetByType(ctx, *assetTypeVO)
+func (s *ApplicationService) GetAssetsByType(ctx context.Context, assetType assetdomain.AssetType) ([]*assetdomain.Asset, error) {
+	assets, err := s.repo.GetByType(ctx, assetType)
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_assets_by_type",
-			"type":      assetType,
+			"type":      assetType.Value(),
 		})
 	}
 
 	return assets, nil
 }
 
-func (s *ApplicationService) GetAssetsByGenre(ctx context.Context, genre string) ([]*assetdomain.Asset, error) {
-	genreVO, err := assetdomain.NewGenre(genre)
-	if err != nil {
-		return nil, errors.NewValidationError("invalid genre", err)
-	}
-
-	assets, err := s.repo.GetByGenre(ctx, *genreVO)
+func (s *ApplicationService) GetAssetsByGenre(ctx context.Context, genre assetdomain.Genre) ([]*assetdomain.Asset, error) {
+	assets, err := s.repo.GetByGenre(ctx, genre)
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_assets_by_genre",
-			"genre":     genre,
+			"genre":     genre.Value(),
 		})
 	}
 
 	return assets, nil
 }
 
-func (s *ApplicationService) GetAssetsInBucket(ctx context.Context, bucketKey string) ([]*assetdomain.Asset, error) {
+func (s *ApplicationService) GetAssetsInBucket(ctx context.Context, bucketKey bucketdomain.BucketKey) ([]*assetdomain.Asset, error) {
 	assets, err := s.GetAssets(ctx)
 	if err != nil {
 		return nil, err
@@ -174,7 +160,7 @@ func (s *ApplicationService) SearchAssets(ctx context.Context, query string, fil
 	return assets, nil
 }
 
-func (s *ApplicationService) GetStreamingInfo(ctx context.Context, slug string, userID string, region string, userAge int) (*assetdomain.StreamingInfo, error) {
+func (s *ApplicationService) GetStreamingInfo(ctx context.Context, slug assetdomain.Slug, userID string, region string, userAge int) (*assetdomain.StreamingInfo, error) {
 	asset, err := s.GetAsset(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -184,7 +170,7 @@ func (s *ApplicationService) GetStreamingInfo(ctx context.Context, slug string, 
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_streaming_info",
-			"slug":      slug,
+			"slug":      slug.Value(),
 			"userID":    userID,
 			"region":    region,
 		})
@@ -193,7 +179,7 @@ func (s *ApplicationService) GetStreamingInfo(ctx context.Context, slug string, 
 	return streamingInfo, nil
 }
 
-func (s *ApplicationService) GetRecommendedAssets(ctx context.Context, slug string, limit int) ([]*assetdomain.Asset, error) {
+func (s *ApplicationService) GetRecommendedAssets(ctx context.Context, slug assetdomain.Slug, limit int) ([]*assetdomain.Asset, error) {
 	asset, err := s.GetAsset(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -203,7 +189,7 @@ func (s *ApplicationService) GetRecommendedAssets(ctx context.Context, slug stri
 	return recommendations, nil
 }
 
-func (s *ApplicationService) GetPublishStatus(ctx context.Context, slug string) (constants.PublishStatus, error) {
+func (s *ApplicationService) GetPublishStatus(ctx context.Context, slug assetdomain.Slug) (constants.PublishStatus, error) {
 	asset, err := s.GetAsset(ctx, slug)
 	if err != nil {
 		return constants.PublishStatusInvalid, err

@@ -8,6 +8,8 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application"
+	assetdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset"
+	bucketdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/bucket"
 )
 
 type Handler struct {
@@ -70,7 +72,13 @@ func (h *Handler) GetBucket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
 
-	bucket, err := h.bucketService.GetBucket(ctx, key)
+	bucketKeyVO, err := bucketdomain.NewBucketKey(key)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid bucket key")
+		return
+	}
+
+	bucket, err := h.bucketService.GetBucket(ctx, *bucketKeyVO)
 	if err != nil {
 		h.handleError(w, err, "Failed to get bucket")
 		return
@@ -91,7 +99,13 @@ func (h *Handler) GetAssetsInBucket(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
 
-	assets, err := h.assetService.GetAssetsInBucket(ctx, key)
+	bucketKeyVO, err := bucketdomain.NewBucketKey(key)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid bucket key")
+		return
+	}
+
+	assets, err := h.assetService.GetAssetsInBucket(ctx, *bucketKeyVO)
 	if err != nil {
 		h.handleError(w, err, "Failed to get assets in bucket")
 		return
@@ -137,7 +151,13 @@ func (h *Handler) GetAsset(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slug := vars["slug"]
 
-	asset, err := h.assetService.GetAsset(ctx, slug)
+	slugVO, err := assetdomain.NewSlug(slug)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid asset slug")
+		return
+	}
+
+	asset, err := h.assetService.GetAsset(ctx, *slugVO)
 	if err != nil {
 		h.handleError(w, err, "Failed to get asset")
 		return

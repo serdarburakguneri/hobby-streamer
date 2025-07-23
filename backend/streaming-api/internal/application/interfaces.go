@@ -9,19 +9,19 @@ import (
 )
 
 type AssetServiceInterface interface {
-	GetAsset(ctx context.Context, slug string) (*assetdomain.Asset, error)
+	GetAsset(ctx context.Context, slug assetdomain.Slug) (*assetdomain.Asset, error)
 	GetAssets(ctx context.Context) ([]*assetdomain.Asset, error)
 	GetPublicAssets(ctx context.Context) ([]*assetdomain.Asset, error)
-	GetAssetsByType(ctx context.Context, assetType string) ([]*assetdomain.Asset, error)
-	GetAssetsByGenre(ctx context.Context, genre string) ([]*assetdomain.Asset, error)
-	GetAssetsInBucket(ctx context.Context, bucketKey string) ([]*assetdomain.Asset, error)
+	GetAssetsByType(ctx context.Context, assetType assetdomain.AssetType) ([]*assetdomain.Asset, error)
+	GetAssetsByGenre(ctx context.Context, genre assetdomain.Genre) ([]*assetdomain.Asset, error)
+	GetAssetsInBucket(ctx context.Context, bucketKey bucketdomain.BucketKey) ([]*assetdomain.Asset, error)
 	SearchAssets(ctx context.Context, query string, filters *assetdomain.SearchFilters) ([]*assetdomain.Asset, error)
-	GetStreamingInfo(ctx context.Context, slug string, userID string, region string, userAge int) (*assetdomain.StreamingInfo, error)
-	GetRecommendedAssets(ctx context.Context, slug string, limit int) ([]*assetdomain.Asset, error)
-	GetPublishStatus(ctx context.Context, slug string) (constants.PublishStatus, error)
+	GetStreamingInfo(ctx context.Context, slug assetdomain.Slug, userID string, region string, userAge int) (*assetdomain.StreamingInfo, error)
+	GetRecommendedAssets(ctx context.Context, slug assetdomain.Slug, limit int) ([]*assetdomain.Asset, error)
+	GetPublishStatus(ctx context.Context, slug assetdomain.Slug) (constants.PublishStatus, error)
 }
 
 type BucketServiceInterface interface {
 	GetBuckets(ctx context.Context) ([]*bucketdomain.Bucket, error)
-	GetBucket(ctx context.Context, key string) (*bucketdomain.Bucket, error)
+	GetBucket(ctx context.Context, key bucketdomain.BucketKey) (*bucketdomain.Bucket, error)
 }
