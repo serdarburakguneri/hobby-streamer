@@ -1,65 +1,35 @@
 # Hobby Streamer
 
-> Just a personal sandbox — not production, not polished.
+> A personal playground for video streaming ideas. Not production, just for fun and learning.
 
-A side project experimenting with video streaming platform ideas. Tinkering with Go, streaming pipelines, infrastructure tools, and architectural patterns.
+This project explores video upload, transcoding, streaming delivery, asset metadata, authentication, and developer-friendly observability.
 
-## What This Is
-
-Video upload/transcoding, stream delivery (HLS/DASH), asset metadata, auth with Keycloak, and developer-focused logging/monitoring.
+## Features
+Video upload, transcoding (HLS/DASH), stream delivery, asset metadata, Keycloak-based auth, developer logging, monitoring, Docker Compose setup, Redis caching, SQS async processing, circuit breakers, retries, dead letter queues, health checks, rate limiting, local-first development.
 
 ## Architecture
 
 ![Architecture Diagram](docs/arch.png)
 
-**Documentation:**
-- [Transcoding Sequence Diagram](docs/video-upload-transcode-sequence.md) 
-- [CDN Proposal](docs/cdn-proposal.md)
-- [Domain Events](docs/domain-events.md)
+Docs: [Transcoding Sequence](docs/video-upload-transcode-sequence.md), [CDN Proposal](docs/cdn-proposal.md), [Domain Events](docs/domain-events.md)
 
 ## Tech Stack
-
-**Backend:** Go, GraphQL, Neo4j, Keycloak, FFmpeg, Redis  
-**Infra:** Docker Compose, LocalStack (mock AWS), Fluentd + Elasticsearch + Kibana, Nginx  
-**Frontend:** React Native (CMS + viewer UI)
+Backend: Go, GraphQL, Neo4j, Keycloak, FFmpeg, Redis, Docker Compose, LocalStack, Fluentd, Elasticsearch, Kibana, Nginx. Frontend: React Native (CMS, viewer UI).
 
 ## Services
-
-### Backend
-- [`asset-manager`](backend/asset-manager/README.md) - Asset metadata & relationships
-- [`auth-service`](backend/auth-service/README.md) - OAuth2 + RBAC
-- [`transcoder`](backend/transcoder/README.md) - FFmpeg-based video processing
-- [`streaming-api`](backend/streaming-api/README.md) - Stream delivery API
-
-### Lambdas
-- [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md) - Video upload presigned URLs
-- [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md) - Image upload presigned URLs
-- [`delete_files`](backend/lambdas/cmd/delete_files/README.md) - Cleanup uploaded files
-
-### Frontend
-- [`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md) - Content management
-- [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md) - Video viewer
-
-### Shared Libs
-See `backend/pkg` for auth, config, constants, error handling, logging, etc.
-
-## Features
-
-Domain driven design, SQS-driven async processing, circuit breakers/retries, dead letter queues, structured logging, health checks, rate limiting, Redis caching, dev-friendly local setup.
+Backend: [`asset-manager`](backend/asset-manager/README.md), [`auth-service`](backend/auth-service/README.md), [`transcoder`](backend/transcoder/README.md), [`streaming-api`](backend/streaming-api/README.md). Lambdas: [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md), [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md), [`delete_files`](backend/lambdas/cmd/delete_files/README.md). Frontend: [`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md), [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md). Shared: see `backend/pkg` for common code.
 
 ## Getting Started
 
-### Requirements
-- Docker, Go 1.21+, FFmpeg, Python + pipx, Node.js 22+
-- `awscli-local`: `pipx install awscli-local && pipx ensurepath`
+Requirements: Docker, Go 1.21+, FFmpeg, Python + pipx, Node.js 22+, `awscli-local` (`pipx install awscli-local && pipx ensurepath`).
 
-### Quick Start
+Quick start:
 ```bash
 ./local/build.sh
 ```
-Starts all services, UIs, dependencies (Redis, Neo4j, Keycloak, LocalStack), and logging pipeline.
+Starts all services, UIs, dependencies, and logging pipeline.
 
-### Development
+Development:
 ```bash
 cd backend
 make install-tools
@@ -69,4 +39,4 @@ make generate && make build
 ```
 
 ## Observability
-[Logging Setup](local/LOGGING.md) - Fluentd → Elasticsearch → Kibana with structured logs and correlation IDs.
+See [Logging Setup](local/LOGGING.md) for Fluentd → Elasticsearch → Kibana with structured logs and correlation IDs.

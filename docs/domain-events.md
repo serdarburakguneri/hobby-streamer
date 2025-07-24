@@ -1,54 +1,20 @@
 # Domain Events
 
-The project uses domain events to decouple services and enable asynchronous processing. Events flow through SQS queues to keep things loose and scalable.
+Domain events decouple services and enable async processing. Events flow through SQS queues for loose, scalable integration.
 
 ## Overview
-
-When domain state changes (asset created, video added, etc.), events get published to SQS queues. Other services consume these events to react accordingly — like triggering video analysis or updating caches.
+When domain state changes (asset created, video added, etc.), events are published to SQS. Other services consume and react (trigger analysis, update caches, etc).
 
 ## Event Types
-
-### Asset Events
-- `asset.created` - New asset created
-- `asset.updated` - Asset metadata changed  
-- `asset.deleted` - Asset removed
-- `asset.published` - Asset made public
-
-### Video Events
-- `video.added` - Video file uploaded
-- `video.removed` - Video file deleted
-- `video.status.updated` - Processing status changed
-
-### Image Events
-- `image.added` - Image uploaded
-- `image.removed` - Image deleted
-
-### Bucket Events
-- `bucket.created` - New bucket created
-- `bucket.updated` - Bucket metadata changed
-- `bucket.deleted` - Bucket removed
-- `bucket.asset.added` - Asset added to bucket
-- `bucket.asset.removed` - Asset removed from bucket
-
-## Job Events
-
-### Job Triggers
-- `job` - Triggers video analysis or transcoding
-
-### Job Completions
-- `job-completed` - Analysis or transcoding finished
+Asset: asset.created, asset.updated, asset.deleted, asset.published. Video: video.added, video.removed, video.status.updated. Image: image.added, image.removed. Bucket: bucket.created, bucket.updated, bucket.deleted, bucket.asset.added, bucket.asset.removed. Job: job (trigger), job-completed (done).
 
 ## Event Flow
+1. Domain change (asset-manager updates state)
+2. Event published (to SQS)
+3. Service consumes (other services pick up)
+4. Reaction (trigger jobs, update caches, etc)
 
-1. **Domain Change** - Asset manager updates domain state
-2. **Event Published** - Domain event sent to SQS queue
-3. **Service Consumes** - Other services pick up events
-4. **Reaction** - Services react (trigger jobs, update caches, etc.)
-
-## Implementation
-
-Events use a simple JSON envelope:
-
+## Event Envelope
 ```json
 {
   "type": "event-name",
@@ -62,8 +28,5 @@ Events use a simple JSON envelope:
 ```
 
 ## Queues
-
-- `asset-events` - Domain events from asset-manager
-- `job-queue` - Job triggers for transcoder
-- `completion-queue` - Job completion notifications
+asset-events (from asset-manager), job-queue (for transcoder), completion-queue (job done).
 

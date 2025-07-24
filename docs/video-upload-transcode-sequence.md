@@ -1,6 +1,6 @@
 # Video Upload and Transcoding Sequence
 
-How video upload and transcoding works in the hobby-streamer project.
+How video upload and transcoding works in hobby-streamer.
 
 ## Sequence Diagram
 
@@ -45,16 +45,9 @@ sequenceDiagram
 ```
 
 ## Storage Structure
-
-```
-S3 Buckets:
-├── content-east/{assetId}/source/video.mp4
-├── content-east/{assetId}/hls/1080p/playlist.m3u8
-└── content-east/{assetId}/dash/1080p/manifest.mpd
-```
+S3: content-east/{assetId}/source/video.mp4, content-east/{assetId}/hls/1080p/playlist.m3u8, content-east/{assetId}/dash/1080p/manifest.mpd
 
 ## Video Model
-
 ```json
 {
   "id": "video-123",
@@ -76,12 +69,11 @@ S3 Buckets:
 ```
 
 ## Status Flow
-
-1. **Upload**: Video uploaded → status: "ready"
-2. **Transcode**: User triggers via GraphQL → new video record with status: "transcoding" → "ready"
-3. **Multiple formats**: Same content can have raw, HLS, and DASH variants
-4. **Retry mechanism**: Transcoder automatically retries failed jobs
-5. **Error handling**: Validation errors are discarded, other errors trigger retries
+1. Upload: status "ready"
+2. Transcode: user triggers via GraphQL, new video record with status "transcoding" → "ready"
+3. Multiple formats: raw, HLS, DASH variants
+4. Retry: transcoder retries failed jobs
+5. Error handling: validation errors discarded, others retried
 
 
 
