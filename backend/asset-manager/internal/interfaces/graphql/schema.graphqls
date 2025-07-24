@@ -22,6 +22,7 @@ type Mutation {
   deleteBucket(input: DeleteBucketInput!): Boolean!
   addAssetToBucket(input: AddAssetToBucketInput!): Boolean!
   removeAssetFromBucket(input: RemoveAssetFromBucketInput!): Boolean!
+  addImage(input: AddImageInput!): Asset!
 }
 
 type Asset {
@@ -251,6 +252,17 @@ input AddVideoInput {
   assetId: ID!
   label: String!
   format: VideoFormat!
+  bucket: String!
+  key: String!
+  url: String!
+  contentType: String!
+  size: Int!
+}
+
+input AddImageInput {
+  assetId: ID!
+  type: ImageType!
+  fileName: String!
   bucket: String!
   key: String!
   url: String!

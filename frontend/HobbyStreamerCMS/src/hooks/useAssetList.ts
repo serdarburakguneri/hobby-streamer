@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useAssetService } from '../services/api';
-import { Asset } from '../types/asset';
+import { Asset, AssetType } from '../types/asset';
 
 export function useAssetList(refreshTrigger?: number) {
   const assetService = useAssetService();
@@ -18,7 +18,14 @@ export function useAssetList(refreshTrigger?: number) {
   const [childrenLoading, setChildrenLoading] = useState(false);
 
   useEffect(() => {
-    loadAssets();
+    const fetchAndSetFirstAsset = async () => {
+      await loadAssets();
+      if (assets.length > 0) {
+        const fullAsset = await assetService.getAsset(assets[0].id);
+        setSelectedAsset(fullAsset);
+      }
+    };
+    fetchAndSetFirstAsset();
     if (refreshTrigger && refreshTrigger > 0) {
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
@@ -50,39 +57,18 @@ export function useAssetList(refreshTrigger?: number) {
   };
 
   const handleRefreshSelectedAsset = async () => {
-    if (!selectedAsset) return;
-    
-    try {
-      const response = await assetService.getAssets();
-      const refreshedAssets = response.assets;
-      setAssets(refreshedAssets);
-      
-      const refreshedAsset = refreshedAssets.find(a => a.id === selectedAsset.id);
-      if (refreshedAsset) {
-        setSelectedAsset(refreshedAsset);
-        
-        if (refreshedAsset.type === 'SERIES' || refreshedAsset.type === 'SEASON') {
-          await loadChildren(refreshedAsset.id);
-        }
-      }
-    } catch (err) {
-      console.error('Error refreshing selected asset:', err);
+    if (selectedAsset) {
+      const updated = await assetService.getAsset(selectedAsset.id);
+      setSelectedAsset(updated);
     }
   };
 
   const handleAssetSelect = async (asset: Asset) => {
-    setSelectedAsset(asset);
+    const fullAsset = await assetService.getAsset(asset.id);
+    setSelectedAsset(fullAsset);
     setChildren([]);
-    
-    await loadAssets();
-    
-    const refreshedAsset = assets.find(a => a.id === asset.id);
-    if (refreshedAsset) {
-      setSelectedAsset(refreshedAsset);
-      
-      if (refreshedAsset.type === 'SERIES' || refreshedAsset.type === 'SEASON') {
-        await loadChildren(refreshedAsset.id);
-      }
+    if (fullAsset.type === AssetType.SERIES || fullAsset.type === AssetType.SEASON) {
+      await loadChildren(fullAsset.id);
     }
   };
 

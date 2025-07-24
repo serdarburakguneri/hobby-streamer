@@ -7,19 +7,19 @@ import (
 )
 
 type Image struct {
-	id              string
-	fileName        string
-	url             string
-	imageType       ImageType
-	storageLocation *S3Object
-	width           *int
-	height          *int
-	size            *int64
-	contentType     *string
-	streamInfo      *StreamInfo
-	metadata        map[string]string
-	createdAt       time.Time
-	updatedAt       time.Time
+	ImageID          string
+	ImageFileName    string
+	ImageURL         string
+	ImageType        ImageType
+	ImageStorageLoc  *S3Object
+	ImageWidth       *int
+	ImageHeight      *int
+	ImageSize        *int64
+	ImageContentType *string
+	ImageStreamInfo  *StreamInfo
+	ImageMetadata    map[string]string
+	ImageCreatedAt   time.Time
+	ImageUpdatedAt   time.Time
 }
 
 func NewImage(
@@ -46,14 +46,14 @@ func NewImage(
 
 	now := time.Now().UTC()
 	return &Image{
-		id:              generateID(),
-		fileName:        fileName,
-		url:             url,
-		imageType:       imageType,
-		storageLocation: storageLocation,
-		metadata:        make(map[string]string),
-		createdAt:       now,
-		updatedAt:       now,
+		ImageID:         generateID(),
+		ImageFileName:   fileName,
+		ImageURL:        url,
+		ImageType:       imageType,
+		ImageStorageLoc: storageLocation,
+		ImageMetadata:   make(map[string]string),
+		ImageCreatedAt:  now,
+		ImageUpdatedAt:  now,
 	}, nil
 }
 
@@ -73,72 +73,72 @@ func ReconstructImage(
 	updatedAt time.Time,
 ) *Image {
 	return &Image{
-		id:              id,
-		fileName:        fileName,
-		url:             url,
-		imageType:       imageType,
-		storageLocation: storageLocation,
-		width:           width,
-		height:          height,
-		size:            size,
-		contentType:     contentType,
-		streamInfo:      streamInfo,
-		metadata:        metadata,
-		createdAt:       createdAt,
-		updatedAt:       updatedAt,
+		ImageID:          id,
+		ImageFileName:    fileName,
+		ImageURL:         url,
+		ImageType:        imageType,
+		ImageStorageLoc:  storageLocation,
+		ImageWidth:       width,
+		ImageHeight:      height,
+		ImageSize:        size,
+		ImageContentType: contentType,
+		ImageStreamInfo:  streamInfo,
+		ImageMetadata:    metadata,
+		ImageCreatedAt:   createdAt,
+		ImageUpdatedAt:   updatedAt,
 	}
 }
 
 func (i Image) ID() string {
-	return i.id
+	return i.ImageID
 }
 
 func (i Image) FileName() string {
-	return i.fileName
+	return i.ImageFileName
 }
 
 func (i Image) URL() string {
-	return i.url
+	return i.ImageURL
 }
 
 func (i Image) Type() ImageType {
-	return i.imageType
+	return i.ImageType
 }
 
 func (i Image) StorageLocation() *S3Object {
-	return i.storageLocation
+	return i.ImageStorageLoc
 }
 
 func (i Image) Width() *int {
-	return i.width
+	return i.ImageWidth
 }
 
 func (i Image) Height() *int {
-	return i.height
+	return i.ImageHeight
 }
 
 func (i Image) Size() *int64 {
-	return i.size
+	return i.ImageSize
 }
 
 func (i Image) ContentType() *string {
-	return i.contentType
+	return i.ImageContentType
 }
 
 func (i Image) StreamInfo() *StreamInfo {
-	return i.streamInfo
+	return i.ImageStreamInfo
 }
 
 func (i Image) Metadata() map[string]string {
-	return i.metadata
+	return i.ImageMetadata
 }
 
 func (i Image) CreatedAt() time.Time {
-	return i.createdAt
+	return i.ImageCreatedAt
 }
 
 func (i Image) UpdatedAt() time.Time {
-	return i.updatedAt
+	return i.ImageUpdatedAt
 }
 
 func (i *Image) SetDimensions(width, height int) error {
@@ -150,9 +150,9 @@ func (i *Image) SetDimensions(width, height int) error {
 		return ErrInvalidImageHeight
 	}
 
-	i.width = &width
-	i.height = &height
-	i.updatedAt = time.Now().UTC()
+	i.ImageWidth = &width
+	i.ImageHeight = &height
+	i.ImageUpdatedAt = time.Now().UTC()
 	return nil
 }
 
@@ -161,8 +161,8 @@ func (i *Image) SetSize(size int64) error {
 		return ErrInvalidImageSize
 	}
 
-	i.size = &size
-	i.updatedAt = time.Now().UTC()
+	i.ImageSize = &size
+	i.ImageUpdatedAt = time.Now().UTC()
 	return nil
 }
 
@@ -175,19 +175,19 @@ func (i *Image) SetContentType(contentType string) error {
 		return ErrInvalidImageContentType
 	}
 
-	i.contentType = &contentType
-	i.updatedAt = time.Now().UTC()
+	i.ImageContentType = &contentType
+	i.ImageUpdatedAt = time.Now().UTC()
 	return nil
 }
 
 func (i *Image) SetStreamInfo(streamInfo *StreamInfo) {
-	i.streamInfo = streamInfo
-	i.updatedAt = time.Now().UTC()
+	i.ImageStreamInfo = streamInfo
+	i.ImageUpdatedAt = time.Now().UTC()
 }
 
 func (i *Image) SetMetadata(metadata map[string]string) {
-	i.metadata = metadata
-	i.updatedAt = time.Now().UTC()
+	i.ImageMetadata = metadata
+	i.ImageUpdatedAt = time.Now().UTC()
 }
 
 func (i *Image) AddMetadata(key, value string) error {
@@ -203,27 +203,27 @@ func (i *Image) AddMetadata(key, value string) error {
 		return ErrInvalidImageMetadataValue
 	}
 
-	if i.metadata == nil {
-		i.metadata = make(map[string]string)
+	if i.ImageMetadata == nil {
+		i.ImageMetadata = make(map[string]string)
 	}
 
-	i.metadata[key] = value
-	i.updatedAt = time.Now().UTC()
+	i.ImageMetadata[key] = value
+	i.ImageUpdatedAt = time.Now().UTC()
 	return nil
 }
 
 func (i *Image) RemoveMetadata(key string) {
-	if i.metadata != nil {
-		delete(i.metadata, key)
-		i.updatedAt = time.Now().UTC()
+	if i.ImageMetadata != nil {
+		delete(i.ImageMetadata, key)
+		i.ImageUpdatedAt = time.Now().UTC()
 	}
 }
 
 func (i Image) Equals(other Image) bool {
-	return i.id == other.id &&
-		i.fileName == other.fileName &&
-		i.url == other.url &&
-		i.imageType == other.imageType
+	return i.ImageID == other.ImageID &&
+		i.ImageFileName == other.ImageFileName &&
+		i.ImageURL == other.ImageURL &&
+		i.ImageType == other.ImageType
 }
 
 var (

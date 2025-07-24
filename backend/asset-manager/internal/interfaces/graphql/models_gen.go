@@ -16,6 +16,17 @@ type AddAssetToBucketInput struct {
 	OwnerID  string `json:"ownerId"`
 }
 
+type AddImageInput struct {
+	AssetID     string    `json:"assetId"`
+	Type        ImageType `json:"type"`
+	FileName    string    `json:"fileName"`
+	Bucket      string    `json:"bucket"`
+	Key         string    `json:"key"`
+	URL         string    `json:"url"`
+	ContentType string    `json:"contentType"`
+	Size        int       `json:"size"`
+}
+
 type AddVideoInput struct {
 	AssetID     string      `json:"assetId"`
 	Label       string      `json:"label"`

@@ -62,6 +62,7 @@ export default function ImageUpload({ asset, onImageAdded }: ImageUploadProps) {
         url: `http://localhost:8083/cdn/${asset.id}/images/${imageType.toLowerCase()}/${fileName}`,
         type: imageType,
         fileName,
+        size: imageBlob.size,
       };
 
       await assetService.addImageToAsset(asset.id, imageData);

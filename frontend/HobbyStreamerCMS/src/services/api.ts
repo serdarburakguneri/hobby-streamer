@@ -1104,21 +1104,9 @@ const REMOVE_ASSET_FROM_BUCKET = gql`
 `;
 
 const ADD_IMAGE = gql`
-  mutation AddImage($assetId: ID!, $type: ImageType!, $fileName: String!, $bucket: String!, $key: String!, $url: String!, $contentType: String!, $size: Int!) {
-    addImage(assetId: $assetId, type: $type, fileName: $fileName, bucket: $bucket, key: $key, url: $url, contentType: $contentType, size: $size) {
+  mutation AddImage($input: AddImageInput!) {
+    addImage(input: $input) {
       id
-      slug
-      title
-      description
-      type
-      genre
-      genres
-      tags
-      status
-      createdAt
-      updatedAt
-      metadata
-      ownerId
       images {
         id
         fileName
@@ -1131,12 +1119,13 @@ const ADD_IMAGE = gql`
         metadata
         createdAt
         updatedAt
-          streamInfo {
-            downloadUrl
-            cdnPrefix
-            url
-          }
+        streamInfo {
+          downloadUrl
+          cdnPrefix
+          url
         }
+      }
+      updatedAt
     }
   }
 `;
@@ -1192,28 +1181,33 @@ const parseMetadata = (metadataString?: string): Record<string, any> | undefined
 
 // Helper function to convert Asset with string metadata to Asset with object metadata
 const parseImages = (imagesData?: any): any[] => {
-  console.log('parseImages called with:', imagesData);
-  
   if (!imagesData) return [];
-  
-  if (Array.isArray(imagesData)) {
-    console.log('Images is already an array:', imagesData);
-    return imagesData;
-  }
-  
+  let arr = imagesData;
   if (typeof imagesData === 'string') {
     try {
-      const parsed = JSON.parse(imagesData);
-      console.log('Parsed images from string:', parsed);
-      return parsed;
-    } catch (error) {
-      console.warn('Failed to parse images JSON string:', error);
+      arr = JSON.parse(imagesData);
+    } catch {
       return [];
     }
   }
-  
-  console.log('Images is neither array nor string, returning empty array');
-  return [];
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(img => img && (img.ImageID || img.id))
+    .map(img => ({
+      id: img.ImageID || img.id,
+      fileName: img.ImageFileName || img.fileName,
+      url: img.ImageURL || img.url,
+      type: img.ImageType || img.type,
+      storageLocation: img.ImageStorageLoc || img.storageLocation,
+      width: img.ImageWidth || img.width,
+      height: img.ImageHeight || img.height,
+      size: img.ImageSize || img.size,
+      contentType: img.ImageContentType || img.contentType,
+      metadata: img.ImageMetadata || img.metadata,
+      createdAt: img.ImageCreatedAt || img.createdAt,
+      updatedAt: img.ImageUpdatedAt || img.updatedAt,
+      streamInfo: img.ImageStreamInfo || img.streamInfo,
+    }));
 };
 
 const convertAssetMetadata = (asset: any): Asset => {
@@ -1680,23 +1674,23 @@ export const useAssetService = () => {
       }
     },
 
-    addImageToAsset: async (assetId: string, imageData: Partial<Image>): Promise<Image> => {
+    addImageToAsset: async (assetId: string, imageData: Partial<Image>): Promise<Asset> => {
       console.log('addImageToAsset called with:', { assetId, imageData });
-      const variables = { 
-        assetId, 
+      const input = {
+        assetId,
         type: imageData.type,
         fileName: imageData.fileName,
         bucket: 'content-east',
         key: `${assetId}/images/${imageData.type?.toLowerCase()}/${imageData.fileName}`,
         url: imageData.url,
         contentType: 'image/jpeg',
-        size: 0,
+        size: (typeof imageData.size === 'number' && imageData.size > 0) ? imageData.size : 1,
       };
-      console.log('GraphQL variables:', variables);
+      console.log('GraphQL input:', input);
       
       const response = await client.mutate({
         mutation: ADD_IMAGE,
-        variables,
+        variables: { input },
       });
       
       console.log('GraphQL response:', response.data);

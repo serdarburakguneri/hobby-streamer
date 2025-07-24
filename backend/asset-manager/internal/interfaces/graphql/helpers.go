@@ -330,6 +330,72 @@ func domainAssetPageToGraphQL(page *domainasset.AssetPage) *AssetPage {
 	}
 }
 
+func domainImageToGraphQL(img *domainasset.Image) *Image {
+	if img == nil {
+		return nil
+	}
+
+	var storageLocation *S3Object
+	if img.StorageLocation() != nil {
+		storageLocation = &S3Object{
+			Bucket: img.StorageLocation().Bucket(),
+			Key:    img.StorageLocation().Key(),
+			URL:    img.StorageLocation().URL(),
+		}
+	}
+
+	var width *int
+	if img.Width() != nil {
+		width = img.Width()
+	}
+
+	var height *int
+	if img.Height() != nil {
+		height = img.Height()
+	}
+
+	var size *int
+	if img.Size() != nil {
+		s := int(*img.Size())
+		size = &s
+	}
+
+	var contentType *string
+	if img.ContentType() != nil {
+		contentType = img.ContentType()
+	}
+
+	var streamInfo *StreamInfo
+	if img.StreamInfo() != nil {
+		streamInfo = &StreamInfo{
+			DownloadURL: img.StreamInfo().DownloadURL(),
+			CdnPrefix:   img.StreamInfo().CDNPrefix(),
+			URL:         img.StreamInfo().URL(),
+		}
+	}
+
+	metadata := make([]string, 0, len(img.Metadata()))
+	for k, v := range img.Metadata() {
+		metadata = append(metadata, k+":"+v)
+	}
+
+	return &Image{
+		ID:              img.ID(),
+		FileName:        img.FileName(),
+		URL:             img.URL(),
+		Type:            ImageType(img.Type()),
+		StorageLocation: storageLocation,
+		Width:           width,
+		Height:          height,
+		Size:            size,
+		ContentType:     contentType,
+		StreamInfo:      streamInfo,
+		Metadata:        metadata,
+		CreatedAt:       img.CreatedAt(),
+		UpdatedAt:       img.UpdatedAt(),
+	}
+}
+
 func parseMetadata(metadata *string) map[string]interface{} {
 	if metadata == nil {
 		return nil
