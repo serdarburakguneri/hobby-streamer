@@ -7,23 +7,36 @@ import (
 )
 
 type Video struct {
-	id              VideoID
-	videoType       *VideoType
-	format          *VideoFormat
-	storageLocation S3ObjectValue
-	width           *int
-	height          *int
-	duration        *float64
-	bitrate         *int
-	codec           *string
-	size            *int
-	contentType     *string
-	streamInfo      *StreamInfoValue
-	metadata        *string
-	status          *string
-	thumbnail       *Image
-	createdAt       time.Time
-	updatedAt       time.Time
+	id                 VideoID
+	videoType          *VideoType
+	format             *VideoFormat
+	storageLocation    S3ObjectValue
+	width              *int
+	height             *int
+	duration           *float64
+	bitrate            *int
+	codec              *string
+	size               *int
+	contentType        *string
+	streamInfo         *StreamInfoValue
+	metadata           *string
+	status             *string
+	thumbnail          *Image
+	createdAt          time.Time
+	updatedAt          time.Time
+	quality            *VideoQuality
+	isReady            bool
+	isProcessing       bool
+	isFailed           bool
+	segmentCount       *int
+	videoCodec         *string
+	audioCodec         *string
+	avgSegmentDuration *float64
+	segments           []string
+	frameRate          *string
+	audioChannels      *int
+	audioSampleRate    *int
+	transcodingInfo    *TranscodingInfo
 }
 
 func NewVideo(
@@ -44,25 +57,51 @@ func NewVideo(
 	thumbnail *Image,
 	createdAt time.Time,
 	updatedAt time.Time,
+	quality *VideoQuality,
+	isReady bool,
+	isProcessing bool,
+	isFailed bool,
+	segmentCount *int,
+	videoCodec *string,
+	audioCodec *string,
+	avgSegmentDuration *float64,
+	segments []string,
+	frameRate *string,
+	audioChannels *int,
+	audioSampleRate *int,
+	transcodingInfo *TranscodingInfo,
 ) *Video {
 	return &Video{
-		id:              id,
-		videoType:       videoType,
-		format:          format,
-		storageLocation: storageLocation,
-		width:           width,
-		height:          height,
-		duration:        duration,
-		bitrate:         bitrate,
-		codec:           codec,
-		size:            size,
-		contentType:     contentType,
-		streamInfo:      streamInfo,
-		metadata:        metadata,
-		status:          status,
-		thumbnail:       thumbnail,
-		createdAt:       createdAt,
-		updatedAt:       updatedAt,
+		id:                 id,
+		videoType:          videoType,
+		format:             format,
+		storageLocation:    storageLocation,
+		width:              width,
+		height:             height,
+		duration:           duration,
+		bitrate:            bitrate,
+		codec:              codec,
+		size:               size,
+		contentType:        contentType,
+		streamInfo:         streamInfo,
+		metadata:           metadata,
+		status:             status,
+		thumbnail:          thumbnail,
+		createdAt:          createdAt,
+		updatedAt:          updatedAt,
+		quality:            quality,
+		isReady:            isReady,
+		isProcessing:       isProcessing,
+		isFailed:           isFailed,
+		segmentCount:       segmentCount,
+		videoCodec:         videoCodec,
+		audioCodec:         audioCodec,
+		avgSegmentDuration: avgSegmentDuration,
+		segments:           segments,
+		frameRate:          frameRate,
+		audioChannels:      audioChannels,
+		audioSampleRate:    audioSampleRate,
+		transcodingInfo:    transcodingInfo,
 	}
 }
 
@@ -181,3 +220,17 @@ func (v *Video) Is4K() bool {
 	}
 	return *v.width >= 3840 && *v.height >= 2160
 }
+
+func (v *Video) Quality() *VideoQuality            { return v.quality }
+func (v *Video) IsReadyFlag() bool                 { return v.isReady }
+func (v *Video) IsProcessing() bool                { return v.isProcessing }
+func (v *Video) IsFailed() bool                    { return v.isFailed }
+func (v *Video) SegmentCount() *int                { return v.segmentCount }
+func (v *Video) VideoCodec() *string               { return v.videoCodec }
+func (v *Video) AudioCodec() *string               { return v.audioCodec }
+func (v *Video) AvgSegmentDuration() *float64      { return v.avgSegmentDuration }
+func (v *Video) Segments() []string                { return v.segments }
+func (v *Video) FrameRate() *string                { return v.frameRate }
+func (v *Video) AudioChannels() *int               { return v.audioChannels }
+func (v *Video) AudioSampleRate() *int             { return v.audioSampleRate }
+func (v *Video) TranscodingInfo() *TranscodingInfo { return v.transcodingInfo }

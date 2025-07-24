@@ -11,11 +11,11 @@ import {
 } from 'react-native';
 import Layout from '../components/Layout';
 import { BucketType, BucketStatus } from '../types/asset';
-import { useAssetService } from '../services/api';
+import { useAssetService, getAuthToken, validateTokenLocally } from '../services/api';
 
 interface CreateBucketScreenProps {
   onBack: () => void;
-  onBucketCreated: () => void;
+  onBucketCreated: (bucket: any) => void;
 }
 
 export default function CreateBucketScreen({ onBack, onBucketCreated }: CreateBucketScreenProps) {
@@ -46,15 +46,28 @@ export default function CreateBucketScreen({ onBack, onBucketCreated }: CreateBu
 
     try {
       setCreating(true);
-      await assetService.createBucket({
+      let ownerId = '';
+      const token = await getAuthToken();
+      if (token) {
+        const { valid, user } = validateTokenLocally(token);
+        if (valid && user && user.id) {
+          ownerId = user.id;
+        }
+      }
+      if (!ownerId) {
+        Alert.alert('Error', 'Could not determine logged-in user.');
+        setCreating(false);
+        return;
+      }
+      const newBucket = await assetService.createBucket({
         key: key.trim(),
         name: name.trim(),
         description: description.trim(),
         type,
         status: BucketStatus.DRAFT,
+        ownerId,
       });
-      
-      onBucketCreated();
+      onBucketCreated(newBucket);
       onBack();
     } catch (error: any) {
       console.error('Error creating bucket:', error);

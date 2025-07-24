@@ -374,3 +374,30 @@ var (
 	ErrInvalidFileName     = pkgerrors.NewValidationError("invalid file name", nil)
 	ErrInvalidImageType    = pkgerrors.NewValidationError("invalid image type", nil)
 )
+
+type VideoQuality struct {
+	value string
+}
+
+func NewVideoQuality(value string) (*VideoQuality, error) {
+	validQualities := map[string]bool{
+		"low": true, "medium": true, "high": true, "fourk": true,
+	}
+	if !validQualities[value] {
+		return nil, ErrInvalidVideoQuality
+	}
+	return &VideoQuality{value: value}, nil
+}
+
+func (q VideoQuality) Value() string                  { return q.value }
+func (q VideoQuality) Equals(other VideoQuality) bool { return q.value == other.value }
+
+var ErrInvalidVideoQuality = pkgerrors.NewValidationError("invalid video quality", nil)
+
+type TranscodingInfo struct {
+	JobID       *string
+	Progress    *float64
+	OutputURL   *string
+	Error       *string
+	CompletedAt *time.Time
+}

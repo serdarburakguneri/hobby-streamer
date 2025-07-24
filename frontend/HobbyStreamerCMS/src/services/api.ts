@@ -1592,6 +1592,7 @@ export const useAssetService = () => {
         name: bucketData.name,
         description: bucketData.description || '',
         status: bucketData.status ? bucketData.status.toUpperCase() : 'ACTIVE',
+        ownerId: bucketData.ownerId, // Ensure ownerId is sent
       };
 
       const response = await client.mutate({

@@ -84,7 +84,7 @@ func main() {
 	assetService := assetapp.NewApplicationService(assetRepository, cacheService, circuitBreaker)
 	bucketService := bucketapp.NewApplicationService(bucketRepository, cacheService, circuitBreaker)
 
-	handler := httphandler.NewHandler(assetService, bucketService)
+	handler := httphandler.NewHandler(assetService, bucketService, cfg)
 	router := handler.SetupRoutes()
 
 	server := &http.Server{

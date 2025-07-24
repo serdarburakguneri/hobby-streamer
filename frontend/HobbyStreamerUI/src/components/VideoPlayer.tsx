@@ -379,7 +379,100 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ asset, visible, onClos
                   <Text style={styles.detailValue}>{selectedVideo.width}x{selectedVideo.height}</Text>
                 </View>
               )}
-              
+              {selectedVideo.quality && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Quality:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.quality}</Text>
+                </View>
+              )}
+              {selectedVideo.videoCodec && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Video Codec:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.videoCodec}</Text>
+                </View>
+              )}
+              {selectedVideo.audioCodec && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Audio Codec:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.audioCodec}</Text>
+                </View>
+              )}
+              {selectedVideo.frameRate && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Frame Rate:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.frameRate}</Text>
+                </View>
+              )}
+              {selectedVideo.audioChannels !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Audio Channels:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.audioChannels}</Text>
+                </View>
+              )}
+              {selectedVideo.audioSampleRate !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Audio Sample Rate:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.audioSampleRate} Hz</Text>
+                </View>
+              )}
+              {selectedVideo.segmentCount !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Segments:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.segmentCount}</Text>
+                </View>
+              )}
+              {selectedVideo.avgSegmentDuration !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Avg Segment Duration:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.avgSegmentDuration}s</Text>
+                </View>
+              )}
+              {selectedVideo.segments && selectedVideo.segments.length > 0 && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Segment List:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.segments.join(', ')}</Text>
+                </View>
+              )}
+              {selectedVideo.isReady !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Ready:</Text>
+                  <Text style={[styles.detailValue, { color: selectedVideo.isReady ? '#4CAF50' : '#F44336' }]}>{selectedVideo.isReady ? 'Yes' : 'No'}</Text>
+                </View>
+              )}
+              {selectedVideo.isProcessing !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Processing:</Text>
+                  <Text style={styles.detailValue}>{selectedVideo.isProcessing ? 'Yes' : 'No'}</Text>
+                </View>
+              )}
+              {selectedVideo.isFailed !== undefined && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Failed:</Text>
+                  <Text style={[styles.detailValue, { color: selectedVideo.isFailed ? '#F44336' : '#4CAF50' }]}>{selectedVideo.isFailed ? 'Yes' : 'No'}</Text>
+                </View>
+              )}
+              {selectedVideo.transcodingInfo && (
+                <>
+                  {selectedVideo.transcodingInfo.progress !== undefined && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Transcoding Progress:</Text>
+                      <Text style={styles.detailValue}>{Math.round(selectedVideo.transcodingInfo.progress * 100)}%</Text>
+                    </View>
+                  )}
+                  {selectedVideo.transcodingInfo.error && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Transcoding Error:</Text>
+                      <Text style={[styles.detailValue, { color: '#F44336' }]}>{selectedVideo.transcodingInfo.error}</Text>
+                    </View>
+                  )}
+                  {selectedVideo.transcodingInfo.outputUrl && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Output URL:</Text>
+                      <Text style={styles.detailValue} numberOfLines={2}>{selectedVideo.transcodingInfo.outputUrl}</Text>
+                    </View>
+                  )}
+                </>
+              )}
               {videoUrl && (
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>URL:</Text>

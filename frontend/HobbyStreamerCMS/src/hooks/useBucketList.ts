@@ -124,6 +124,7 @@ export function useBucketList(refreshTrigger?: number) {
     try {
       setCreating(true);
       const newBucket = await assetService.createBucket(bucketData);
+      setSelectedBucket(newBucket);
       await loadBuckets();
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);

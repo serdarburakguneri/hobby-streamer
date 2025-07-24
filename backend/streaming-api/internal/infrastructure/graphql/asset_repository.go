@@ -116,6 +116,25 @@ func (r *AssetRepository) GetAll(ctx context.Context) ([]*asset.Asset, error) {
 						}
 						createdAt
 						updatedAt
+						quality
+						isReady
+						isProcessing
+						isFailed
+						segmentCount
+						videoCodec
+						audioCodec
+						avgSegmentDuration
+						segments
+						frameRate
+						audioChannels
+						audioSampleRate
+						transcodingInfo {
+							jobId
+							progress
+							outputUrl
+							error
+							completedAt
+						}
 					}
 					images {
 						id
@@ -485,6 +504,25 @@ func (r *AssetRepository) convertGraphQLVideoToDomain(graphQLVideo GraphQLVideo)
 	metadata := convertStringSliceToString(graphQLVideo.Metadata)
 	status := string(graphQLVideo.Status)
 
+	var quality *asset.VideoQuality
+	if graphQLVideo.Quality != nil {
+		qualityVO, err := asset.NewVideoQuality(*graphQLVideo.Quality)
+		if err == nil {
+			quality = qualityVO
+		}
+	}
+
+	var transcodingInfo *asset.TranscodingInfo
+	if graphQLVideo.TranscodingInfo != nil {
+		transcodingInfo = &asset.TranscodingInfo{
+			JobID:       graphQLVideo.TranscodingInfo.JobID,
+			Progress:    graphQLVideo.TranscodingInfo.Progress,
+			OutputURL:   graphQLVideo.TranscodingInfo.OutputURL,
+			Error:       graphQLVideo.TranscodingInfo.Error,
+			CompletedAt: graphQLVideo.TranscodingInfo.CompletedAt,
+		}
+	}
+
 	return asset.NewVideo(
 		*videoID,
 		videoType,
@@ -503,6 +541,19 @@ func (r *AssetRepository) convertGraphQLVideoToDomain(graphQLVideo GraphQLVideo)
 		thumbnail,
 		graphQLVideo.CreatedAt,
 		graphQLVideo.UpdatedAt,
+		quality,
+		graphQLVideo.IsReady,
+		graphQLVideo.IsProcessing,
+		graphQLVideo.IsFailed,
+		graphQLVideo.SegmentCount,
+		graphQLVideo.VideoCodec,
+		graphQLVideo.AudioCodec,
+		graphQLVideo.AvgSegmentDuration,
+		graphQLVideo.Segments,
+		graphQLVideo.FrameRate,
+		graphQLVideo.AudioChannels,
+		graphQLVideo.AudioSampleRate,
+		transcodingInfo,
 	), nil
 }
 
@@ -590,24 +641,37 @@ type GraphQLAsset struct {
 }
 
 type GraphQLVideo struct {
-	ID              string             `json:"id"`
-	Label           string             `json:"label"`
-	Type            VideoType          `json:"type"`
-	Format          VideoFormat        `json:"format"`
-	StorageLocation GraphQLS3Object    `json:"storageLocation"`
-	Width           *int               `json:"width"`
-	Height          *int               `json:"height"`
-	Duration        *float64           `json:"duration"`
-	Bitrate         *int               `json:"bitrate"`
-	Codec           *string            `json:"codec"`
-	Size            *int               `json:"size"`
-	ContentType     *string            `json:"contentType"`
-	StreamInfo      *GraphQLStreamInfo `json:"streamInfo"`
-	Metadata        []string           `json:"metadata"`
-	Status          VideoStatus        `json:"status"`
-	Thumbnail       *GraphQLImage      `json:"thumbnail"`
-	CreatedAt       time.Time          `json:"createdAt"`
-	UpdatedAt       time.Time          `json:"updatedAt"`
+	ID                 string                  `json:"id"`
+	Label              string                  `json:"label"`
+	Type               VideoType               `json:"type"`
+	Format             VideoFormat             `json:"format"`
+	StorageLocation    GraphQLS3Object         `json:"storageLocation"`
+	Width              *int                    `json:"width"`
+	Height             *int                    `json:"height"`
+	Duration           *float64                `json:"duration"`
+	Bitrate            *int                    `json:"bitrate"`
+	Codec              *string                 `json:"codec"`
+	Size               *int                    `json:"size"`
+	ContentType        *string                 `json:"contentType"`
+	StreamInfo         *GraphQLStreamInfo      `json:"streamInfo"`
+	Metadata           []string                `json:"metadata"`
+	Status             VideoStatus             `json:"status"`
+	Thumbnail          *GraphQLImage           `json:"thumbnail"`
+	CreatedAt          time.Time               `json:"createdAt"`
+	UpdatedAt          time.Time               `json:"updatedAt"`
+	Quality            *string                 `json:"quality"`
+	IsReady            bool                    `json:"isReady"`
+	IsProcessing       bool                    `json:"isProcessing"`
+	IsFailed           bool                    `json:"isFailed"`
+	SegmentCount       *int                    `json:"segmentCount"`
+	VideoCodec         *string                 `json:"videoCodec"`
+	AudioCodec         *string                 `json:"audioCodec"`
+	AvgSegmentDuration *float64                `json:"avgSegmentDuration"`
+	Segments           []string                `json:"segments"`
+	FrameRate          *string                 `json:"frameRate"`
+	AudioChannels      *int                    `json:"audioChannels"`
+	AudioSampleRate    *int                    `json:"audioSampleRate"`
+	TranscodingInfo    *GraphQLTranscodingInfo `json:"transcodingInfo"`
 }
 
 type GraphQLImage struct {
@@ -642,6 +706,14 @@ type GraphQLPublishRule struct {
 	UnpublishAt *time.Time `json:"unpublishAt"`
 	Regions     []string   `json:"regions"`
 	AgeRating   *string    `json:"ageRating"`
+}
+
+type GraphQLTranscodingInfo struct {
+	JobID       *string    `json:"jobId"`
+	Progress    *float64   `json:"progress"`
+	OutputURL   *string    `json:"outputUrl"`
+	Error       *string    `json:"error"`
+	CompletedAt *time.Time `json:"completedAt"`
 }
 
 type VideoType string

@@ -1,8 +1,11 @@
 package graphql
 
 import (
+	"fmt"
+
 	domainasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
 	domainbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
 func domainAssetToGraphQL(asset *domainasset.Asset) *Asset {
@@ -274,9 +277,13 @@ func domainBucketPageToGraphQL(page *domainbucket.BucketPage) *BucketPage {
 		return nil
 	}
 
-	items := make([]*Bucket, len(page.Items))
+	items := make([]*Bucket, 0, len(page.Items))
 	for i, bucket := range page.Items {
-		items[i] = domainBucketToGraphQL(bucket)
+		if bucket == nil {
+			logger.Get().Error(fmt.Sprintf("nil bucket encountered in BucketPage.Items at index %d", i))
+			continue
+		}
+		items = append(items, domainBucketToGraphQL(bucket))
 	}
 
 	nextKey := ""

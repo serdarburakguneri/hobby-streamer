@@ -62,7 +62,6 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key bucket.BucketKey) (
 					tags
 					status
 					metadata
-					ownerId
 					createdAt
 					updatedAt
 				}
@@ -120,7 +119,6 @@ func (r *BucketRepository) GetAll(ctx context.Context) ([]*bucket.Bucket, error)
 						tags
 						status
 						metadata
-						ownerId
 						createdAt
 						updatedAt
 					}

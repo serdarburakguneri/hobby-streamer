@@ -54,15 +54,15 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 	`
 
 	params := map[string]interface{}{
-		"id":          bucket.ID(),
+		"id":          bucket.ID().Value(),
 		"name":        bucket.Name(),
 		"description": bucket.Description(),
 		"key":         bucket.Key(),
 		"ownerID":     bucket.OwnerID(),
 		"status":      bucket.Status(),
 		"metadata":    metadataJSON,
-		"createdAt":   bucket.CreatedAt(),
-		"updatedAt":   bucket.UpdatedAt(),
+		"createdAt":   bucket.CreatedAt().Format(time.RFC3339),
+		"updatedAt":   bucket.UpdatedAt().Format(time.RFC3339),
 	}
 
 	log.Info(fmt.Sprintf("Creating bucket with params: %+v", params))
@@ -145,13 +145,13 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 	`
 
 	params := map[string]interface{}{
-		"id":          bucket.ID(),
+		"id":          bucket.ID().Value(),
 		"name":        bucket.Name(),
 		"description": bucket.Description(),
 		"ownerID":     bucket.OwnerID(),
 		"status":      bucket.Status(),
 		"metadata":    bucket.Metadata(),
-		"updatedAt":   bucket.UpdatedAt(),
+		"updatedAt":   bucket.UpdatedAt().Format(time.RFC3339),
 	}
 
 	_, err := session.Run(query, params)
@@ -442,6 +442,17 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 
 	bucketID, _ := domainbucket.NewBucketID(bucketProps["id"].(string))
 
+	createdAtStr, _ := bucketProps["createdAt"].(string)
+	updatedAtStr, _ := bucketProps["updatedAt"].(string)
+	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, pkgerrors.NewInternalError("failed to parse createdAt: "+createdAtStr, err)
+	}
+	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, pkgerrors.NewInternalError("failed to parse updatedAt: "+updatedAtStr, err)
+	}
+
 	return domainbucket.ReconstructBucket(
 		*bucketID,
 		bucketProps["name"].(string),
@@ -450,8 +461,8 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 		ownerIDPtr,
 		statusPtr,
 		metadata,
-		bucketProps["createdAt"].(time.Time),
-		bucketProps["updatedAt"].(time.Time),
+		createdAt,
+		updatedAt,
 	), nil
 }
 

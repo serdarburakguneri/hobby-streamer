@@ -1,3 +1,11 @@
+export interface TranscodingInfo {
+  jobId?: string;
+  progress?: number;
+  outputUrl?: string;
+  error?: string;
+  completedAt?: string;
+}
+
 export interface Video {
   id: string;
   type: string;
@@ -16,6 +24,19 @@ export interface Video {
   thumbnail?: Image;
   createdAt: string;
   updatedAt: string;
+  quality?: string;
+  isReady?: boolean;
+  isProcessing?: boolean;
+  isFailed?: boolean;
+  segmentCount?: number;
+  videoCodec?: string;
+  audioCodec?: string;
+  avgSegmentDuration?: number;
+  segments?: string[];
+  frameRate?: string;
+  audioChannels?: number;
+  audioSampleRate?: number;
+  transcodingInfo?: TranscodingInfo;
 }
 
 export interface Image {

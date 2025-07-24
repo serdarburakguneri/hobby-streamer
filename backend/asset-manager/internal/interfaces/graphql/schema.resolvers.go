@@ -6,10 +6,15 @@ package graphql
 
 import (
 	"context"
+	"fmt"
+
+	"runtime/debug"
 
 	appasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset"
 	appbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // Assets is the resolver for the assets field.
@@ -225,6 +230,12 @@ func (r *mutationResolver) RemoveAssetFromBucket(ctx context.Context, input Remo
 
 // Assets is the resolver for the assets field.
 func (r *queryResolver) Assets(ctx context.Context, limit *int, nextKey *string) (*AssetPage, error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			logger.Get().Error(fmt.Sprintf("panic in Assets resolver: %v", rec))
+		}
+	}()
+
 	limitInt := 0
 	if limit != nil {
 		limitInt = *limit
@@ -242,7 +253,8 @@ func (r *queryResolver) Assets(ctx context.Context, limit *int, nextKey *string)
 
 	page, err := r.assetAppService.ListAssets(ctx, cmd)
 	if err != nil {
-		return nil, err
+		logger.Get().Error(fmt.Sprintf("error in Assets resolver: %v", err))
+		return nil, gqlerror.Errorf("internal system error")
 	}
 
 	result := make([]*Asset, len(page.Items))
@@ -284,6 +296,12 @@ func (r *queryResolver) Asset(ctx context.Context, id *string) (*Asset, error) {
 
 // Buckets is the resolver for the buckets field.
 func (r *queryResolver) Buckets(ctx context.Context, limit *int, nextKey *string) (*BucketPage, error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			logger.Get().Error(fmt.Sprintf("panic in Buckets resolver: %v\n%s", rec, debug.Stack()))
+		}
+	}()
+
 	lastKeyMap := make(map[string]interface{})
 	if nextKey != nil {
 		lastKeyMap["key"] = *nextKey
@@ -296,7 +314,8 @@ func (r *queryResolver) Buckets(ctx context.Context, limit *int, nextKey *string
 
 	page, err := r.bucketAppService.ListBuckets(ctx, cmd)
 	if err != nil {
-		return nil, err
+		logger.Get().Error(fmt.Sprintf("error in Buckets resolver: %v", err))
+		return nil, gqlerror.Errorf("internal system error")
 	}
 
 	return domainBucketPageToGraphQL(page), nil

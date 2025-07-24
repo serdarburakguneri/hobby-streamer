@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/security"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application"
 	assetdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset"
 	bucketdomain "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/bucket"
@@ -16,19 +18,28 @@ type Handler struct {
 	assetService  application.AssetServiceInterface
 	bucketService application.BucketServiceInterface
 	logger        *logger.Logger
+	config        *config.BaseConfig
 }
 
-func NewHandler(assetService application.AssetServiceInterface, bucketService application.BucketServiceInterface) *Handler {
+func NewHandler(assetService application.AssetServiceInterface, bucketService application.BucketServiceInterface, config *config.BaseConfig) *Handler {
 	return &Handler{
 		assetService:  assetService,
 		bucketService: bucketService,
 		logger:        logger.Get().WithService("streaming-handler"),
+		config:        config,
 	}
 }
 
 func (h *Handler) SetupRoutes() *mux.Router {
 	router := mux.NewRouter()
 
+	// CORS config from h.config.Security.CORS
+	corsCfg := h.config.Security.CORS
+	allowedOrigins := corsCfg.AllowedOrigins
+	allowedMethods := corsCfg.AllowedMethods
+	allowedHeaders := corsCfg.AllowedHeaders
+
+	router.Use(security.CORSMiddleware(allowedOrigins, allowedMethods, allowedHeaders))
 	router.Use(logger.CompressionMiddleware)
 
 	api := router.PathPrefix("/api/v1").Subrouter()
