@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
@@ -124,28 +125,18 @@ type AssetType struct {
 	value string
 }
 
+var allowedAssetTypes = func() map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, t := range constants.AllowedAssetTypes {
+		m[t] = struct{}{}
+	}
+	return m
+}()
+
 func NewAssetType(value string) (*AssetType, error) {
-	if value == "" {
+	if _, ok := allowedAssetTypes[value]; !ok {
 		return nil, ErrInvalidAssetType
 	}
-
-	validTypes := map[string]bool{
-		"movie":             true,
-		"tv_show":           true,
-		"documentary":       true,
-		"short":             true,
-		"trailer":           true,
-		"behind_the_scenes": true,
-		"interview":         true,
-		"music_video":       true,
-		"podcast":           true,
-		"live_stream":       true,
-	}
-
-	if !validTypes[value] {
-		return nil, ErrInvalidAssetType
-	}
-
 	return &AssetType{value: value}, nil
 }
 
@@ -161,21 +152,19 @@ type Genre struct {
 	value string
 }
 
+var allowedGenres = func() map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, g := range constants.AllowedGenres {
+		m[g] = struct{}{}
+	}
+	return m
+}()
+
 func NewGenre(value string) (*Genre, error) {
-	if value == "" {
+	if _, ok := allowedGenres[value]; !ok {
 		return nil, ErrInvalidGenre
 	}
-
-	if len(value) > 50 {
-		return nil, ErrInvalidGenre
-	}
-
-	genreRegex := regexp.MustCompile(`^[a-zA-Z0-9\s&-]+$`)
-	if !genreRegex.MatchString(value) {
-		return nil, ErrInvalidGenre
-	}
-
-	return &Genre{value: strings.TrimSpace(value)}, nil
+	return &Genre{value: value}, nil
 }
 
 func (g Genre) Value() string {

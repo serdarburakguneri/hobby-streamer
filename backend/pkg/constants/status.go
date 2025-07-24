@@ -32,23 +32,6 @@ const (
 )
 
 const (
-	AssetTypeMovie        = "movie"
-	AssetTypeTVShow       = "tv_show"
-	AssetTypeSeries       = "series"
-	AssetTypeSeason       = "season"
-	AssetTypeEpisode      = "episode"
-	AssetTypeDocumentary  = "documentary"
-	AssetTypeShort        = "short"
-	AssetTypeTrailer      = "trailer"
-	AssetTypeBonus        = "bonus"
-	AssetTypeBehindScenes = "behind_scenes"
-	AssetTypeInterview    = "interview"
-	AssetTypeMusicVideo   = "music_video"
-	AssetTypePodcast      = "podcast"
-	AssetTypeLive         = "live"
-)
-
-const (
 	VideoQualityMain = "main"
 	VideoQualitySD   = "sd"
 	VideoQualityHD   = "hd"
