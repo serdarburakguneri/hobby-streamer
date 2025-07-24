@@ -257,18 +257,20 @@ func domainBucketToGraphQL(bucket *domainbucket.Bucket) *Bucket {
 		}
 	}
 
+	var assets []*Asset = nil
+
 	return &Bucket{
 		ID:          bucket.ID().Value(),
 		Key:         bucket.Key(),
 		Name:        bucket.Name(),
 		Description: &description,
-		Type:        &bucketType,
+		Type:        bucketType,
 		Status:      &status,
 		OwnerID:     &ownerID,
+		Assets:      assets,
 		Metadata:    &metadata,
 		CreatedAt:   bucket.CreatedAt(),
 		UpdatedAt:   bucket.UpdatedAt(),
-		AssetCount:  0, // Optionally, implement a method to count assets via relationships if needed
 	}
 }
 

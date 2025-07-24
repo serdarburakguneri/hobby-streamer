@@ -9,7 +9,7 @@ import (
 
 type CacheService interface {
 	GetBucket(ctx context.Context, key string) (*bucket.Bucket, error)
-	GetBuckets(ctx context.Context) ([]*bucket.Bucket, error)
+	GetBuckets(ctx context.Context, limit int, nextKey *string) ([]*bucket.Bucket, error)
 	GetAsset(ctx context.Context, slug string) (*asset.Asset, error)
 	GetAssets(ctx context.Context) ([]*asset.Asset, error)
 	SetBucket(ctx context.Context, bucket *bucket.Bucket) error

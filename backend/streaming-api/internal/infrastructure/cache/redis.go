@@ -112,7 +112,7 @@ func (s *Service) SetBucket(ctx context.Context, bucket *bucket.Bucket) error {
 	return nil
 }
 
-func (s *Service) GetBuckets(ctx context.Context) ([]*bucket.Bucket, error) {
+func (s *Service) GetBuckets(ctx context.Context, limit int, nextKey *string) ([]*bucket.Bucket, error) {
 	cacheKey := "buckets:list"
 
 	data, err := s.client.client.Get(ctx, cacheKey).Bytes()
@@ -128,13 +128,45 @@ func (s *Service) GetBuckets(ctx context.Context) ([]*bucket.Bucket, error) {
 		return nil, errors.NewInternalError("failed to unmarshal buckets", err)
 	}
 
-	return buckets, nil
+	var filtered []*bucket.Bucket
+	for i, b := range buckets {
+		if b == nil {
+			s.client.logger.Warn(fmt.Sprintf("Nil bucket found in cache at index %d!", i))
+			continue
+		}
+		filtered = append(filtered, b)
+	}
+
+	start := 0
+	if nextKey != nil {
+		for i, b := range filtered {
+			if b.ID().Value() == *nextKey {
+				start = i + 1
+				break
+			}
+		}
+	}
+	end := start + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[start:end], nil
 }
 
 func (s *Service) SetBuckets(ctx context.Context, buckets []*bucket.Bucket) error {
 	cacheKey := "buckets:list"
 
-	data, err := json.Marshal(buckets)
+	// Filter out nil buckets and log if any found
+	var filtered []*bucket.Bucket
+	for i, b := range buckets {
+		if b == nil {
+			s.client.logger.Warn(fmt.Sprintf("Nil bucket found before caching at index %d!", i))
+			continue
+		}
+		filtered = append(filtered, b)
+	}
+
+	data, err := json.Marshal(filtered)
 	if err != nil {
 		return errors.NewInternalError("failed to marshal buckets", err)
 	}

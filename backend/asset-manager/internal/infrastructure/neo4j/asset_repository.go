@@ -454,8 +454,8 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 		"genres":      r.genresToStringSlice(a.Genres()),
 		"tags":        r.tagsToStringSlice(a.Tags()),
 		"ownerId":     ownerID,
-		"createdAt":   a.CreatedAt().Value(),
-		"updatedAt":   a.UpdatedAt().Value(),
+		"createdAt":   a.CreatedAt().Value().Format(time.RFC3339),
+		"updatedAt":   a.UpdatedAt().Value().Format(time.RFC3339),
 		"publishRule": nil,
 	}
 
@@ -541,8 +541,8 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 	assetType, _ := props["type"].(string)
 	genre, _ := props["genre"].(string)
 	ownerID, _ := props["ownerId"].(string)
-	createdAt, _ := props["createdAt"].(time.Time)
-	updatedAt, _ := props["updatedAt"].(time.Time)
+	createdAtStr, _ := props["createdAt"].(string)
+	updatedAtStr, _ := props["updatedAt"].(string)
 
 	var genres []string
 	if genresInterface, exists := props["genres"]; exists {
@@ -848,8 +848,8 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 		}
 	}
 
-	createdAtVO := asset.NewCreatedAt(createdAt)
-	updatedAtVO := asset.NewUpdatedAt(updatedAt)
+	createdAtVO := ParseTimeToVO(createdAtStr, func(t time.Time) interface{} { return asset.NewCreatedAt(t) }).(*asset.CreatedAt)
+	updatedAtVO := ParseTimeToVO(updatedAtStr, func(t time.Time) interface{} { return asset.NewUpdatedAt(t) }).(*asset.UpdatedAt)
 
 	a := asset.ReconstructAsset(
 		*assetID,

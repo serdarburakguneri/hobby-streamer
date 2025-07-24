@@ -46,6 +46,7 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 			key: $key,
 			ownerID: $ownerID,
 			status: $status,
+			type: $type,
 			metadata: $metadata,
 			createdAt: $createdAt,
 			updatedAt: $updatedAt
@@ -60,6 +61,7 @@ func (r *BucketRepository) Create(ctx context.Context, bucket *domainbucket.Buck
 		"key":         bucket.Key(),
 		"ownerID":     bucket.OwnerID(),
 		"status":      bucket.Status(),
+		"type":        bucket.Type(),
 		"metadata":    metadataJSON,
 		"createdAt":   bucket.CreatedAt().Format(time.RFC3339),
 		"updatedAt":   bucket.UpdatedAt().Format(time.RFC3339),
@@ -139,6 +141,7 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 			b.description = $description,
 			b.ownerID = $ownerID,
 			b.status = $status,
+			b.type = $type,
 			b.metadata = $metadata,
 			b.updatedAt = $updatedAt
 		RETURN b
@@ -150,6 +153,7 @@ func (r *BucketRepository) Update(ctx context.Context, bucket *domainbucket.Buck
 		"description": bucket.Description(),
 		"ownerID":     bucket.OwnerID(),
 		"status":      bucket.Status(),
+		"type":        bucket.Type(),
 		"metadata":    bucket.Metadata(),
 		"updatedAt":   bucket.UpdatedAt().Format(time.RFC3339),
 	}
@@ -172,9 +176,16 @@ func (r *BucketRepository) Delete(ctx context.Context, id domainbucket.BucketID)
 	return err
 }
 
+const defaultLimit = 10
+
 func (r *BucketRepository) List(ctx context.Context, limit *int, lastKey map[string]interface{}) (*domainbucket.BucketPage, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
+
+	if limit == nil {
+		limit = new(int)
+		*limit = defaultLimit
+	}
 
 	query := `
 		MATCH (b:Bucket)
@@ -348,8 +359,8 @@ func (r *BucketRepository) GetAssetIDs(ctx context.Context, bucketID domainbucke
 	log := logger.WithService("neo4j-bucket-repository").WithContext(ctx)
 
 	if limit == nil {
-		defaultLimit := 10
-		limit = &defaultLimit
+		limit = new(int)
+		*limit = defaultLimit
 	}
 
 	query := `
@@ -416,11 +427,41 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 
 	bucketProps := bucketNode.(neo4j.Node).Props
 
-	var descriptionPtr, ownerIDPtr, statusPtr *string
+	idRaw, ok := bucketProps["id"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket id missing", nil)
+	}
+	id, ok := idRaw.(string)
+	if !ok || id == "" {
+		return nil, pkgerrors.NewInternalError("bucket id is not a string or is empty", nil)
+	}
+	bucketID, err := domainbucket.NewBucketID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	nameRaw, ok := bucketProps["name"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket name missing", nil)
+	}
+	name, ok := nameRaw.(string)
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket name is not a string", nil)
+	}
+
+	keyRaw, ok := bucketProps["key"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket key missing", nil)
+	}
+	key, ok := keyRaw.(string)
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket key is not a string", nil)
+	}
+
+	descriptionPtr, ownerIDPtr, statusPtr := (*string)(nil), (*string)(nil), (*string)(nil)
 	description, _ := bucketProps["description"].(string)
 	ownerID, _ := bucketProps["ownerID"].(string)
 	status, _ := bucketProps["status"].(string)
-
 	if description != "" {
 		descriptionPtr = &description
 	}
@@ -440,30 +481,57 @@ func (r *BucketRepository) recordToBucket(record *neo4j.Record) (*domainbucket.B
 		}
 	}
 
-	bucketID, _ := domainbucket.NewBucketID(bucketProps["id"].(string))
-
-	createdAtStr, _ := bucketProps["createdAt"].(string)
-	updatedAtStr, _ := bucketProps["updatedAt"].(string)
+	createdAtRaw, ok := bucketProps["createdAt"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket createdAt missing", nil)
+	}
+	createdAtStr, ok := createdAtRaw.(string)
+	if !ok || createdAtStr == "" {
+		return nil, pkgerrors.NewInternalError("bucket createdAt is not a string or is empty", nil)
+	}
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
 	if err != nil {
 		return nil, pkgerrors.NewInternalError("failed to parse createdAt: "+createdAtStr, err)
+	}
+
+	updatedAtRaw, ok := bucketProps["updatedAt"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket updatedAt missing", nil)
+	}
+	updatedAtStr, ok := updatedAtRaw.(string)
+	if !ok || updatedAtStr == "" {
+		return nil, pkgerrors.NewInternalError("bucket updatedAt is not a string or is empty", nil)
 	}
 	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
 	if err != nil {
 		return nil, pkgerrors.NewInternalError("failed to parse updatedAt: "+updatedAtStr, err)
 	}
 
-	return domainbucket.ReconstructBucket(
+	bucket := domainbucket.ReconstructBucket(
 		*bucketID,
-		bucketProps["name"].(string),
+		name,
 		descriptionPtr,
-		bucketProps["key"].(string),
+		key,
 		ownerIDPtr,
 		statusPtr,
 		metadata,
 		createdAt,
 		updatedAt,
-	), nil
+	)
+
+	typeRaw, ok := bucketProps["type"]
+	if !ok {
+		return nil, pkgerrors.NewInternalError("bucket type missing", nil)
+	}
+	typeStr, ok := typeRaw.(string)
+	if !ok || typeStr == "" {
+		return nil, pkgerrors.NewInternalError("bucket type is not a string or is empty", nil)
+	}
+	if err := bucket.SetType(typeStr); err != nil {
+		return nil, err
+	}
+
+	return bucket, nil
 }
 
 func (r *BucketRepository) HasAsset(ctx context.Context, bucketID domainbucket.BucketID, assetID string) (bool, error) {

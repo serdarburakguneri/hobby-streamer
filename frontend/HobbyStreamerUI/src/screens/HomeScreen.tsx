@@ -6,7 +6,10 @@ import {
   ScrollView, 
   RefreshControl, 
   Alert,
-  StatusBar 
+  StatusBar,
+  FlatList,
+  ActivityIndicator,
+  Button
 } from 'react-native';
 import { BucketRow } from '../components/BucketRow';
 import { Asset } from '../types/asset';
@@ -17,48 +20,38 @@ export const HomeScreen: React.FC = () => {
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [nextKey, setNextKey] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const limit = 10;
 
-  const loadData = async () => {
+  const loadBuckets = async (append = false) => {
+    if (loadingMore && append) return;
+    if (!append) setLoading(true);
+    if (append) setLoadingMore(true);
     try {
-      const bucketsData = await apiService.getBuckets();
-      console.log('Loaded buckets:', bucketsData.length);
-      
-      const bucketsWithAssets = await Promise.all(
-        bucketsData.map(async (bucket) => {
-          try {
-            const assets = await apiService.getAssetsInBucket(bucket.key);
-            console.log(`Bucket "${bucket.name}" has ${assets.length} assets`);
-            return {
-              ...bucket,
-              assets
-            };
-          } catch (error) {
-            console.error(`Failed to load assets for bucket ${bucket.name}:`, error);
-            return {
-              ...bucket,
-              assets: []
-            };
-          }
-        })
-      );
-      
-      setBuckets(bucketsWithAssets);
+      const response = await apiService.getBuckets(limit, append ? nextKey : undefined);
+      const newBuckets = response.buckets;
+      setBuckets(append ? [...buckets, ...newBuckets] : newBuckets);
+      setNextKey(response.nextKey);
+      setHasMore(!!response.nextKey);
     } catch (error) {
       console.error('Failed to load data:', error);
       Alert.alert('Error', 'Failed to load content. Please try again.');
     } finally {
-      setLoading(false);
+      if (!append) setLoading(false);
+      if (append) setLoadingMore(false);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadBuckets(false);
     setRefreshing(false);
   };
 
   useEffect(() => {
-    loadData();
+    loadBuckets(false);
   }, []);
 
   const handleAssetPress = (asset: Asset) => {
@@ -72,7 +65,16 @@ export const HomeScreen: React.FC = () => {
     );
   };
 
-  if (loading) {
+  const renderBucket = ({ item }: { item: Bucket }) => (
+    <BucketRow
+      key={item.id}
+      title={item.name}
+      assets={item.assets || []}
+      onAssetPress={handleAssetPress}
+    />
+  );
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
@@ -83,28 +85,24 @@ export const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
-      <ScrollView
-        style={styles.scrollView}
+      <FlatList
+        data={buckets}
+        renderItem={renderBucket}
+        keyExtractor={item => item.id}
+        onEndReached={() => {
+          if (hasMore && !loadingMore) loadBuckets(true);
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#fff" /> : null}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {buckets.map((bucket) => (
-          <BucketRow
-            key={bucket.id}
-            title={bucket.name}
-            assets={bucket.assets || []}
-            onAssetPress={handleAssetPress}
-          />
-        ))}
-
-        {buckets.length === 0 && (
+        ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No content available</Text>
           </View>
-        )}
-      </ScrollView>
+        }
+      />
     </View>
   );
 };

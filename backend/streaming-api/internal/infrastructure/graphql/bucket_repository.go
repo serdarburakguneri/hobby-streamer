@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -25,7 +26,7 @@ func NewBucketRepository(client *Client, circuitBreaker *errors.CircuitBreaker) 
 }
 
 func (r *BucketRepository) GetByID(ctx context.Context, id bucket.BucketID) (*bucket.Bucket, error) {
-	buckets, err := r.GetAll(ctx)
+	buckets, err := r.GetAll(ctx, 10, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -95,10 +96,10 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key bucket.BucketKey) (
 	return r.convertGraphQLBucketWithAssetsToDomain(response.BucketByKey)
 }
 
-func (r *BucketRepository) GetAll(ctx context.Context) ([]*bucket.Bucket, error) {
+func (r *BucketRepository) GetAll(ctx context.Context, limit int, nextKey *string) ([]*bucket.Bucket, error) {
 	query := `
-		query GetBuckets {
-			buckets {
+		query GetBuckets($limit: Int, $nextKey: String) {
+			buckets(limit: $limit, nextKey: $nextKey) {
 				items {
 					id
 					key
@@ -123,18 +124,29 @@ func (r *BucketRepository) GetAll(ctx context.Context) ([]*bucket.Bucket, error)
 						updatedAt
 					}
 				}
+				nextKey
+				hasMore
 			}
 		}
 	`
 
+	variables := map[string]interface{}{
+		"limit": limit,
+	}
+	if nextKey != nil {
+		variables["nextKey"] = *nextKey
+	}
+
 	var response struct {
 		Buckets struct {
-			Items []GraphQLBucketWithAssets `json:"items"`
+			Items   []GraphQLBucketWithAssets `json:"items"`
+			NextKey *string                   `json:"nextKey"`
+			HasMore bool                      `json:"hasMore"`
 		} `json:"buckets"`
 	}
 
 	err := r.circuitBreaker.Execute(ctx, func() error {
-		return r.client.Query(ctx, query, map[string]interface{}{}, &response)
+		return r.client.Query(ctx, query, variables, &response)
 	})
 
 	if err != nil {
@@ -143,21 +155,25 @@ func (r *BucketRepository) GetAll(ctx context.Context) ([]*bucket.Bucket, error)
 		})
 	}
 
-	buckets := make([]*bucket.Bucket, len(response.Buckets.Items))
-	for i, graphQLBucket := range response.Buckets.Items {
+	var buckets []*bucket.Bucket
+	for _, graphQLBucket := range response.Buckets.Items {
 		domainBucket, err := r.convertGraphQLBucketWithAssetsToDomain(&graphQLBucket)
 		if err != nil {
-			r.logger.WithError(err).Error("Failed to convert GraphQL bucket to domain", "bucket_id", graphQLBucket.ID)
+			r.logger.WithError(err).Error("Failed to convert GraphQL bucket to domain", "bucket_id", graphQLBucket.ID, "raw", fmt.Sprintf("%+v", graphQLBucket))
 			continue
 		}
-		buckets[i] = domainBucket
+		if domainBucket == nil {
+			r.logger.Error("convertGraphQLBucketWithAssetsToDomain returned nil", "bucket_id", graphQLBucket.ID, "raw", fmt.Sprintf("%+v", graphQLBucket))
+			continue
+		}
+		buckets = append(buckets, domainBucket)
 	}
 
 	return buckets, nil
 }
 
 func (r *BucketRepository) GetByType(ctx context.Context, bucketType bucket.BucketType) ([]*bucket.Bucket, error) {
-	buckets, err := r.GetAll(ctx)
+	buckets, err := r.GetAll(context.Background(), 10, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +189,7 @@ func (r *BucketRepository) GetByType(ctx context.Context, bucketType bucket.Buck
 }
 
 func (r *BucketRepository) GetActive(ctx context.Context) ([]*bucket.Bucket, error) {
-	buckets, err := r.GetAll(ctx)
+	buckets, err := r.GetAll(context.Background(), 10, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +205,7 @@ func (r *BucketRepository) GetActive(ctx context.Context) ([]*bucket.Bucket, err
 }
 
 func (r *BucketRepository) GetByAssetType(ctx context.Context, assetType asset.AssetType) ([]*bucket.Bucket, error) {
-	buckets, err := r.GetAll(ctx)
+	buckets, err := r.GetAll(context.Background(), 10, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +228,7 @@ func (r *BucketRepository) GetByAssetType(ctx context.Context, assetType asset.A
 }
 
 func (r *BucketRepository) GetByGenre(ctx context.Context, genre asset.Genre) ([]*bucket.Bucket, error) {
-	buckets, err := r.GetAll(ctx)
+	buckets, err := r.GetAll(context.Background(), 10, nil)
 	if err != nil {
 		return nil, err
 	}

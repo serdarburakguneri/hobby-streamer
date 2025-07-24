@@ -22,6 +22,6 @@ type AssetServiceInterface interface {
 }
 
 type BucketServiceInterface interface {
-	GetBuckets(ctx context.Context) ([]*bucketdomain.Bucket, error)
+	GetBuckets(ctx context.Context, limit int, nextKey *string) ([]*bucketdomain.Bucket, error)
 	GetBucket(ctx context.Context, key bucketdomain.BucketKey) (*bucketdomain.Bucket, error)
 }

@@ -2,6 +2,7 @@ package bucket
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
@@ -12,7 +13,7 @@ import (
 type CacheService interface {
 	GetBucket(ctx context.Context, key string) (*bucketdomain.Bucket, error)
 	SetBucket(ctx context.Context, bucket *bucketdomain.Bucket) error
-	GetBuckets(ctx context.Context) ([]*bucketdomain.Bucket, error)
+	GetBuckets(ctx context.Context, limit int, nextKey *string) ([]*bucketdomain.Bucket, error)
 	SetBuckets(ctx context.Context, buckets []*bucketdomain.Bucket) error
 }
 
@@ -71,8 +72,8 @@ func (s *ApplicationService) GetBucket(ctx context.Context, key bucketdomain.Buc
 	return bucket, nil
 }
 
-func (s *ApplicationService) GetBuckets(ctx context.Context) ([]*bucketdomain.Bucket, error) {
-	buckets, err := s.cacheService.GetBuckets(ctx)
+func (s *ApplicationService) GetBuckets(ctx context.Context, limit int, nextKey *string) ([]*bucketdomain.Bucket, error) {
+	buckets, err := s.cacheService.GetBuckets(ctx, limit, nextKey)
 	if err != nil {
 		s.logger.WithError(err).Error("Failed to get buckets from cache")
 		return nil, errors.NewTransientError("cache error", err)
@@ -85,7 +86,7 @@ func (s *ApplicationService) GetBuckets(ctx context.Context) ([]*bucketdomain.Bu
 
 	s.logger.Debug("Buckets not found in cache, fetching from repository")
 
-	buckets, err = s.repo.GetAll(ctx)
+	buckets, err = s.repo.GetAll(ctx, limit, nextKey)
 	if err != nil {
 		return nil, errors.WithContext(err, map[string]interface{}{
 			"operation": "get_buckets",
@@ -93,7 +94,15 @@ func (s *ApplicationService) GetBuckets(ctx context.Context) ([]*bucketdomain.Bu
 	}
 
 	if buckets != nil {
-		if err := s.cacheService.SetBuckets(ctx, buckets); err != nil {
+		var filtered []*bucketdomain.Bucket
+		for i, b := range buckets {
+			if b == nil {
+				s.logger.Warn(fmt.Sprintf("Nil bucket found before caching at index %d!", i))
+				continue
+			}
+			filtered = append(filtered, b)
+		}
+		if err := s.cacheService.SetBuckets(ctx, filtered); err != nil {
 			s.logger.WithError(err).Warn("Failed to cache buckets")
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
@@ -134,9 +135,28 @@ func (b *Bucket) SetMetadata(metadata map[string]interface{}) {
 	b.updatedAt = time.Now().UTC()
 }
 
-func (b *Bucket) SetStatus(status *string) {
+func (b *Bucket) SetStatus(status *string) error {
+	if status == nil || *status == "" {
+		return pkgerrors.NewValidationError("bucket status cannot be empty", nil)
+	}
+	if !IsValidBucketStatus(*status) {
+		return pkgerrors.NewValidationError("invalid bucket status", nil)
+	}
 	b.status = status
 	b.updatedAt = time.Now().UTC()
+	return nil
+}
+
+func (b *Bucket) SetType(t string) error {
+	if t == "" {
+		return pkgerrors.NewValidationError("bucket type cannot be empty", nil)
+	}
+	if !IsValidBucketType(t) {
+		return pkgerrors.NewValidationError("invalid bucket type", nil)
+	}
+	b.bucketType = &t
+	b.updatedAt = time.Now().UTC()
+	return nil
 }
 
 func (b *Bucket) ValidateName() error {
@@ -204,4 +224,13 @@ func randomString(length int) string {
 		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
 	}
 	return string(b)
+}
+
+func IsValidBucketStatus(status string) bool {
+	switch status {
+	case constants.StatusPending, constants.StatusActive, constants.StatusFailed,
+		constants.AssetStatusDraft, constants.AssetStatusPublished, constants.AssetStatusScheduled, constants.AssetStatusExpired:
+		return true
+	}
+	return false
 }

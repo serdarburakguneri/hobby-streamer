@@ -33,6 +33,14 @@ func (s *ApplicationService) CreateBucket(ctx context.Context, cmd CreateBucketC
 		return nil, err
 	}
 
+	if cmd.Type != nil {
+		err := bucket.SetType(*cmd.Type)
+		if err != nil {
+			log.WithError(err).Error("Failed to set bucket type", "type", *cmd.Type)
+			return nil, err
+		}
+	}
+
 	available, err := s.domainService.IsKeyAvailable(ctx, cmd.Key)
 	if err != nil {
 		log.WithError(err).Error("Failed to check key availability", "key", cmd.Key)
@@ -50,7 +58,10 @@ func (s *ApplicationService) CreateBucket(ctx context.Context, cmd CreateBucketC
 		bucket.SetOwnerID(cmd.OwnerID)
 	}
 	if cmd.Status != nil {
-		bucket.SetStatus(cmd.Status)
+		if err := bucket.SetStatus(cmd.Status); err != nil {
+			log.WithError(err).Error("Failed to set bucket status", "status", *cmd.Status)
+			return nil, err
+		}
 	}
 
 	if err := s.repo.Create(ctx, bucket); err != nil {
@@ -110,7 +121,10 @@ func (s *ApplicationService) UpdateBucket(ctx context.Context, cmd UpdateBucketC
 	}
 
 	if cmd.Status != nil {
-		bucket.SetStatus(cmd.Status)
+		if err := bucket.SetStatus(cmd.Status); err != nil {
+			log.WithError(err).Error("Failed to set bucket status", "status", *cmd.Status)
+			return nil, err
+		}
 	}
 
 	if err := s.repo.Update(ctx, bucket); err != nil {

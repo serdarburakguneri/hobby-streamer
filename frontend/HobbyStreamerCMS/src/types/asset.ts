@@ -169,15 +169,15 @@ export interface Bucket {
 }
 
 export enum BucketType {
-  COLLECTION = 'COLLECTION',
-  PLAYLIST = 'PLAYLIST',
-  CATEGORY = 'CATEGORY'
+  COLLECTION = 'collection',
+  PLAYLIST = 'playlist',
+  CATEGORY = 'category'
 }
 
 export enum BucketStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  DRAFT = 'DRAFT'
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  DRAFT = 'draft'
 }
 
 export interface AssetPage {

@@ -9,7 +9,7 @@ import (
 type Repository interface {
 	GetByID(ctx context.Context, id BucketID) (*Bucket, error)
 	GetByKey(ctx context.Context, key BucketKey) (*Bucket, error)
-	GetAll(ctx context.Context) ([]*Bucket, error)
+	GetAll(ctx context.Context, limit int, nextKey *string) ([]*Bucket, error)
 	GetByType(ctx context.Context, bucketType BucketType) ([]*Bucket, error)
 	GetByAssetType(ctx context.Context, assetType asset.AssetType) ([]*Bucket, error)
 	GetByGenre(ctx context.Context, genre asset.Genre) ([]*Bucket, error)

@@ -13,9 +13,10 @@ class ApiService {
     return response.json();
   }
 
-  async getBuckets(): Promise<Bucket[]> {
-    const response: BucketResponse = await this.fetch('/buckets');
-    return response.buckets;
+  async getBuckets(limit = 10, nextKey?: string): Promise<{ buckets: Bucket[], nextKey?: string, count: number, limit: number }> {
+    let url = `/buckets?limit=${limit}`;
+    if (nextKey) url += `&nextKey=${encodeURIComponent(nextKey)}`;
+    return this.fetch(url);
   }
 
   async getBucket(key: string): Promise<Bucket> {

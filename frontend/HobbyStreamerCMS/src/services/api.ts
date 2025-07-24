@@ -1,7 +1,7 @@
 import { gql, useApolloClient } from '@apollo/client';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Asset, AssetCreateDTO, AssetUpdateDTO, AssetPage, AssetInput, AssetType, Image, ImageType } from '../types/asset';
+import { Asset, AssetCreateDTO, AssetUpdateDTO, AssetPage, AssetInput, AssetType, Image, ImageType, BucketStatus } from '../types/asset';
 import { API_CONFIG } from '../config/api';
 
 const AUTH_BASE_URL = API_CONFIG.AUTH_BASE_URL;
@@ -1586,13 +1586,15 @@ export const useAssetService = () => {
       }
     },
 
-    createBucket: async (bucketData: any): Promise<any> => {
+    createBucket: async ({ key, name, description, type, ownerId, metadata, status }: { key: string, name: string, description?: string, type: string, ownerId?: string, metadata?: string, status?: string }): Promise<any> => {
       const input = {
-        key: bucketData.key,
-        name: bucketData.name,
-        description: bucketData.description || '',
-        status: bucketData.status ? bucketData.status.toUpperCase() : 'ACTIVE',
-        ownerId: bucketData.ownerId, // Ensure ownerId is sent
+        key: key,
+        name: name,
+        description: description || '',
+        type: type,
+        status: status || BucketStatus.DRAFT,
+        ownerId: ownerId,
+        metadata: metadata ? JSON.stringify(metadata) : undefined,
       };
 
       const response = await client.mutate({
@@ -1606,7 +1608,7 @@ export const useAssetService = () => {
       const input = {
         name: bucketData.name,
         description: bucketData.description || '',
-        status: bucketData.status ? bucketData.status.toUpperCase() : 'ACTIVE',
+        status: bucketData.status || BucketStatus.DRAFT,
       };
 
       const response = await client.mutate({

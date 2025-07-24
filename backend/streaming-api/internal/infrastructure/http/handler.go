@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
@@ -59,7 +60,19 @@ func (h *Handler) SetupRoutes() *mux.Router {
 func (h *Handler) GetBuckets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	buckets, err := h.bucketService.GetBuckets(ctx)
+	// Parse limit and nextKey from query params
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	var nextKey *string
+	if nk := r.URL.Query().Get("nextKey"); nk != "" {
+		nextKey = &nk
+	}
+
+	buckets, err := h.bucketService.GetBuckets(ctx, limit, nextKey)
 	if err != nil {
 		h.handleError(w, err, "Failed to get buckets")
 		return
@@ -73,6 +86,8 @@ func (h *Handler) GetBuckets(w http.ResponseWriter, r *http.Request) {
 	response := BucketsResponse{
 		Buckets: bucketResponses,
 		Count:   len(bucketResponses),
+		Limit:   limit,
+		NextKey: nextKey,
 	}
 
 	h.writeJSON(w, http.StatusOK, response)

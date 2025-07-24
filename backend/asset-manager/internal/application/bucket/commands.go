@@ -10,6 +10,7 @@ type CreateBucketCommand struct {
 	Description *string
 	OwnerID     *string
 	Status      *string
+	Type        *string
 }
 
 type GetBucketCommand struct {

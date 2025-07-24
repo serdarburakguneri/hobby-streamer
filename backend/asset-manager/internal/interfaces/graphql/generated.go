@@ -78,8 +78,6 @@ type ComplexityRoot struct {
 	}
 
 	Bucket struct {
-		AssetCount  func(childComplexity int) int
-		AssetIds    func(childComplexity int) int
 		Assets      func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		Description func(childComplexity int) int
@@ -89,22 +87,6 @@ type ComplexityRoot struct {
 		Name        func(childComplexity int) int
 		OwnerID     func(childComplexity int) int
 		Status      func(childComplexity int) int
-		Type        func(childComplexity int) int
-		UpdatedAt   func(childComplexity int) int
-	}
-
-	BucketAsset struct {
-		CreatedAt   func(childComplexity int) int
-		Description func(childComplexity int) int
-		Genre       func(childComplexity int) int
-		Genres      func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Metadata    func(childComplexity int) int
-		OwnerID     func(childComplexity int) int
-		Slug        func(childComplexity int) int
-		Status      func(childComplexity int) int
-		Tags        func(childComplexity int) int
-		Title       func(childComplexity int) int
 		Type        func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
@@ -429,20 +411,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AssetPage.NextKey(childComplexity), true
 
-	case "Bucket.assetCount":
-		if e.complexity.Bucket.AssetCount == nil {
-			break
-		}
-
-		return e.complexity.Bucket.AssetCount(childComplexity), true
-
-	case "Bucket.assetIds":
-		if e.complexity.Bucket.AssetIds == nil {
-			break
-		}
-
-		return e.complexity.Bucket.AssetIds(childComplexity), true
-
 	case "Bucket.assets":
 		if e.complexity.Bucket.Assets == nil {
 			break
@@ -519,97 +487,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Bucket.UpdatedAt(childComplexity), true
-
-	case "BucketAsset.createdAt":
-		if e.complexity.BucketAsset.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.CreatedAt(childComplexity), true
-
-	case "BucketAsset.description":
-		if e.complexity.BucketAsset.Description == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Description(childComplexity), true
-
-	case "BucketAsset.genre":
-		if e.complexity.BucketAsset.Genre == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Genre(childComplexity), true
-
-	case "BucketAsset.genres":
-		if e.complexity.BucketAsset.Genres == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Genres(childComplexity), true
-
-	case "BucketAsset.id":
-		if e.complexity.BucketAsset.ID == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.ID(childComplexity), true
-
-	case "BucketAsset.metadata":
-		if e.complexity.BucketAsset.Metadata == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Metadata(childComplexity), true
-
-	case "BucketAsset.ownerId":
-		if e.complexity.BucketAsset.OwnerID == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.OwnerID(childComplexity), true
-
-	case "BucketAsset.slug":
-		if e.complexity.BucketAsset.Slug == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Slug(childComplexity), true
-
-	case "BucketAsset.status":
-		if e.complexity.BucketAsset.Status == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Status(childComplexity), true
-
-	case "BucketAsset.tags":
-		if e.complexity.BucketAsset.Tags == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Tags(childComplexity), true
-
-	case "BucketAsset.title":
-		if e.complexity.BucketAsset.Title == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Title(childComplexity), true
-
-	case "BucketAsset.type":
-		if e.complexity.BucketAsset.Type == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.Type(childComplexity), true
-
-	case "BucketAsset.updatedAt":
-		if e.complexity.BucketAsset.UpdatedAt == nil {
-			break
-		}
-
-		return e.complexity.BucketAsset.UpdatedAt(childComplexity), true
 
 	case "BucketPage.hasMore":
 		if e.complexity.BucketPage.HasMore == nil {
@@ -3708,11 +3585,14 @@ func (ec *executionContext) _Bucket_type(ctx context.Context, field graphql.Coll
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Bucket_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3810,50 +3690,6 @@ func (ec *executionContext) fieldContext_Bucket_ownerId(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Bucket_assetIds(ctx context.Context, field graphql.CollectedField, obj *Bucket) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Bucket_assetIds(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.AssetIds, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Bucket_assetIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Bucket",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Bucket_assets(ctx context.Context, field graphql.CollectedField, obj *Bucket) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bucket_assets(ctx, field)
 	if err != nil {
@@ -3875,14 +3711,11 @@ func (ec *executionContext) _Bucket_assets(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]*Asset)
 	fc.Result = res
-	return ec.marshalNAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAssetᚄ(ctx, field.Selections, res)
+	return ec.marshalOAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAssetᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Bucket_assets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4069,598 +3902,6 @@ func (ec *executionContext) fieldContext_Bucket_updatedAt(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Bucket_assetCount(ctx context.Context, field graphql.CollectedField, obj *Bucket) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Bucket_assetCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.AssetCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Bucket_assetCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Bucket",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_id(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_id(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_slug(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_slug(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slug, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_title(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_title(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Title, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_description(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_description(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Description, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_type(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_type(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_genre(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_genre(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Genre, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_genre(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_genres(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_genres(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Genres, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_genres(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_tags(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_tags(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Tags, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_status(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_status(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_metadata(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_metadata(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Metadata, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_ownerId(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_ownerId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.OwnerID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_ownerId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_createdAt(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_createdAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreatedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BucketAsset_updatedAt(ctx context.Context, field graphql.CollectedField, obj *BucketAsset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BucketAsset_updatedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.UpdatedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BucketAsset_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BucketAsset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _BucketPage_items(ctx context.Context, field graphql.CollectedField, obj *BucketPage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BucketPage_items(ctx, field)
 	if err != nil {
@@ -4714,8 +3955,6 @@ func (ec *executionContext) fieldContext_BucketPage_items(_ context.Context, fie
 				return ec.fieldContext_Bucket_status(ctx, field)
 			case "ownerId":
 				return ec.fieldContext_Bucket_ownerId(ctx, field)
-			case "assetIds":
-				return ec.fieldContext_Bucket_assetIds(ctx, field)
 			case "assets":
 				return ec.fieldContext_Bucket_assets(ctx, field)
 			case "metadata":
@@ -4724,8 +3963,6 @@ func (ec *executionContext) fieldContext_BucketPage_items(_ context.Context, fie
 				return ec.fieldContext_Bucket_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Bucket_updatedAt(ctx, field)
-			case "assetCount":
-				return ec.fieldContext_Bucket_assetCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bucket", field.Name)
 		},
@@ -6038,8 +5275,6 @@ func (ec *executionContext) fieldContext_Mutation_createBucket(ctx context.Conte
 				return ec.fieldContext_Bucket_status(ctx, field)
 			case "ownerId":
 				return ec.fieldContext_Bucket_ownerId(ctx, field)
-			case "assetIds":
-				return ec.fieldContext_Bucket_assetIds(ctx, field)
 			case "assets":
 				return ec.fieldContext_Bucket_assets(ctx, field)
 			case "metadata":
@@ -6048,8 +5283,6 @@ func (ec *executionContext) fieldContext_Mutation_createBucket(ctx context.Conte
 				return ec.fieldContext_Bucket_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Bucket_updatedAt(ctx, field)
-			case "assetCount":
-				return ec.fieldContext_Bucket_assetCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bucket", field.Name)
 		},
@@ -6121,8 +5354,6 @@ func (ec *executionContext) fieldContext_Mutation_updateBucket(ctx context.Conte
 				return ec.fieldContext_Bucket_status(ctx, field)
 			case "ownerId":
 				return ec.fieldContext_Bucket_ownerId(ctx, field)
-			case "assetIds":
-				return ec.fieldContext_Bucket_assetIds(ctx, field)
 			case "assets":
 				return ec.fieldContext_Bucket_assets(ctx, field)
 			case "metadata":
@@ -6131,8 +5362,6 @@ func (ec *executionContext) fieldContext_Mutation_updateBucket(ctx context.Conte
 				return ec.fieldContext_Bucket_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Bucket_updatedAt(ctx, field)
-			case "assetCount":
-				return ec.fieldContext_Bucket_assetCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bucket", field.Name)
 		},
@@ -6753,8 +5982,6 @@ func (ec *executionContext) fieldContext_Query_bucket(ctx context.Context, field
 				return ec.fieldContext_Bucket_status(ctx, field)
 			case "ownerId":
 				return ec.fieldContext_Bucket_ownerId(ctx, field)
-			case "assetIds":
-				return ec.fieldContext_Bucket_assetIds(ctx, field)
 			case "assets":
 				return ec.fieldContext_Bucket_assets(ctx, field)
 			case "metadata":
@@ -6763,8 +5990,6 @@ func (ec *executionContext) fieldContext_Query_bucket(ctx context.Context, field
 				return ec.fieldContext_Bucket_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Bucket_updatedAt(ctx, field)
-			case "assetCount":
-				return ec.fieldContext_Bucket_assetCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bucket", field.Name)
 		},
@@ -6833,8 +6058,6 @@ func (ec *executionContext) fieldContext_Query_bucketByKey(ctx context.Context, 
 				return ec.fieldContext_Bucket_status(ctx, field)
 			case "ownerId":
 				return ec.fieldContext_Bucket_ownerId(ctx, field)
-			case "assetIds":
-				return ec.fieldContext_Bucket_assetIds(ctx, field)
 			case "assets":
 				return ec.fieldContext_Bucket_assets(ctx, field)
 			case "metadata":
@@ -6843,8 +6066,6 @@ func (ec *executionContext) fieldContext_Query_bucketByKey(ctx context.Context, 
 				return ec.fieldContext_Bucket_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Bucket_updatedAt(ctx, field)
-			case "assetCount":
-				return ec.fieldContext_Bucket_assetCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bucket", field.Name)
 		},
@@ -11171,7 +10392,7 @@ func (ec *executionContext) unmarshalInputCreateBucketInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"key", "name", "description", "ownerId", "metadata", "status"}
+	fieldsInOrder := [...]string{"key", "name", "description", "type", "ownerId", "metadata", "status"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11199,6 +10420,13 @@ func (ec *executionContext) unmarshalInputCreateBucketInput(ctx context.Context,
 				return it, err
 			}
 			it.Description = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
 		case "ownerId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownerId"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -11595,28 +10823,23 @@ func (ec *executionContext) _Bucket(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Bucket_description(ctx, field, obj)
 		case "type":
 			out.Values[i] = ec._Bucket_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "status":
 			out.Values[i] = ec._Bucket_status(ctx, field, obj)
 		case "ownerId":
 			out.Values[i] = ec._Bucket_ownerId(ctx, field, obj)
-		case "assetIds":
-			out.Values[i] = ec._Bucket_assetIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "assets":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Bucket_assets(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -11651,86 +10874,6 @@ func (ec *executionContext) _Bucket(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Bucket_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "assetCount":
-			out.Values[i] = ec._Bucket_assetCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var bucketAssetImplementors = []string{"BucketAsset"}
-
-func (ec *executionContext) _BucketAsset(ctx context.Context, sel ast.SelectionSet, obj *BucketAsset) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, bucketAssetImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("BucketAsset")
-		case "id":
-			out.Values[i] = ec._BucketAsset_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slug":
-			out.Values[i] = ec._BucketAsset_slug(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "title":
-			out.Values[i] = ec._BucketAsset_title(ctx, field, obj)
-		case "description":
-			out.Values[i] = ec._BucketAsset_description(ctx, field, obj)
-		case "type":
-			out.Values[i] = ec._BucketAsset_type(ctx, field, obj)
-		case "genre":
-			out.Values[i] = ec._BucketAsset_genre(ctx, field, obj)
-		case "genres":
-			out.Values[i] = ec._BucketAsset_genres(ctx, field, obj)
-		case "tags":
-			out.Values[i] = ec._BucketAsset_tags(ctx, field, obj)
-		case "status":
-			out.Values[i] = ec._BucketAsset_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "metadata":
-			out.Values[i] = ec._BucketAsset_metadata(ctx, field, obj)
-		case "ownerId":
-			out.Values[i] = ec._BucketAsset_ownerId(ctx, field, obj)
-		case "createdAt":
-			out.Values[i] = ec._BucketAsset_createdAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updatedAt":
-			out.Values[i] = ec._BucketAsset_updatedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -13691,6 +12834,53 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalOAsset2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAssetᚄ(ctx context.Context, sel ast.SelectionSet, v []*Asset) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx context.Context, sel ast.SelectionSet, v *Asset) graphql.Marshaler {

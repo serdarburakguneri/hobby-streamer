@@ -10,6 +10,8 @@ import (
 type BucketsResponse struct {
 	Buckets []BucketResponse `json:"buckets"`
 	Count   int              `json:"count"`
+	Limit   int              `json:"limit"`
+	NextKey *string          `json:"nextKey,omitempty"`
 }
 
 type BucketResponse struct {
@@ -19,7 +21,6 @@ type BucketResponse struct {
 	Description *string         `json:"description,omitempty"`
 	Type        string          `json:"type"`
 	Status      *string         `json:"status,omitempty"`
-	AssetIDs    []string        `json:"assetIds,omitempty"`
 	CreatedAt   time.Time       `json:"createdAt"`
 	UpdatedAt   time.Time       `json:"updatedAt"`
 	Assets      []AssetResponse `json:"assets,omitempty"`
@@ -147,11 +148,6 @@ func NewBucketResponse(b *bucket.Bucket) BucketResponse {
 		status = &statusVal
 	}
 
-	var assetIDs []string
-	if b.AssetIDs() != nil {
-		assetIDs = b.AssetIDs().Values()
-	}
-
 	return BucketResponse{
 		ID:          b.ID().Value(),
 		Key:         b.Key().Value(),
@@ -159,7 +155,6 @@ func NewBucketResponse(b *bucket.Bucket) BucketResponse {
 		Description: description,
 		Type:        b.Type().Value(),
 		Status:      status,
-		AssetIDs:    assetIDs,
 		CreatedAt:   b.CreatedAt().Value(),
 		UpdatedAt:   b.UpdatedAt().Value(),
 	}

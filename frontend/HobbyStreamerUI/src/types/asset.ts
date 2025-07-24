@@ -113,4 +113,6 @@ export interface AssetResponse {
 export interface BucketResponse {
   buckets: Bucket[];
   count: number;
+  limit: number;
+  nextKey?: string;
 } 
