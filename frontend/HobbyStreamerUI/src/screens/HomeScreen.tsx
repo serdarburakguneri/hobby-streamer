@@ -65,14 +65,19 @@ export const HomeScreen: React.FC = () => {
     );
   };
 
-  const renderBucket = ({ item }: { item: Bucket }) => (
-    <BucketRow
-      key={item.id}
-      title={item.name}
-      assets={item.assets || []}
-      onAssetPress={handleAssetPress}
-    />
-  );
+  const renderBucket = ({ item }: { item: Bucket }) => {
+    if (!item.name || !item.name.trim() || !item.assets || item.assets.length === 0) {
+      return null;
+    }
+    return (
+      <BucketRow
+        key={item.id}
+        title={item.name}
+        assets={item.assets}
+        onAssetPress={handleAssetPress}
+      />
+    );
+  };
 
   if (loading && !refreshing) {
     return (

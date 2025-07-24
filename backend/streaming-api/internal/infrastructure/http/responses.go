@@ -135,6 +135,14 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+func convertAssetsToResponse(assets []*asset.Asset) []AssetResponse {
+	responses := make([]AssetResponse, len(assets))
+	for i, a := range assets {
+		responses[i] = NewAssetResponse(a)
+	}
+	return responses
+}
+
 func NewBucketResponse(b *bucket.Bucket) BucketResponse {
 	var description *string
 	if b.Description() != nil {
@@ -157,6 +165,7 @@ func NewBucketResponse(b *bucket.Bucket) BucketResponse {
 		Status:      status,
 		CreatedAt:   b.CreatedAt().Value(),
 		UpdatedAt:   b.UpdatedAt().Value(),
+		Assets:      convertAssetsToResponse(b.Assets()),
 	}
 }
 

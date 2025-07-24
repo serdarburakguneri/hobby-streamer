@@ -247,14 +247,9 @@ func NewVideoFormat(value string) (*VideoFormat, error) {
 		return nil, ErrInvalidVideoFormat
 	}
 
-	validFormats := map[string]bool{
-		"mp4":  true,
-		"webm": true,
-		"avi":  true,
-		"mov":  true,
-		"mkv":  true,
-		"hls":  true,
-		"dash": true,
+	validFormats := make(map[string]bool)
+	for _, f := range constants.AllowedVideoFormats {
+		validFormats[f] = true
 	}
 
 	if !validFormats[value] {

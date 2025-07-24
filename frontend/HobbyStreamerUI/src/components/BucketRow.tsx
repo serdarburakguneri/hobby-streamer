@@ -10,13 +10,13 @@ interface BucketRowProps {
 }
 
 export const BucketRow: React.FC<BucketRowProps> = ({ title, assets, onAssetPress }) => {
-  console.log(`BucketRow "${title}" rendering with ${assets.length} assets`);
+  const displayTitle = title && title.trim() ? title : 'Untitled Bucket';
+  if (!displayTitle) return null;
+  console.log(`BucketRow "${displayTitle}" rendering with ${assets.length} assets`);
 
   return (
     <View style={styles.container}>
-      {title && (
-        <Text style={styles.title}>{title}</Text>
-      )}
+      <Text style={styles.title}>{displayTitle}</Text>
       {assets.length > 0 ? (
         <ScrollView 
           horizontal 

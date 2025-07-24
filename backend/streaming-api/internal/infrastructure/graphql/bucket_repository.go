@@ -65,6 +65,72 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key bucket.BucketKey) (
 					metadata
 					createdAt
 					updatedAt
+					ownerId
+					videos {
+						id
+						type
+						format
+						storageLocation { bucket key url }
+						width
+						height
+						duration
+						bitrate
+						codec
+						size
+						contentType
+						streamInfo { downloadUrl cdnPrefix url }
+						metadata
+						status
+						thumbnail {
+							id
+							fileName
+							url
+							type
+							storageLocation { bucket key url }
+							width
+							height
+							size
+							contentType
+							metadata
+							createdAt
+							updatedAt
+						}
+						createdAt
+						updatedAt
+						quality
+						isReady
+						isProcessing
+						isFailed
+						segmentCount
+						videoCodec
+						audioCodec
+						avgSegmentDuration
+						segments
+						frameRate
+						audioChannels
+						audioSampleRate
+						transcodingInfo { jobId progress outputUrl error completedAt }
+					}
+					images {
+						id
+						fileName
+						url
+						type
+						storageLocation { bucket key url }
+						width
+						height
+						size
+						contentType
+						metadata
+						createdAt
+						updatedAt
+					}
+					publishRule {
+						publishAt
+						unpublishAt
+						regions
+						ageRating
+					}
 				}
 			}
 		}
@@ -122,6 +188,72 @@ func (r *BucketRepository) GetAll(ctx context.Context, limit int, nextKey *strin
 						metadata
 						createdAt
 						updatedAt
+						ownerId
+						videos {
+							id
+							type
+							format
+							storageLocation { bucket key url }
+							width
+							height
+							duration
+							bitrate
+							codec
+							size
+							contentType
+							streamInfo { downloadUrl cdnPrefix url }
+							metadata
+							status
+							thumbnail {
+								id
+								fileName
+								url
+								type
+								storageLocation { bucket key url }
+								width
+								height
+								size
+								contentType
+								metadata
+								createdAt
+								updatedAt
+							}
+							createdAt
+							updatedAt
+							quality
+							isReady
+							isProcessing
+							isFailed
+							segmentCount
+							videoCodec
+							audioCodec
+							avgSegmentDuration
+							segments
+							frameRate
+							audioChannels
+							audioSampleRate
+							transcodingInfo { jobId progress outputUrl error completedAt }
+						}
+						images {
+							id
+							fileName
+							url
+							type
+							storageLocation { bucket key url }
+							width
+							height
+							size
+							contentType
+							metadata
+							createdAt
+							updatedAt
+						}
+						publishRule {
+							publishAt
+							unpublishAt
+							regions
+							ageRating
+						}
 					}
 				}
 				nextKey
@@ -431,6 +563,30 @@ func (r *BucketRepository) convertGraphQLAssetToDomain(graphQLAsset GraphQLBucke
 		ownerID = ownerIDVO
 	}
 
+	videos, err := r.convertGraphQLVideosToDomain(graphQLAsset.Videos)
+	if err != nil {
+		return nil, err
+	}
+
+	images, err := r.convertGraphQLImagesToDomain(graphQLAsset.Images)
+	if err != nil {
+		return nil, err
+	}
+
+	var publishRule *asset.PublishRuleValue
+	if graphQLAsset.PublishRule != nil {
+		publishRuleVO, err := asset.NewPublishRuleValue(
+			graphQLAsset.PublishRule.PublishAt,
+			graphQLAsset.PublishRule.UnpublishAt,
+			graphQLAsset.PublishRule.Regions,
+			graphQLAsset.PublishRule.AgeRating,
+		)
+		if err != nil {
+			return nil, err
+		}
+		publishRule = publishRuleVO
+	}
+
 	return asset.NewAsset(
 		*assetID,
 		*slug,
@@ -445,9 +601,196 @@ func (r *BucketRepository) convertGraphQLAssetToDomain(graphQLAsset GraphQLBucke
 		*updatedAt,
 		graphQLAsset.Metadata,
 		ownerID,
-		[]asset.Video{}, // Videos not loaded in bucket context
-		[]asset.Image{}, // Images not loaded in bucket context
-		nil,             // Publish rule not loaded in bucket context
+		videos,
+		images,
+		publishRule,
+	), nil
+}
+
+func (r *BucketRepository) convertGraphQLVideosToDomain(graphQLVideos []GraphQLVideo) ([]asset.Video, error) {
+	videos := make([]asset.Video, len(graphQLVideos))
+	for i, graphQLVideo := range graphQLVideos {
+		video, err := r.convertGraphQLVideoToDomain(graphQLVideo)
+		if err != nil {
+			return nil, err
+		}
+		videos[i] = *video
+	}
+	return videos, nil
+}
+
+func (r *BucketRepository) convertGraphQLImagesToDomain(graphQLImages []GraphQLImage) ([]asset.Image, error) {
+	images := make([]asset.Image, len(graphQLImages))
+	for i, graphQLImage := range graphQLImages {
+		image, err := r.convertGraphQLImageToDomain(&graphQLImage)
+		if err != nil {
+			return nil, err
+		}
+		images[i] = *image
+	}
+	return images, nil
+}
+
+func (r *BucketRepository) convertGraphQLVideoToDomain(graphQLVideo GraphQLVideo) (*asset.Video, error) {
+	videoID, err := asset.NewVideoID(graphQLVideo.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var videoType *asset.VideoType
+	if graphQLVideo.Type != "" {
+		videoTypeVO, err := asset.NewVideoType(string(graphQLVideo.Type))
+		if err != nil {
+			return nil, err
+		}
+		videoType = videoTypeVO
+	}
+
+	var format *asset.VideoFormat
+	if graphQLVideo.Format != "" {
+		formatVO, err := asset.NewVideoFormat(string(graphQLVideo.Format))
+		if err != nil {
+			return nil, err
+		}
+		format = formatVO
+	}
+
+	storageLocation, err := asset.NewS3ObjectValue(
+		graphQLVideo.StorageLocation.Bucket,
+		graphQLVideo.StorageLocation.Key,
+		graphQLVideo.StorageLocation.URL,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var streamInfo *asset.StreamInfoValue
+	if graphQLVideo.StreamInfo != nil {
+		streamInfoVO, err := asset.NewStreamInfoValue(
+			graphQLVideo.StreamInfo.DownloadURL,
+			graphQLVideo.StreamInfo.CDNPrefix,
+			graphQLVideo.StreamInfo.URL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		streamInfo = streamInfoVO
+	}
+
+	var thumbnail *asset.Image
+	if graphQLVideo.Thumbnail != nil {
+		thumbnailVO, err := r.convertGraphQLImageToDomain(graphQLVideo.Thumbnail)
+		if err != nil {
+			return nil, err
+		}
+		thumbnail = thumbnailVO
+	}
+
+	metadata := convertStringSliceToString(graphQLVideo.Metadata)
+	status := string(graphQLVideo.Status)
+
+	var quality *asset.VideoQuality
+	if graphQLVideo.Quality != nil {
+		qualityVO, err := asset.NewVideoQuality(*graphQLVideo.Quality)
+		if err == nil {
+			quality = qualityVO
+		}
+	}
+
+	var transcodingInfo *asset.TranscodingInfo
+	if graphQLVideo.TranscodingInfo != nil {
+		transcodingInfo = &asset.TranscodingInfo{
+			JobID:       graphQLVideo.TranscodingInfo.JobID,
+			Progress:    graphQLVideo.TranscodingInfo.Progress,
+			OutputURL:   graphQLVideo.TranscodingInfo.OutputURL,
+			Error:       graphQLVideo.TranscodingInfo.Error,
+			CompletedAt: graphQLVideo.TranscodingInfo.CompletedAt,
+		}
+	}
+
+	return asset.NewVideo(
+		*videoID,
+		videoType,
+		format,
+		*storageLocation,
+		graphQLVideo.Width,
+		graphQLVideo.Height,
+		graphQLVideo.Duration,
+		graphQLVideo.Bitrate,
+		graphQLVideo.Codec,
+		graphQLVideo.Size,
+		graphQLVideo.ContentType,
+		streamInfo,
+		metadata,
+		&status,
+		thumbnail,
+		graphQLVideo.CreatedAt,
+		graphQLVideo.UpdatedAt,
+		quality,
+		graphQLVideo.IsReady,
+		graphQLVideo.IsProcessing,
+		graphQLVideo.IsFailed,
+		graphQLVideo.SegmentCount,
+		graphQLVideo.VideoCodec,
+		graphQLVideo.AudioCodec,
+		graphQLVideo.AvgSegmentDuration,
+		graphQLVideo.Segments,
+		graphQLVideo.FrameRate,
+		graphQLVideo.AudioChannels,
+		graphQLVideo.AudioSampleRate,
+		transcodingInfo,
+	), nil
+}
+
+func (r *BucketRepository) convertGraphQLImageToDomain(graphQLImage *GraphQLImage) (*asset.Image, error) {
+	imageID, err := asset.NewImageID(graphQLImage.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	fileName, err := asset.NewFileName(graphQLImage.FileName)
+	if err != nil {
+		return nil, err
+	}
+
+	var imageType *asset.ImageType
+	if graphQLImage.Type != "" {
+		imageTypeVO, err := asset.NewImageType(string(graphQLImage.Type))
+		if err != nil {
+			return nil, err
+		}
+		imageType = imageTypeVO
+	}
+
+	var storageLocation *asset.S3ObjectValue
+	if graphQLImage.StorageLocation != nil {
+		storageLocationVO, err := asset.NewS3ObjectValue(
+			graphQLImage.StorageLocation.Bucket,
+			graphQLImage.StorageLocation.Key,
+			graphQLImage.StorageLocation.URL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		storageLocation = storageLocationVO
+	}
+
+	metadata := convertStringSliceToString(graphQLImage.Metadata)
+
+	return asset.NewImage(
+		*imageID,
+		*fileName,
+		graphQLImage.URL,
+		imageType,
+		storageLocation,
+		graphQLImage.Width,
+		graphQLImage.Height,
+		graphQLImage.Size,
+		graphQLImage.ContentType,
+		nil, // streamInfo - not available in GraphQL
+		metadata,
+		graphQLImage.CreatedAt,
+		graphQLImage.UpdatedAt,
 	), nil
 }
 
@@ -475,17 +818,20 @@ type GraphQLBucketWithAssets struct {
 }
 
 type GraphQLBucketAsset struct {
-	ID          string    `json:"id"`
-	Slug        string    `json:"slug"`
-	Title       *string   `json:"title"`
-	Description *string   `json:"description"`
-	Type        string    `json:"type"`
-	Genre       *string   `json:"genre"`
-	Genres      []string  `json:"genres"`
-	Tags        []string  `json:"tags"`
-	Status      string    `json:"status"`
-	Metadata    *string   `json:"metadata"`
-	OwnerID     *string   `json:"ownerId"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          string              `json:"id"`
+	Slug        string              `json:"slug"`
+	Title       *string             `json:"title"`
+	Description *string             `json:"description"`
+	Type        string              `json:"type"`
+	Genre       *string             `json:"genre"`
+	Genres      []string            `json:"genres"`
+	Tags        []string            `json:"tags"`
+	Status      string              `json:"status"`
+	Metadata    *string             `json:"metadata"`
+	OwnerID     *string             `json:"ownerId"`
+	CreatedAt   time.Time           `json:"createdAt"`
+	UpdatedAt   time.Time           `json:"updatedAt"`
+	Videos      []GraphQLVideo      `json:"videos"`
+	Images      []GraphQLImage      `json:"images"`
+	PublishRule *GraphQLPublishRule `json:"publishRule"`
 }

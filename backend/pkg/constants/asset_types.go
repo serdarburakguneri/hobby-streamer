@@ -15,6 +15,14 @@ const (
 	AssetTypeMusicVideo   = "music_video"
 	AssetTypePodcast      = "podcast"
 	AssetTypeLive         = "live"
+	VideoFormatHLS        = "hls"
+	VideoFormatDASH       = "dash"
+	VideoFormatRAW        = "raw"
+	VideoFormatMP4        = "mp4"
+	VideoFormatWEBM       = "webm"
+	VideoFormatAVI        = "avi"
+	VideoFormatMOV        = "mov"
+	VideoFormatMKV        = "mkv"
 )
 
 var AllowedAssetTypes = []string{
@@ -32,4 +40,15 @@ var AllowedAssetTypes = []string{
 	AssetTypeMusicVideo,
 	AssetTypePodcast,
 	AssetTypeLive,
+}
+
+var AllowedVideoFormats = []string{
+	VideoFormatHLS,
+	VideoFormatDASH,
+	VideoFormatRAW,
+	VideoFormatMP4,
+	VideoFormatWEBM,
+	VideoFormatAVI,
+	VideoFormatMOV,
+	VideoFormatMKV,
 }
