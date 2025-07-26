@@ -232,6 +232,7 @@ const (
 	ImageTypeBackdrop     ImageType = "backdrop"
 	ImageTypeThumbnail    ImageType = "thumbnail"
 	ImageTypeLogo         ImageType = "logo"
+	ImageTypeBanner       ImageType = "banner"
 	ImageTypeHero         ImageType = "hero"
 	ImageTypeScreenshot   ImageType = "screenshot"
 	ImageTypeBehindScenes ImageType = "behind_scenes"
@@ -243,6 +244,7 @@ var AllImageType = []ImageType{
 	ImageTypeBackdrop,
 	ImageTypeThumbnail,
 	ImageTypeLogo,
+	ImageTypeBanner,
 	ImageTypeHero,
 	ImageTypeScreenshot,
 	ImageTypeBehindScenes,
@@ -251,7 +253,7 @@ var AllImageType = []ImageType{
 
 func (e ImageType) IsValid() bool {
 	switch e {
-	case ImageTypePoster, ImageTypeBackdrop, ImageTypeThumbnail, ImageTypeLogo, ImageTypeHero, ImageTypeScreenshot, ImageTypeBehindScenes, ImageTypeInterview:
+	case ImageTypePoster, ImageTypeBackdrop, ImageTypeThumbnail, ImageTypeLogo, ImageTypeBanner, ImageTypeHero, ImageTypeScreenshot, ImageTypeBehindScenes, ImageTypeInterview:
 		return true
 	}
 	return false

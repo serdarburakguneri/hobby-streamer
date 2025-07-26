@@ -247,12 +247,7 @@ func NewVideoFormat(value string) (*VideoFormat, error) {
 		return nil, ErrInvalidVideoFormat
 	}
 
-	validFormats := make(map[string]bool)
-	for _, f := range constants.AllowedVideoFormats {
-		validFormats[f] = true
-	}
-
-	if !validFormats[value] {
+	if !constants.IsValidVideoFormat(value) {
 		return nil, ErrInvalidVideoFormat
 	}
 

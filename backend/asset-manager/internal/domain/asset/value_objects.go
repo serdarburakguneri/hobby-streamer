@@ -125,13 +125,7 @@ type AssetType struct {
 	value string
 }
 
-var allowedAssetTypes = func() map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, t := range constants.AllowedAssetTypes {
-		m[t] = struct{}{}
-	}
-	return m
-}()
+var allowedAssetTypes = constants.AllowedAssetTypes
 
 func NewAssetType(value string) (*AssetType, error) {
 	if _, ok := allowedAssetTypes[value]; !ok {
@@ -152,13 +146,7 @@ type Genre struct {
 	value string
 }
 
-var allowedGenres = func() map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, g := range constants.AllowedGenres {
-		m[g] = struct{}{}
-	}
-	return m
-}()
+var allowedGenres = constants.AllowedGenres
 
 func NewGenre(value string) (*Genre, error) {
 	if _, ok := allowedGenres[value]; !ok {

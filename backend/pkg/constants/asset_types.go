@@ -15,40 +15,26 @@ const (
 	AssetTypeMusicVideo   = "music_video"
 	AssetTypePodcast      = "podcast"
 	AssetTypeLive         = "live"
-	VideoFormatHLS        = "hls"
-	VideoFormatDASH       = "dash"
-	VideoFormatRAW        = "raw"
-	VideoFormatMP4        = "mp4"
-	VideoFormatWEBM       = "webm"
-	VideoFormatAVI        = "avi"
-	VideoFormatMOV        = "mov"
-	VideoFormatMKV        = "mkv"
 )
 
-var AllowedAssetTypes = []string{
-	AssetTypeMovie,
-	AssetTypeTVShow,
-	AssetTypeSeries,
-	AssetTypeSeason,
-	AssetTypeEpisode,
-	AssetTypeDocumentary,
-	AssetTypeShort,
-	AssetTypeTrailer,
-	AssetTypeBonus,
-	AssetTypeBehindScenes,
-	AssetTypeInterview,
-	AssetTypeMusicVideo,
-	AssetTypePodcast,
-	AssetTypeLive,
+var AllowedAssetTypes = map[string]struct{}{
+	AssetTypeMovie:        {},
+	AssetTypeTVShow:       {},
+	AssetTypeSeries:       {},
+	AssetTypeSeason:       {},
+	AssetTypeEpisode:      {},
+	AssetTypeDocumentary:  {},
+	AssetTypeShort:        {},
+	AssetTypeTrailer:      {},
+	AssetTypeBonus:        {},
+	AssetTypeBehindScenes: {},
+	AssetTypeInterview:    {},
+	AssetTypeMusicVideo:   {},
+	AssetTypePodcast:      {},
+	AssetTypeLive:         {},
 }
 
-var AllowedVideoFormats = []string{
-	VideoFormatHLS,
-	VideoFormatDASH,
-	VideoFormatRAW,
-	VideoFormatMP4,
-	VideoFormatWEBM,
-	VideoFormatAVI,
-	VideoFormatMOV,
-	VideoFormatMKV,
+func IsValidAssetType(t string) bool {
+	_, ok := AllowedAssetTypes[t]
+	return ok
 }

@@ -17,19 +17,24 @@ const (
 	GenreEducational = "educational"
 )
 
-var AllowedGenres = []string{
-	GenreAction,
-	GenreDrama,
-	GenreComedy,
-	GenreHorror,
-	GenreSciFi,
-	GenreRomance,
-	GenreThriller,
-	GenreFantasy,
-	GenreDocumentary,
-	GenreMusic,
-	GenreNews,
-	GenreSports,
-	GenreKids,
-	GenreEducational,
+var AllowedGenres = map[string]struct{}{
+	GenreAction:      {},
+	GenreDrama:       {},
+	GenreComedy:      {},
+	GenreHorror:      {},
+	GenreSciFi:       {},
+	GenreRomance:     {},
+	GenreThriller:    {},
+	GenreFantasy:     {},
+	GenreDocumentary: {},
+	GenreMusic:       {},
+	GenreNews:        {},
+	GenreSports:      {},
+	GenreKids:        {},
+	GenreEducational: {},
+}
+
+func IsValidGenre(g string) bool {
+	_, ok := AllowedGenres[g]
+	return ok
 }

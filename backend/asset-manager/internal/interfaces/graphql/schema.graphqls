@@ -191,6 +191,7 @@ enum ImageType {
   backdrop
   thumbnail
   logo
+  banner
   hero
   screenshot
   behind_scenes
