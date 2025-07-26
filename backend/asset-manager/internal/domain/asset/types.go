@@ -7,27 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type ImageType string
 
-const (
-	ImageTypePoster    ImageType = "poster"
-	ImageTypeBackdrop  ImageType = "backdrop"
-	ImageTypeThumbnail ImageType = "thumbnail"
-	ImageTypeLogo      ImageType = "logo"
-)
-
 func NewImageType(value string) (ImageType, error) {
-	validTypes := map[string]bool{
-		"poster":    true,
-		"backdrop":  true,
-		"thumbnail": true,
-		"logo":      true,
-	}
-
-	if !validTypes[value] {
+	if !constants.IsValidImageType(value) {
 		return "", ErrInvalidImageType
 	}
 

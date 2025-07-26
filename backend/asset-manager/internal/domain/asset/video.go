@@ -13,8 +13,8 @@ type VideoStatus string
 type VideoQuality string
 
 type Video struct {
-	id                 string
-	label              string
+	id                 VideoID
+	label              VideoLabel
 	videoType          VideoType
 	format             VideoFormat
 	storageLocation    S3Object
@@ -24,7 +24,7 @@ type Video struct {
 	bitrate            int
 	codec              string
 	size               int64
-	contentType        string
+	contentType        VideoContentType
 	streamInfo         *StreamInfo
 	metadata           map[string]string
 	status             VideoStatus
@@ -52,11 +52,26 @@ func NewVideoFormat(value string) (*VideoFormat, error) {
 	}
 }
 
-func NewVideo(label string, format *VideoFormat, storageLocation S3Object, segmentCount int, videoCodec, audioCodec string, avgSegmentDuration float64, segments []string) *Video {
+func NewVideo(label string, format *VideoFormat, storageLocation S3Object, segmentCount int, videoCodec, audioCodec string, avgSegmentDuration float64, segments []string) (*Video, error) {
+	videoID, err := NewVideoID(generateID())
+	if err != nil {
+		return nil, err
+	}
+
+	videoLabel, err := NewVideoLabel(label)
+	if err != nil {
+		return nil, err
+	}
+
+	videoContentType, err := NewVideoContentType("")
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now().UTC()
 	video := &Video{
-		id:                 generateID(),
-		label:              label,
+		id:                 *videoID,
+		label:              *videoLabel,
 		videoType:          VideoType(constants.VideoTypeMain),
 		storageLocation:    storageLocation,
 		status:             VideoStatus(constants.VideoStatusPending),
@@ -68,13 +83,14 @@ func NewVideo(label string, format *VideoFormat, storageLocation S3Object, segme
 		audioCodec:         audioCodec,
 		avgSegmentDuration: avgSegmentDuration,
 		segments:           segments,
+		contentType:        *videoContentType,
 	}
 
 	if format != nil {
 		video.format = *format
 	}
 
-	return video
+	return video, nil
 }
 
 func ReconstructVideo(
@@ -101,10 +117,25 @@ func ReconstructVideo(
 	frameRate string,
 	audioChannels int,
 	audioSampleRate int,
-) *Video {
+) (*Video, error) {
+	videoID, err := NewVideoID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	videoLabel, err := NewVideoLabel(label)
+	if err != nil {
+		return nil, err
+	}
+
+	videoContentType, err := NewVideoContentType(contentType)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Video{
-		id:                 id,
-		label:              label,
+		id:                 *videoID,
+		label:              *videoLabel,
 		videoType:          videoType,
 		format:             format,
 		storageLocation:    storageLocation,
@@ -114,7 +145,7 @@ func ReconstructVideo(
 		bitrate:            bitrate,
 		codec:              codec,
 		size:               size,
-		contentType:        contentType,
+		contentType:        *videoContentType,
 		status:             status,
 		metadata:           make(map[string]string),
 		createdAt:          createdAt,
@@ -127,14 +158,14 @@ func ReconstructVideo(
 		frameRate:          frameRate,
 		audioChannels:      audioChannels,
 		audioSampleRate:    audioSampleRate,
-	}
+	}, nil
 }
 
-func (v *Video) ID() string {
+func (v *Video) ID() VideoID {
 	return v.id
 }
 
-func (v *Video) Label() string {
+func (v *Video) Label() VideoLabel {
 	return v.label
 }
 
@@ -174,7 +205,7 @@ func (v *Video) Size() int64 {
 	return v.size
 }
 
-func (v *Video) ContentType() string {
+func (v *Video) ContentType() VideoContentType {
 	return v.contentType
 }
 
@@ -242,9 +273,14 @@ func (v *Video) UpdateSize(size int64) {
 	v.updatedAt = time.Now().UTC()
 }
 
-func (v *Video) UpdateContentType(contentType string) {
-	v.contentType = contentType
+func (v *Video) UpdateContentType(contentType string) error {
+	newContentType, err := NewVideoContentType(contentType)
+	if err != nil {
+		return err
+	}
+	v.contentType = *newContentType
 	v.updatedAt = time.Now().UTC()
+	return nil
 }
 
 func (v *Video) SetStreamInfo(streamInfo *StreamInfo) {

@@ -191,6 +191,10 @@ enum ImageType {
   backdrop
   thumbnail
   logo
+  hero
+  screenshot
+  behind_scenes
+  interview
 }
 
 input CreateAssetInput {

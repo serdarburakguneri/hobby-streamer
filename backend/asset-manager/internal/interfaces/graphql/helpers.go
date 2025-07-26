@@ -82,6 +82,11 @@ func domainAssetToGraphQL(asset *domainasset.Asset) *Asset {
 		videos = append(videos, domainVideoToGraphQL(video))
 	}
 
+	images := make([]*Image, 0, len(asset.Images()))
+	for _, image := range asset.Images() {
+		images = append(images, domainImageToGraphQL(&image))
+	}
+
 	return &Asset{
 		ID:          asset.ID().Value(),
 		Slug:        asset.Slug().Value(),
@@ -99,6 +104,7 @@ func domainAssetToGraphQL(asset *domainasset.Asset) *Asset {
 		Status:      asset.Status(),
 		PublishRule: publishRule,
 		Videos:      videos,
+		Images:      images,
 	}
 }
 
@@ -135,19 +141,20 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 	if video.Thumbnail() != nil {
 		thumb := video.Thumbnail()
 		thumbSize := int(*thumb.Size())
+		thumbContentType := thumb.ContentType().Value()
 		thumbMetadata := make([]string, 0, len(thumb.Metadata()))
 		for k, v := range thumb.Metadata() {
 			thumbMetadata = append(thumbMetadata, k+":"+v)
 		}
 		thumbnail = &Image{
-			ID:          thumb.ID(),
-			FileName:    thumb.FileName(),
-			URL:         thumb.URL(),
+			ID:          thumb.ID().Value(),
+			FileName:    thumb.FileName().Value(),
+			URL:         thumb.URL().Value(),
 			Type:        ImageType(thumb.Type()),
 			Width:       thumb.Width(),
 			Height:      thumb.Height(),
 			Size:        &thumbSize,
-			ContentType: thumb.ContentType(),
+			ContentType: &thumbContentType,
 			Metadata:    thumbMetadata,
 			CreatedAt:   thumb.CreatedAt(),
 			UpdatedAt:   thumb.UpdatedAt(),
@@ -160,7 +167,7 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 	bitrate := video.Bitrate()
 	codec := video.Codec()
 	size := int(video.Size())
-	contentType := video.ContentType()
+	contentType := video.ContentType().Value()
 
 	videoMetadata := make([]string, 0, len(video.Metadata()))
 	for k, v := range video.Metadata() {
@@ -185,8 +192,8 @@ func domainVideoToGraphQL(video *domainasset.Video) *Video {
 	audioSampleRate := video.AudioSampleRate()
 
 	return &Video{
-		ID:     video.ID(),
-		Label:  video.Label(),
+		ID:     video.ID().Value(),
+		Label:  video.Label().Value(),
 		Type:   VideoType(video.Type()),
 		Format: formatPtr,
 		StorageLocation: &S3Object{
@@ -361,8 +368,9 @@ func domainImageToGraphQL(img *domainasset.Image) *Image {
 	}
 
 	var contentType *string
-	if img.ContentType() != nil {
-		contentType = img.ContentType()
+	contentTypeValue := img.ContentType().Value()
+	if contentTypeValue != "" {
+		contentType = &contentTypeValue
 	}
 
 	var streamInfo *StreamInfo
@@ -374,15 +382,17 @@ func domainImageToGraphQL(img *domainasset.Image) *Image {
 		}
 	}
 
-	metadata := make([]string, 0, len(img.Metadata()))
-	for k, v := range img.Metadata() {
-		metadata = append(metadata, k+":"+v)
+	metadata := make([]string, 0)
+	if img.Metadata() != nil {
+		for k, v := range img.Metadata() {
+			metadata = append(metadata, k+":"+v)
+		}
 	}
 
 	return &Image{
-		ID:              img.ID(),
-		FileName:        img.FileName(),
-		URL:             img.URL(),
+		ID:              img.ID().Value(),
+		FileName:        img.FileName().Value(),
+		URL:             img.URL().Value(),
 		Type:            ImageType(img.Type()),
 		StorageLocation: storageLocation,
 		Width:           width,

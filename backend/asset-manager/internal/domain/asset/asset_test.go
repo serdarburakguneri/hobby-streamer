@@ -233,7 +233,7 @@ func TestRichDomainModel(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Update video status to ready
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
+		err = asset.UpdateVideoStatus(video.ID().Value(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Now should be ready for publishing
@@ -286,7 +286,7 @@ func TestDomainServices(t *testing.T) {
 		video, err := asset.AddVideo("main", &videoFormat, *s3Object)
 		assert.NoError(t, err)
 
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
+		err = asset.UpdateVideoStatus(video.ID().Value(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Add publish rule
@@ -318,7 +318,7 @@ func TestDomainServices(t *testing.T) {
 		video, err := asset.AddVideo("main", &videoFormat, *s3Object)
 		assert.NoError(t, err)
 
-		err = asset.UpdateVideoStatus(video.ID(), VideoStatus(constants.VideoStatusReady))
+		err = asset.UpdateVideoStatus(video.ID().Value(), VideoStatus(constants.VideoStatusReady))
 		assert.NoError(t, err)
 
 		// Test with valid publish rule

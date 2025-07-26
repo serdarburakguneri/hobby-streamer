@@ -7,19 +7,19 @@ import (
 )
 
 type Image struct {
-	ImageID          string
-	ImageFileName    string
-	ImageURL         string
-	ImageType        ImageType
-	ImageStorageLoc  *S3Object
-	ImageWidth       *int
-	ImageHeight      *int
-	ImageSize        *int64
-	ImageContentType *string
-	ImageStreamInfo  *StreamInfo
-	ImageMetadata    map[string]string
-	ImageCreatedAt   time.Time
-	ImageUpdatedAt   time.Time
+	id              ImageID
+	fileName        ImageFileName
+	url             ImageURL
+	type_           ImageType
+	storageLocation *S3Object
+	width           *int
+	height          *int
+	size            *int64
+	contentType     ImageContentType
+	streamInfo      *StreamInfo
+	metadata        map[string]string
+	createdAt       time.Time
+	updatedAt       time.Time
 }
 
 func NewImage(
@@ -28,32 +28,33 @@ func NewImage(
 	imageType ImageType,
 	storageLocation *S3Object,
 ) (*Image, error) {
-	if fileName == "" {
-		return nil, ErrInvalidImageFileName
+	imageID, err := NewImageID(generateID())
+	if err != nil {
+		return nil, err
 	}
-
-	if url == "" {
-		return nil, ErrInvalidImageURL
+	imageFileName, err := NewImageFileName(fileName)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(fileName) > 255 {
-		return nil, ErrInvalidImageFileName
+	imageURL, err := NewImageURL(url)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(url) > 2048 {
-		return nil, ErrInvalidImageURL
+	imageContentType, err := NewImageContentType("")
+	if err != nil {
+		return nil, err
 	}
-
 	now := time.Now().UTC()
 	return &Image{
-		ImageID:         generateID(),
-		ImageFileName:   fileName,
-		ImageURL:        url,
-		ImageType:       imageType,
-		ImageStorageLoc: storageLocation,
-		ImageMetadata:   make(map[string]string),
-		ImageCreatedAt:  now,
-		ImageUpdatedAt:  now,
+		id:              *imageID,
+		fileName:        *imageFileName,
+		url:             *imageURL,
+		type_:           imageType,
+		storageLocation: storageLocation,
+		contentType:     *imageContentType,
+		metadata:        make(map[string]string),
+		createdAt:       now,
+		updatedAt:       now,
 	}, nil
 }
 
@@ -66,93 +67,110 @@ func ReconstructImage(
 	width *int,
 	height *int,
 	size *int64,
-	contentType *string,
+	contentType string,
 	streamInfo *StreamInfo,
 	metadata map[string]string,
 	createdAt time.Time,
 	updatedAt time.Time,
-) *Image {
-	return &Image{
-		ImageID:          id,
-		ImageFileName:    fileName,
-		ImageURL:         url,
-		ImageType:        imageType,
-		ImageStorageLoc:  storageLocation,
-		ImageWidth:       width,
-		ImageHeight:      height,
-		ImageSize:        size,
-		ImageContentType: contentType,
-		ImageStreamInfo:  streamInfo,
-		ImageMetadata:    metadata,
-		ImageCreatedAt:   createdAt,
-		ImageUpdatedAt:   updatedAt,
+) (*Image, error) {
+	imageID, err := NewImageID(id)
+	if err != nil {
+		return nil, err
 	}
+	imageFileName, err := NewImageFileName(fileName)
+	if err != nil {
+		return nil, err
+	}
+	imageURL, err := NewImageURL(url)
+	if err != nil {
+		return nil, err
+	}
+	imageContentType, err := NewImageContentType(contentType)
+	if err != nil {
+		return nil, err
+	}
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	return &Image{
+		id:              *imageID,
+		fileName:        *imageFileName,
+		url:             *imageURL,
+		type_:           imageType,
+		storageLocation: storageLocation,
+		width:           width,
+		height:          height,
+		size:            size,
+		contentType:     *imageContentType,
+		streamInfo:      streamInfo,
+		metadata:        metadata,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+	}, nil
 }
 
-func (i Image) ID() string {
-	return i.ImageID
+func (i *Image) ID() ImageID {
+	return i.id
 }
 
-func (i Image) FileName() string {
-	return i.ImageFileName
+func (i *Image) FileName() ImageFileName {
+	return i.fileName
 }
 
-func (i Image) URL() string {
-	return i.ImageURL
+func (i *Image) URL() ImageURL {
+	return i.url
 }
 
-func (i Image) Type() ImageType {
-	return i.ImageType
+func (i *Image) Type() ImageType {
+	return i.type_
 }
 
-func (i Image) StorageLocation() *S3Object {
-	return i.ImageStorageLoc
+func (i *Image) StorageLocation() *S3Object {
+	return i.storageLocation
 }
 
-func (i Image) Width() *int {
-	return i.ImageWidth
+func (i *Image) Width() *int {
+	return i.width
 }
 
-func (i Image) Height() *int {
-	return i.ImageHeight
+func (i *Image) Height() *int {
+	return i.height
 }
 
-func (i Image) Size() *int64 {
-	return i.ImageSize
+func (i *Image) Size() *int64 {
+	return i.size
 }
 
-func (i Image) ContentType() *string {
-	return i.ImageContentType
+func (i *Image) ContentType() ImageContentType {
+	return i.contentType
 }
 
-func (i Image) StreamInfo() *StreamInfo {
-	return i.ImageStreamInfo
+func (i *Image) StreamInfo() *StreamInfo {
+	return i.streamInfo
 }
 
-func (i Image) Metadata() map[string]string {
-	return i.ImageMetadata
+func (i *Image) Metadata() map[string]string {
+	return i.metadata
 }
 
-func (i Image) CreatedAt() time.Time {
-	return i.ImageCreatedAt
+func (i *Image) CreatedAt() time.Time {
+	return i.createdAt
 }
 
-func (i Image) UpdatedAt() time.Time {
-	return i.ImageUpdatedAt
+func (i *Image) UpdatedAt() time.Time {
+	return i.updatedAt
 }
 
 func (i *Image) SetDimensions(width, height int) error {
 	if width <= 0 {
 		return ErrInvalidImageWidth
 	}
-
 	if height <= 0 {
 		return ErrInvalidImageHeight
 	}
-
-	i.ImageWidth = &width
-	i.ImageHeight = &height
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.width = &width
+	i.height = &height
+	i.updatedAt = time.Now().UTC()
 	return nil
 }
 
@@ -160,75 +178,64 @@ func (i *Image) SetSize(size int64) error {
 	if size <= 0 {
 		return ErrInvalidImageSize
 	}
-
-	i.ImageSize = &size
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.size = &size
+	i.updatedAt = time.Now().UTC()
 	return nil
 }
 
 func (i *Image) SetContentType(contentType string) error {
-	if contentType == "" {
-		return ErrInvalidImageContentType
+	newContentType, err := NewImageContentType(contentType)
+	if err != nil {
+		return err
 	}
-
-	if len(contentType) > 100 {
-		return ErrInvalidImageContentType
-	}
-
-	i.ImageContentType = &contentType
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.contentType = *newContentType
+	i.updatedAt = time.Now().UTC()
 	return nil
 }
 
 func (i *Image) SetStreamInfo(streamInfo *StreamInfo) {
-	i.ImageStreamInfo = streamInfo
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.streamInfo = streamInfo
+	i.updatedAt = time.Now().UTC()
 }
 
 func (i *Image) SetMetadata(metadata map[string]string) {
-	i.ImageMetadata = metadata
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.metadata = metadata
+	i.updatedAt = time.Now().UTC()
 }
 
 func (i *Image) AddMetadata(key, value string) error {
 	if key == "" {
 		return ErrInvalidImageMetadataKey
 	}
-
 	if len(key) > 50 {
 		return ErrInvalidImageMetadataKey
 	}
-
 	if len(value) > 500 {
 		return ErrInvalidImageMetadataValue
 	}
-
-	if i.ImageMetadata == nil {
-		i.ImageMetadata = make(map[string]string)
+	if i.metadata == nil {
+		i.metadata = make(map[string]string)
 	}
-
-	i.ImageMetadata[key] = value
-	i.ImageUpdatedAt = time.Now().UTC()
+	i.metadata[key] = value
+	i.updatedAt = time.Now().UTC()
 	return nil
 }
 
 func (i *Image) RemoveMetadata(key string) {
-	if i.ImageMetadata != nil {
-		delete(i.ImageMetadata, key)
-		i.ImageUpdatedAt = time.Now().UTC()
+	if i.metadata != nil {
+		delete(i.metadata, key)
+		i.updatedAt = time.Now().UTC()
 	}
 }
 
-func (i Image) Equals(other Image) bool {
-	return i.ImageID == other.ImageID &&
-		i.ImageFileName == other.ImageFileName &&
-		i.ImageURL == other.ImageURL &&
-		i.ImageType == other.ImageType
+func (i *Image) Equals(other Image) bool {
+	return i.id.Equals(other.id) &&
+		i.fileName.Equals(other.fileName) &&
+		i.url.Equals(other.url) &&
+		i.type_ == other.type_ // only compare core fields for equality
 }
 
 var (
-	ErrInvalidImageFileName      = pkgerrors.NewValidationError("invalid image file name", nil)
-	ErrInvalidImageURL           = pkgerrors.NewValidationError("invalid image URL", nil)
 	ErrInvalidImageWidth         = pkgerrors.NewValidationError("invalid image width", nil)
 	ErrInvalidImageHeight        = pkgerrors.NewValidationError("invalid image height", nil)
 	ErrInvalidImageSize          = pkgerrors.NewValidationError("invalid image size", nil)

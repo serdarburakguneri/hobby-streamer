@@ -301,6 +301,11 @@ const GET_ASSETS = gql`
           fileName
           url
           type
+          storageLocation {
+            bucket
+            key
+            url
+          }
           width
           height
           size
@@ -632,6 +637,24 @@ const GET_ASSET = gql`
         unpublishAt
         regions
         ageRating
+      }
+      images {
+        id
+        fileName
+        url
+        type
+        storageLocation {
+          bucket
+          key
+          url
+        }
+        width
+        height
+        size
+        contentType
+        metadata
+        createdAt
+        updatedAt
       }
       videos {
         id

@@ -228,10 +228,14 @@ type Video struct {
 type ImageType string
 
 const (
-	ImageTypePoster    ImageType = "poster"
-	ImageTypeBackdrop  ImageType = "backdrop"
-	ImageTypeThumbnail ImageType = "thumbnail"
-	ImageTypeLogo      ImageType = "logo"
+	ImageTypePoster       ImageType = "poster"
+	ImageTypeBackdrop     ImageType = "backdrop"
+	ImageTypeThumbnail    ImageType = "thumbnail"
+	ImageTypeLogo         ImageType = "logo"
+	ImageTypeHero         ImageType = "hero"
+	ImageTypeScreenshot   ImageType = "screenshot"
+	ImageTypeBehindScenes ImageType = "behind_scenes"
+	ImageTypeInterview    ImageType = "interview"
 )
 
 var AllImageType = []ImageType{
@@ -239,11 +243,15 @@ var AllImageType = []ImageType{
 	ImageTypeBackdrop,
 	ImageTypeThumbnail,
 	ImageTypeLogo,
+	ImageTypeHero,
+	ImageTypeScreenshot,
+	ImageTypeBehindScenes,
+	ImageTypeInterview,
 }
 
 func (e ImageType) IsValid() bool {
 	switch e {
-	case ImageTypePoster, ImageTypeBackdrop, ImageTypeThumbnail, ImageTypeLogo:
+	case ImageTypePoster, ImageTypeBackdrop, ImageTypeThumbnail, ImageTypeLogo, ImageTypeHero, ImageTypeScreenshot, ImageTypeBehindScenes, ImageTypeInterview:
 		return true
 	}
 	return false

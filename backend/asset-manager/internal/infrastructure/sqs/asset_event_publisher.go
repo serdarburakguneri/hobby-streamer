@@ -87,8 +87,8 @@ func (p *EventPublisher) PublishVideoAdded(ctx context.Context, a *domainasset.A
 	event := map[string]interface{}{
 		"event":     "video.added",
 		"assetId":   a.ID().Value(),
-		"videoId":   video.ID(),
-		"label":     video.Label(),
+		"videoId":   video.ID().Value(),
+		"label":     video.Label().Value(),
 		"format":    video.Format(),
 		"timestamp": video.CreatedAt(),
 	}
@@ -98,12 +98,12 @@ func (p *EventPublisher) PublishVideoAdded(ctx context.Context, a *domainasset.A
 	}
 
 	if video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatRaw) {
-		if err := p.triggerAnalyzeJob(ctx, a.ID().Value(), video.ID(), video.StorageLocation()); err != nil {
-			p.logger.WithError(err).Error("Failed to trigger analyze job", "asset_id", a.ID().Value(), "video_id", video.ID())
+		if err := p.triggerAnalyzeJob(ctx, a.ID().Value(), video.ID().Value(), video.StorageLocation()); err != nil {
+			p.logger.WithError(err).Error("Failed to trigger analyze job", "asset_id", a.ID().Value(), "video_id", video.ID().Value())
 		}
 	} else if video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatHLS) || video.Format() == domainasset.VideoFormat(constants.VideoStreamingFormatDASH) {
-		if err := p.triggerTranscodeJob(ctx, a, video.ID(), video.StorageLocation(), string(video.Format())); err != nil {
-			p.logger.WithError(err).Error("Failed to trigger transcode job", "asset_id", a.ID().Value(), "video_id", video.ID(), "format", video.Format())
+		if err := p.triggerTranscodeJob(ctx, a, video.ID().Value(), video.StorageLocation(), string(video.Format())); err != nil {
+			p.logger.WithError(err).Error("Failed to trigger transcode job", "asset_id", a.ID().Value(), "video_id", video.ID().Value(), "format", video.Format())
 		}
 	}
 
@@ -137,10 +137,10 @@ func (p *EventPublisher) PublishImageAdded(ctx context.Context, a *domainasset.A
 	event := map[string]interface{}{
 		"event":     "image.added",
 		"assetId":   a.ID().Value(),
-		"imageId":   image.ID,
-		"fileName":  image.FileName,
-		"type":      image.Type,
-		"timestamp": image.CreatedAt,
+		"imageId":   image.ID().Value(),
+		"fileName":  image.FileName().Value(),
+		"type":      image.Type(),
+		"timestamp": image.CreatedAt(),
 	}
 
 	return p.publishEvent(ctx, event)

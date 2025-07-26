@@ -473,8 +473,8 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 	var videosData []map[string]interface{}
 	for _, video := range a.Videos() {
 		videoData := map[string]interface{}{
-			"id":     video.ID(),
-			"label":  video.Label(),
+			"id":     video.ID().Value(),
+			"label":  video.Label().Value(),
 			"type":   string(video.Type()),
 			"format": string(video.Format()),
 			"storageLocation": map[string]interface{}{
@@ -488,7 +488,7 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 			"bitrate":            video.Bitrate(),
 			"codec":              video.Codec(),
 			"size":               video.Size(),
-			"contentType":        video.ContentType(),
+			"contentType":        video.ContentType().Value(),
 			"status":             string(video.Status()),
 			"createdAt":          video.CreatedAt(),
 			"updatedAt":          video.UpdatedAt(),
@@ -511,7 +511,47 @@ func (r *AssetRepository) assetToParams(a *asset.Asset) map[string]interface{} {
 		videosData = append(videosData, videoData)
 	}
 	videosJSON, _ := json.Marshal(videosData)
-	imagesJSON, _ := json.Marshal(a.Images())
+
+	var imagesData []map[string]interface{}
+	for _, image := range a.Images() {
+		imageData := map[string]interface{}{
+			"id":          image.ID().Value(),
+			"fileName":    image.FileName().Value(),
+			"url":         image.URL().Value(),
+			"type":        string(image.Type()),
+			"contentType": image.ContentType().Value(),
+			"createdAt":   image.CreatedAt().Format(time.RFC3339),
+			"updatedAt":   image.UpdatedAt().Format(time.RFC3339),
+		}
+		if image.StorageLocation() != nil {
+			imageData["storageLocation"] = map[string]interface{}{
+				"bucket": image.StorageLocation().Bucket(),
+				"key":    image.StorageLocation().Key(),
+				"url":    image.StorageLocation().URL(),
+			}
+		}
+		if image.Width() != nil {
+			imageData["width"] = *image.Width()
+		}
+		if image.Height() != nil {
+			imageData["height"] = *image.Height()
+		}
+		if image.Size() != nil {
+			imageData["size"] = *image.Size()
+		}
+		if image.StreamInfo() != nil {
+			imageData["streamInfo"] = map[string]interface{}{
+				"downloadURL": image.StreamInfo().DownloadURL(),
+				"cdnPrefix":   image.StreamInfo().CDNPrefix(),
+				"url":         image.StreamInfo().URL(),
+			}
+		}
+		if image.Metadata() != nil {
+			imageData["metadata"] = image.Metadata()
+		}
+		imagesData = append(imagesData, imageData)
+	}
+	imagesJSON, _ := json.Marshal(imagesData)
 	creditsJSON, _ := json.Marshal(a.Credits())
 	metadataJSON, _ := json.Marshal(a.Metadata())
 
@@ -706,7 +746,7 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						updatedAtTime = time.Now().UTC()
 					}
 
-					video := asset.ReconstructVideo(
+					video, err := asset.ReconstructVideo(
 						videoID,
 						label,
 						videoType,
@@ -731,6 +771,10 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 						int(audioChannels),
 						int(audioSampleRate),
 					)
+					if err != nil {
+						log.WithError(err).Error("Failed to reconstruct video")
+						continue
+					}
 
 					if streamInfoMap, ok := videoData["streamInfo"].(map[string]interface{}); ok {
 						var downloadURL, cdnPrefix, urlStr *string
@@ -759,8 +803,17 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 	var images []asset.Image
 	if imagesJSON, exists := props["images"]; exists {
 		if imagesStr, ok := imagesJSON.(string); ok && imagesStr != "" {
-			if err := json.Unmarshal([]byte(imagesStr), &images); err != nil {
+			var imageData []map[string]interface{}
+			if err := json.Unmarshal([]byte(imagesStr), &imageData); err != nil {
 				log.WithError(err).Error("Failed to unmarshal images JSON")
+			} else {
+				for _, imgData := range imageData {
+					if img, err := r.reconstructImageFromData(imgData); err != nil {
+						log.WithError(err).Error("Failed to reconstruct image from data")
+					} else {
+						images = append(images, *img)
+					}
+				}
 			}
 		}
 	}
@@ -785,7 +838,7 @@ func (r *AssetRepository) recordToAsset(record *neo4j.Record) (*asset.Asset, err
 
 	videosMap := make(map[string]*asset.Video)
 	for _, video := range videos {
-		videosMap[video.ID()] = video
+		videosMap[video.ID().Value()] = video
 	}
 
 	assetID, err := asset.NewAssetID(id)
@@ -896,4 +949,119 @@ func (r *AssetRepository) tagsToStringSlice(tags *asset.Tags) []string {
 		tagStrings[i] = tag.Value()
 	}
 	return tagStrings
+}
+
+func (r *AssetRepository) reconstructImageFromData(imgData map[string]interface{}) (*asset.Image, error) {
+	id, _ := imgData["id"].(string)
+	fileName, _ := imgData["fileName"].(string)
+	url, _ := imgData["url"].(string)
+	typeStr, _ := imgData["type"].(string)
+
+	var imageType asset.ImageType
+	if typeStr != "" {
+		imageType = asset.ImageType(typeStr)
+	}
+
+	var storageLocation *asset.S3Object
+	if storageLocData, ok := imgData["storageLocation"].(map[string]interface{}); ok {
+		bucket, _ := storageLocData["bucket"].(string)
+		key, _ := storageLocData["key"].(string)
+		urlStr, _ := storageLocData["url"].(string)
+		if bucket != "" && key != "" && urlStr != "" {
+			if s3Obj, err := asset.NewS3Object(bucket, key, urlStr); err == nil {
+				storageLocation = s3Obj
+			}
+		}
+	}
+
+	var width *int
+	if w, ok := imgData["width"].(float64); ok {
+		widthInt := int(w)
+		width = &widthInt
+	}
+
+	var height *int
+	if h, ok := imgData["height"].(float64); ok {
+		heightInt := int(h)
+		height = &heightInt
+	}
+
+	var size *int64
+	if s, ok := imgData["size"].(float64); ok {
+		sizeInt64 := int64(s)
+		size = &sizeInt64
+	}
+
+	var contentType string
+	if ct, ok := imgData["contentType"].(string); ok {
+		contentType = ct
+	}
+
+	var streamInfo *asset.StreamInfo
+	if streamInfoData, ok := imgData["streamInfo"].(map[string]interface{}); ok {
+		var downloadURL, cdnPrefix, urlStr *string
+		if v, ok := streamInfoData["downloadURL"].(string); ok && v != "" {
+			downloadURL = &v
+		}
+		if v, ok := streamInfoData["cdnPrefix"].(string); ok && v != "" {
+			cdnPrefix = &v
+		}
+		if v, ok := streamInfoData["url"].(string); ok && v != "" {
+			urlStr = &v
+		}
+		if downloadURL != nil || cdnPrefix != nil || urlStr != nil {
+			if si, err := asset.NewStreamInfo(downloadURL, cdnPrefix, urlStr); err == nil {
+				streamInfo = si
+			}
+		}
+	}
+
+	metadata := make(map[string]string)
+	if metadataData, ok := imgData["metadata"].(map[string]interface{}); ok {
+		for k, v := range metadataData {
+			if str, ok := v.(string); ok {
+				metadata[k] = str
+			}
+		}
+	}
+
+	createdAtStr, _ := imgData["createdAt"].(string)
+	updatedAtStr, _ := imgData["updatedAt"].(string)
+
+	var createdAt, updatedAt time.Time
+	if createdAtStr != "" {
+		if t, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
+			createdAt = t
+		} else {
+			createdAt = time.Now().UTC()
+		}
+	} else {
+		createdAt = time.Now().UTC()
+	}
+
+	if updatedAtStr != "" {
+		if t, err := time.Parse(time.RFC3339, updatedAtStr); err == nil {
+			updatedAt = t
+		} else {
+			updatedAt = time.Now().UTC()
+		}
+	} else {
+		updatedAt = time.Now().UTC()
+	}
+
+	return asset.ReconstructImage(
+		id,
+		fileName,
+		url,
+		imageType,
+		storageLocation,
+		width,
+		height,
+		size,
+		contentType,
+		streamInfo,
+		metadata,
+		createdAt,
+		updatedAt,
+	)
 }

@@ -307,8 +307,11 @@ func (a *Asset) AddVideo(label string, format *VideoFormat, storageLocation S3Ob
 		return nil, ErrCannotUpdateAsset
 	}
 
-	video := NewVideo(label, format, storageLocation, 0, "", "", 0, nil)
-	a.videos[video.ID()] = video
+	video, err := NewVideo(label, format, storageLocation, 0, "", "", 0, nil)
+	if err != nil {
+		return nil, err
+	}
+	a.videos[video.ID().Value()] = video
 	a.updatedAt = UpdatedAt{value: time.Now().UTC()}
 	return video, nil
 }
@@ -405,7 +408,7 @@ func (a *Asset) RemoveImage(imageID string) error {
 	}
 
 	for i, image := range a.images {
-		if image.ID() == imageID {
+		if image.ID().Value() == imageID {
 			a.images = append(a.images[:i], a.images[i+1:]...)
 			a.updatedAt = UpdatedAt{value: time.Now().UTC()}
 			return nil

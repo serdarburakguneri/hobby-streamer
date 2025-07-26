@@ -895,7 +895,9 @@ func (s *ApplicationService) handleSuccessfulAnalysis(video *domainasset.Video, 
 		video.UpdateSize(metadata.Size)
 	}
 	if metadata.ContentType != "" {
-		video.UpdateContentType(metadata.ContentType)
+		if err := video.UpdateContentType(metadata.ContentType); err != nil {
+			s.logger.WithError(err).Error("Failed to update video content type", "content_type", metadata.ContentType)
+		}
 	}
 }
 
@@ -1026,7 +1028,9 @@ func (s *ApplicationService) updateVideoMetadata(video *domainasset.Video, metad
 		video.UpdateSize(metadata.Size)
 	}
 	if metadata.ContentType != "" {
-		video.UpdateContentType(metadata.ContentType)
+		if err := video.UpdateContentType(metadata.ContentType); err != nil {
+			s.logger.WithError(err).Error("Failed to update video content type", "content_type", metadata.ContentType)
+		}
 	}
 	if metadata.FrameRate != "" {
 		video.SetFrameRate(metadata.FrameRate)

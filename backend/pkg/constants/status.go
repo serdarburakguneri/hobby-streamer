@@ -52,11 +52,7 @@ const (
 	VideoStreamingFormatDASH = "dash"
 )
 
-const (
-	ImageTypePoster    = "poster"
-	ImageTypeThumbnail = "thumbnail"
-	ImageTypeBanner    = "banner"
-)
+
 
 type PublishStatus int
 
