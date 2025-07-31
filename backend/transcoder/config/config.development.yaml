@@ -1,0 +1,47 @@
+environment: development
+service: transcoder
+
+log:
+  level: debug
+  format: text
+
+server:
+  port: "8080"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+
+features:
+  enable_circuit_breaker: true
+  enable_retry: true
+  enable_caching: true
+  enable_metrics: false
+  enable_tracing: false
+
+circuit_breaker:
+  threshold: 5
+  timeout: "30s"
+
+retry:
+  max_attempts: 3
+  base_delay: "100ms"
+  max_delay: "5s"
+
+cache:
+  ttl: "30m"
+
+components:
+  kafka:
+    bootstrap_servers: "kafka:29092"
+    max_message_bytes: 1000000
+  sqs:
+    job_queue_url: "http://localstack:4566/000000000000/job-queue"
+    completion_queue_url: "http://localstack:4566/000000000000/completion-queue"
+    region: "us-east-1"
+    endpoint: "http://localstack:4566"
+    force_path_style: true
+  s3:
+    default_output_bucket: "content-east"
+    region: "us-east-1"
+    endpoint: "http://localstack:4566"
+    force_path_style: true 

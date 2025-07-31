@@ -1,0 +1,379 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - hobby-streamer
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.0.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - hobby-streamer
+
+  fluentd:
+    build:
+      context: ./local/fluentd
+      dockerfile: Dockerfile
+    container_name: fluentd
+    volumes:
+      - ./local/fluentd/fluent.conf:/fluentd/etc/fluent.conf
+      - ./local/fluentd/log:/fluentd/log
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "fluentd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      hobby-streamer:
+        ipv4_address: 172.30.0.10
+        aliases:
+          - fluentd
+
+  localstack:
+    image: localstack/localstack:latest
+    env_file:
+      - .env
+    ports:
+      - "4566:4566"
+      - "8000:8000"
+    environment:
+      - SERVICES=dynamodb,sqs,s3,lambda,apigateway
+      - PERSISTENCE=1
+      - DATA_DIR=/var/lib/localstack
+      - ENABLE_CORS_ALLOW_ALL=0
+      - CORS_ALLOW_ORIGINS=http://localhost:8081
+      - S3_CORS_ALLOW_ORIGINS=http://localhost:8081
+      - S3_CORS_ALLOW_METHODS=GET,PUT,POST,DELETE,HEAD,OPTIONS
+      - S3_CORS_ALLOW_HEADERS=*
+      - S3_SKIP_SIGNATURE_VALIDATION=1
+      - S3_SKIP_OWNERSHIP_VALIDATION=1
+      - S3_SKIP_ACL_VALIDATION=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - localstack_data:/var/lib/localstack
+    networks:
+      - hobby-streamer
+
+  neo4j:
+    image: neo4j:5.15-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    networks:
+      - hobby-streamer
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.6
+    command: start-dev --https-port=8443 --https-certificate-file=/opt/keycloak/certs/cert.pem --https-certificate-key-file=/opt/keycloak/certs/key.pem
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/opt/keycloak/data/import/hobby-realm.json
+    ports:
+      - "9090:8080"
+      - "8443:8443"
+    volumes:
+      - ./local/keycloak-config/hobby-realm.json:/opt/keycloak/data/import/hobby-realm.json
+      - ./local/keycloak-certs:/opt/keycloak/certs
+    depends_on:
+      - localstack
+    networks:
+      - hobby-streamer
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  asset-manager:
+    build:
+      context: ./backend
+      dockerfile: asset-manager/Dockerfile
+    ports:
+      - "8082:8080"
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - NEO4J_PASSWORD=password
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      neo4j:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  transcoder:
+    build:
+      context: ./backend
+      dockerfile: transcoder/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      fluentd:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+       fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - hobby-streamer
+
+  streaming-api:
+    build:
+      context: ./backend
+      dockerfile: streaming-api/Dockerfile
+    ports:
+      - "8084:8080"
+    environment:
+      - ENVIRONMENT=development
+      - KEYCLOAK_CLIENT_SECRET=streaming-api-secret
+    depends_on:
+      fluentd:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      asset-manager:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 172.30.0.10:24224
+    networks:
+      - hobby-streamer
+
+  nginx:
+    build:
+      context: ./local/nginx
+    ports:
+      - "8083:8083"
+    depends_on:
+      - localstack
+    restart: unless-stopped
+    networks:
+      - hobby-streamer
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 60
+      ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT: 3
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: 24
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - hobby-streamer
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: 60000
+      KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: 60000
+      KAFKA_ZOOKEEPER_SYNC_TIME_MS: 20000
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - hobby-streamer
+
+  akhq:
+    image: tchiotludo/akhq:latest
+    hostname: akhq
+    container_name: akhq
+    ports:
+      - "8086:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka:29092"
+              topics:
+                - name: "asset-events"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "bucket-events"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "analyze.job.requested"
+                  configs:
+                    retention.ms: 259200000
+                    cleanup.policy: delete
+                - name: "hls.job.requested"
+                  configs:
+                    retention.ms: 259200000
+                    cleanup.policy: delete
+                - name: "analyze.job.completed"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "hls.job.completed"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "dash.job.completed"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "raw-video-uploaded"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "content-analysis"
+                  configs:
+                    retention.ms: 2592000000
+                    cleanup.policy: delete
+                - name: "content.analysis.requested"
+                  configs:
+                    retention.ms: 259200000
+                    cleanup.policy: delete
+                - name: "content.analysis.completed"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+                - name: "content.analysis.failed"
+                  configs:
+                    retention.ms: 604800000
+                    cleanup.policy: delete
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - hobby-streamer
+
+
+volumes:
+  esdata:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  redis_data:
+  localstack_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+
+networks:
+  hobby-streamer:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

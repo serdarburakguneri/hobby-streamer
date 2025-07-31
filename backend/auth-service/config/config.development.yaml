@@ -1,0 +1,59 @@
+environment: development
+service: auth-service
+
+log:
+  level: debug
+  format: text
+
+server:
+  port: "8080"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+
+features:
+  enable_circuit_breaker: true
+  enable_retry: true
+  enable_caching: true
+  enable_metrics: false
+  enable_tracing: false
+
+circuit_breaker:
+  threshold: 5
+  timeout: "30s"
+
+retry:
+  max_attempts: 3
+  base_delay: "100ms"
+  max_delay: "5s"
+
+cache:
+  ttl: "30m"
+
+security:
+  rate_limit:
+    requests: 100
+    window: "1m"
+  max_request_size: 10485760
+  cors:
+    allowed_origins:
+      - "http://localhost:8081"
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+
+components:
+  keycloak:
+    url: "https://keycloak:8443"
+    realm: "hobby"
+    client_id: "asset-manager"
+    client_secret: "" 

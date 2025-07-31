@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Set root logger to WARN to reduce noise -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!-- Allow your application logs -->
+    <logger name="com.serdarburakguneri" level="INFO"/>
+    <logger name="github.serdarburakguneri" level="INFO"/>
+    
+    <!-- Suppress Thymeleaf logs -->
+    <logger name="org.thymeleaf" level="ERROR"/>
+    
+    <!-- Suppress Spring framework logs -->
+    <logger name="org.springframework" level="ERROR"/>
+    
+    <!-- Suppress Hibernate/JPA logs -->
+    <logger name="org.hibernate" level="ERROR"/>
+    <logger name="org.springframework.orm.jpa" level="ERROR"/>
+    
+    <!-- Suppress Tomcat/Jetty logs -->
+    <logger name="org.apache.tomcat" level="ERROR"/>
+    <logger name="org.eclipse.jetty" level="ERROR"/>
+    
+    <!-- Suppress GraphQL logs -->
+    <logger name="graphql" level="ERROR"/>
+    
+    <!-- Suppress Neo4j logs -->
+    <logger name="org.neo4j" level="ERROR"/>
+    
+    <!-- Suppress AWS logs -->
+    <logger name="com.amazonaws" level="ERROR"/>
+    <logger name="software.amazon.awssdk" level="ERROR"/>
+    
+    <!-- Suppress SQS logs -->
+    <logger name="com.amazonaws.services.sqs" level="ERROR"/>
+    
+    <!-- Suppress S3 logs -->
+    <logger name="com.amazonaws.services.s3" level="ERROR"/>
+    
+    <!-- Suppress Redis logs -->
+    <logger name="io.lettuce" level="ERROR"/>
+    <logger name="redis" level="ERROR"/>
+    
+    <!-- Suppress Keycloak logs -->
+    <logger name="org.keycloak" level="ERROR"/>
+    
+    <!-- Suppress Karate internal logs but keep test output -->
+    <logger name="com.intuit.karate" level="INFO"/>
+    <logger name="com.intuit.karate.core" level="WARN"/>
+</configuration> 

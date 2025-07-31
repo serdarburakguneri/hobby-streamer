@@ -1,0 +1,80 @@
+run:
+  timeout: 5m
+  go: "1.21"
+
+linters:
+  enable:
+    - gofmt
+    - govet
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - misspell
+    - gosec
+    - errcheck
+    - structcheck
+    - varcheck
+    - deadcode
+    - typecheck
+    - gocyclo
+    - dupl
+    - goconst
+    - gocritic
+    - godot
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - lll
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+  lll:
+    line-length: 140
+  gomnd:
+    checks: argument,case,condition,operation,return,assign
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gomnd
+        - gocyclo
+        - dupl
+    - path: pkg/errors/
+      linters:
+        - dupl
+    - path: cmd/
+      linters:
+        - gocyclo
+  max-issues-per-linter: 0
+  max-same-issues: 0 

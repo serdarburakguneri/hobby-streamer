@@ -1,0 +1,92 @@
+environment: development
+service: asset-manager
+
+log:
+  level: debug
+  format: text
+  async:
+    enabled: true
+    buffer_size: 1000
+
+server:
+  port: "8080"
+  read_timeout: "15s"
+  write_timeout: "15s"
+  idle_timeout: "60s"
+
+features:
+  enable_circuit_breaker: true
+  enable_retry: true
+  enable_caching: true
+  enable_metrics: false
+  enable_tracing: false
+
+circuit_breaker:
+  threshold: 5
+  timeout: "30s"
+
+retry:
+  max_attempts: 3
+  base_delay: "100ms"
+  max_delay: "5s"
+
+cache:
+  ttl: "30m"
+
+security:
+  rate_limit:
+    requests: 100
+    window: "1m"
+  max_request_size: 10485760
+  cors:
+    allowed_origins:
+      - "http://localhost:8081"
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+
+components:
+  aws:
+    region: "us-east-1"
+    endpoint: "http://localstack:4566"
+    force_path_style: true
+
+  kafka:
+    bootstrap_servers: "kafka:29092"
+    max_message_bytes: 1000000
+
+  sqs:
+    job_queue_url: "http://localstack:4566/000000000000/job-queue"
+    completion_queue_url: "http://localstack:4566/000000000000/completion-queue"
+    asset_events_queue_url: "http://localhost:4566/000000000000/asset-events"
+
+  s3:
+    content_bucket: "content-east"
+
+  cdn:
+    prefix: "http://localhost:8083/cdn"
+
+  neo4j:
+    uri: "bolt://neo4j:7687"
+    username: "neo4j"
+    max_connections: 50
+    connection_timeout: "30s"
+    max_lifetime: "1h"
+
+  keycloak:
+    url: "https://keycloak:8443"
+    realm: "hobby"
+    client_id: "asset-manager"
+
+  lambda:
+    delete_files_endpoint: "http://localstack:4566/2015-03-31/functions/delete-files/invocations"
+    update_cdn_prefix_endpoint: "http://localstack:4566/2015-03-31/functions/update-cdn-prefix/invocations" 

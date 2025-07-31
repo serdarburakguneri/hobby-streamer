@@ -1,0 +1,264 @@
+scalar Time
+
+type Query {
+  assets(limit: Int, offset: Int): [Asset!]!
+  asset(id: ID): Asset
+  buckets(limit: Int, nextKey: String): BucketPage!
+  bucket(id: ID): Bucket
+  bucketByKey(key: String!): Bucket
+  bucketsByOwner(ownerId: String!, limit: Int, nextKey: String): BucketPage!
+  searchBuckets(query: String!, limit: Int, nextKey: String): BucketPage!
+  searchAssets(query: String!, limit: Int, offset: Int): [Asset!]!
+}
+
+type Mutation {
+  createAsset(input: CreateAssetInput!): Asset!
+  patchAsset(id: ID!, patches: [JSONPatch!]!): Asset!
+  deleteAsset(id: ID!): Boolean!
+  addVideo(input: AddVideoInput!): Video!
+  deleteVideo(assetId: ID!, videoId: ID!): Asset!
+  
+  createBucket(input: BucketInput!): Bucket!
+  updateBucket(id: ID!, input: BucketInput!): Bucket!
+  deleteBucket(id: ID!): Boolean!
+
+  addAssetToBucket(input: AddAssetToBucketInput!): Boolean!
+  removeAssetFromBucket(input: RemoveAssetFromBucketInput!): Boolean!
+  addImage(input: AddImageInput!): Asset!
+}
+
+type Asset {
+  id: ID!
+  slug: String!
+  title: String
+  description: String
+  type: String
+  genre: String
+  genres: [String!]!
+  tags: [String!]!
+  createdAt: Time!
+  updatedAt: Time!
+  ownerId: String
+  parentId: String
+  parent: Asset
+  children: [Asset!]!
+  images: [Image!]!
+  videos: [Video!]!
+  credits: [Credit!]!
+  publishRule: PublishRule
+  metadata: String
+  status: String!
+}
+
+type AssetPage {
+  items: [Asset!]!
+  nextKey: String
+  hasMore: Boolean!
+}
+
+type Video {
+  id: ID!
+  label: String!
+  type: VideoType!
+  format: VideoFormat
+  storageLocation: S3Object!
+  width: Int
+  height: Int
+  duration: Float
+  bitrate: Int
+  codec: String
+  size: Int
+  contentType: String
+  streamInfo: StreamInfo
+  metadata: [String!]!
+  status: VideoStatus!
+  thumbnail: Image
+  transcodingInfo: TranscodingInfo
+  createdAt: Time!
+  updatedAt: Time!
+  quality: VideoQuality!
+  isReady: Boolean!
+  isProcessing: Boolean!
+  isFailed: Boolean!
+  segmentCount: Int
+  videoCodec: String
+  audioCodec: String
+  avgSegmentDuration: Float
+  segments: [String!]
+  frameRate: String
+  audioChannels: Int
+  audioSampleRate: Int
+}
+
+type Image {
+  id: ID!
+  fileName: String!
+  url: String!
+  type: ImageType!
+  storageLocation: S3Object
+  width: Int
+  height: Int
+  size: Int
+  contentType: String
+  streamInfo: StreamInfo
+  metadata: [String!]!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type S3Object {
+  bucket: String!
+  key: String!
+  url: String!
+}
+
+type StreamInfo {
+  downloadUrl: String
+  cdnPrefix: String
+  url: String
+}
+
+type TranscodingInfo {
+  jobId: String
+  progress: Float
+  outputUrl: String
+  error: String
+  completedAt: Time
+}
+
+type Credit {
+  role: String!
+  name: String!
+  personId: String!
+}
+
+type PublishRule {
+  publishAt: Time
+  unpublishAt: Time
+  regions: [String!]!
+  ageRating: String
+}
+
+type Bucket {
+  id: ID!
+  key: String!
+  name: String!
+  description: String
+  type: String!
+  status: String
+  ownerId: String
+  assets: [Asset!]
+  metadata: String
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type BucketPage {
+  items: [Bucket!]!
+  nextKey: String
+  hasMore: Boolean!
+}
+
+
+enum VideoType {
+  main
+  trailer
+  behind
+  interview
+}
+
+enum VideoFormat {
+  raw
+  hls
+  dash
+}
+
+enum VideoStatus {
+  pending
+  analyzing
+  transcoding
+  ready
+  failed
+}
+
+enum VideoQuality {
+  low
+  medium
+  high
+  fourk
+}
+
+enum ImageType {
+  poster
+  backdrop
+  thumbnail
+  logo
+  banner
+  hero
+  screenshot
+  behind_scenes
+  interview
+}
+
+input CreateAssetInput {
+  slug: String!
+  title: String
+  description: String
+  type: String
+  genre: String
+  genres: [String!]
+  tags: [String!]
+  ownerId: String
+  parentId: String
+  metadata: String
+}
+
+input BucketInput {
+  key: String
+  name: String
+  description: String
+  type: String
+  ownerId: String
+  metadata: String
+  status: String
+}
+
+input AddAssetToBucketInput {
+  bucketId: ID!
+  assetId: ID!
+  ownerId: String!
+}
+
+input RemoveAssetFromBucketInput {
+  bucketId: ID!
+  assetId: ID!
+  ownerId: String!
+}
+
+input JSONPatch {
+  op: String!
+  path: String!
+  value: String
+}
+
+input AddVideoInput {
+  assetId: ID!
+  label: String!
+  format: VideoFormat!
+  bucket: String!
+  key: String!
+  url: String!
+  contentType: String!
+  size: Int!
+}
+
+input AddImageInput {
+  assetId: ID!
+  type: ImageType!
+  fileName: String!
+  bucket: String!
+  key: String!
+  url: String!
+  contentType: String!
+  size: Int!
+}

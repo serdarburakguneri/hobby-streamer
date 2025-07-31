@@ -1,37 +1,46 @@
 # Hobby Streamer
 
-Scalable video upload, processing, and streaming platform using AWS Free Tier. Users upload videos processed with AWS Elemental MediaConvert, stored in S3, and streamed via CloudFront. Includes optional FFmpeg for custom transcoding.
+> A personal playground for video streaming ideas. Not production, just for fun and learning.
 
-## Key Components
+This project explores building a video streaming platform using modern software architecture patterns. It experiments with domain-driven design principles and event-driven microservices to create a video processing pipeline. The system handles video uploads, transcoding, and streaming delivery, with authentication, monitoring, and developer tooling to support the learning journey.
 
-S3: Store raw/processed videos.
+## Features
+Video upload, transcoding (HLS/DASH), stream delivery, asset metadata, Keycloak-based auth, developer logging, monitoring, Docker Compose setup, Redis caching, Kafka event streaming, Lambda functions, circuit breakers, retries,health checks, rate limiting, local-first development.
 
-MediaConvert: Transcode videos.
 
-DynamoDB: Manage video metadata.
+## Architecture
 
-CloudFront: Stream videos globally.
+![Architecture Diagram](docs/arch.png)
 
-Lambda: Automate workflows.
+Docs: [CDN Proposal](docs/cdn-proposal.md), [Kafka Architecture](docs/kafka-architecture.md)
 
-IAM: Secure access.
+## Tech Stack
+Backend: Go, GraphQL, Neo4j, Keycloak, FFmpeg, Redis, Kafka, Docker Compose, LocalStack, Fluentd, Elasticsearch, Kibana, Nginx. Frontend: React Native (CMS, viewer UI). Lambdas: AWS Lambda with Go runtime.
 
-## Workflow Overview
+## Services
+Backend: [`asset-manager`](backend/asset-manager/README.md), [`auth-service`](backend/auth-service/README.md), [`transcoder`](backend/transcoder/README.md), [`streaming-api`](backend/streaming-api/README.md). Lambdas: [`raw_video_uploaded`](backend/lambdas/cmd/raw_video_uploaded/README.md), [`hls_job_requested`](backend/lambdas/cmd/hls_job_requested/README.md), [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md), [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md), [`delete_files`](backend/lambdas/cmd/delete_files/README.md). Frontend: [`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md), [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md). Shared: see `backend/pkg` for common code.
 
-Video Upload: Videos are uploaded to S3, triggering Lambda.
+## Getting Started
 
-Processing: Lambda calls MediaConvert, outputs saved to S3.
+Requirements: Docker, Go 1.21+, FFmpeg, Python + pipx, Node.js 22+, `awscli-local` (`pipx install awscli-local && pipx ensurepath`).
 
-Metadata: Stored in DynamoDB.
+Quick start:
+```bash
+./local/build.sh
+```
+Starts all services, UIs, dependencies, and logging pipeline.
 
-Streaming: CloudFront delivers videos with adaptive bitrate.
+Development:
+```bash
+cd backend
+make install-tools
+make lint && make test
+./scripts/pre-commit.sh
+make generate && make build
+```
 
-Cost Optimization
+## Testing
+Integration tests: [`integration-tests`](integration-tests/README.md) with Karate framework for API testing, data population, and end-to-end workflows.
 
-Use AWS Free Tier (S3, CloudFront, DynamoDB).
-
-Automate storage cleanup with lifecycle rules.
-
-Leverage MediaConvert "Basic" tier for low-cost transcoding.
-
-Optimize caching to minimize S3 requests.
+## Observability
+See [Logging Setup](local/LOGGING.md) for Fluentd → Elasticsearch → Kibana with structured logs and correlation IDs.
