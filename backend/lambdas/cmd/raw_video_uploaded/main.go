@@ -13,12 +13,17 @@ import (
 )
 
 type RawVideoUploadedEvent struct {
-	AssetID         string `json:"assetId"`
-	VideoID         string `json:"videoId"`
-	StorageLocation string `json:"storageLocation"`
-	Filename        string `json:"filename"`
-	Size            int64  `json:"size"`
-	ContentType     string `json:"contentType"`
+	AssetID         string  `json:"assetId"`
+	VideoID         string  `json:"videoId"`
+	StorageLocation string  `json:"storageLocation"`
+	Filename        string  `json:"filename"`
+	Size            int64   `json:"size"`
+	ContentType     string  `json:"contentType"`
+	Width           int     `json:"width"`
+	Height          int     `json:"height"`
+	Duration        float64 `json:"duration"`
+	Bitrate         int     `json:"bitrate"`
+	Codec           string  `json:"codec"`
 }
 
 func NewRawVideoUploadedEvent(assetID, videoID, storageLocation, filename string, size int64, contentType string) *RawVideoUploadedEvent {
@@ -29,6 +34,11 @@ func NewRawVideoUploadedEvent(assetID, videoID, storageLocation, filename string
 		Filename:        filename,
 		Size:            size,
 		ContentType:     contentType,
+		Width:           0,
+		Height:          0,
+		Duration:        0,
+		Bitrate:         0,
+		Codec:           "",
 	}
 }
 

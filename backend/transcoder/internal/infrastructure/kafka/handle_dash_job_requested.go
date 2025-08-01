@@ -1,0 +1,41 @@
+package kafka
+
+import (
+	"context"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages"
+)
+
+type DASHJobRequestedEvent struct {
+	AssetID string `json:"assetId"`
+	VideoID string `json:"videoId"`
+	Input   string `json:"input"`
+}
+
+func (c *TranscoderEventConsumer) HandleDASHJobRequested(ctx context.Context, event *events.Event) error {
+	c.logger.Info("DASH job requested event received", "event_id", event.ID, "source", event.Source)
+
+	var e DASHJobRequestedEvent
+	if err := c.unmarshalEventData(event, &e); err != nil {
+		c.logger.WithError(err).Error("Failed to unmarshal DASH job event")
+		return err
+	}
+
+	payload := messages.JobPayload{
+		JobType: "transcode",
+		AssetID: e.AssetID,
+		VideoID: e.VideoID,
+		Input:   e.Input,
+		Format:  "dash",
+		Quality: "main",
+	}
+
+	if err := c.jobService.ProcessJob(ctx, payload); err != nil {
+		c.logger.WithError(err).Error("Failed to process DASH job", "asset_id", e.AssetID, "video_id", e.VideoID)
+		return err
+	}
+
+	c.logger.Info("DASH job processed successfully", "asset_id", e.AssetID, "video_id", e.VideoID)
+	return nil
+}

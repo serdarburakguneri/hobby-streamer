@@ -32,7 +32,21 @@ type Video struct {
 	streamInfo         *valueobjects.StreamInfo
 }
 
-func NewVideo(label string, format *valueobjects.VideoFormat, storageLocation valueobjects.S3Object, width, height int, codec, contentType string, size int64) (*Video, error) {
+func NewVideo(
+	label string,
+	format *valueobjects.VideoFormat,
+	storageLocation valueobjects.S3Object,
+	width, height int,
+	duration float64,
+	bitrate int,
+	codec string,
+	size int64,
+	contentType string,
+	videoCodec, audioCodec string,
+	frameRate string,
+	audioChannels, audioSampleRate int,
+	streamInfo *valueobjects.StreamInfo,
+) (*Video, error) {
 	videoLabel, err := valueobjects.NewValidatedString(label, 100, "video label")
 	if err != nil {
 		return nil, err
@@ -58,12 +72,20 @@ func NewVideo(label string, format *valueobjects.VideoFormat, storageLocation va
 		storageLocation: storageLocation,
 		width:           width,
 		height:          height,
+		duration:        duration,
+		bitrate:         bitrate,
 		codec:           codec,
 		size:            size,
 		contentType:     *contentTypeVO,
-		status:          valueobjects.VideoStatusPending,
+		status:          valueobjects.VideoStatusReady,
 		timestamps:      timestamps,
 		segments:        make([]string, 0),
+		videoCodec:      videoCodec,
+		audioCodec:      audioCodec,
+		frameRate:       frameRate,
+		audioChannels:   audioChannels,
+		audioSampleRate: audioSampleRate,
+		streamInfo:      streamInfo,
 	}, nil
 }
 

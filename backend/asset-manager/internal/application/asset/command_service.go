@@ -6,6 +6,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/commands"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/entity"
+	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/valueobjects"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
@@ -69,7 +70,24 @@ func (s *CommandService) AddVideo(ctx context.Context, cmd commands.AddVideoComm
 		return errors.NewNotFoundError("asset not found", nil)
 	}
 
-	if _, err := asset.AddVideo(cmd.Label, cmd.Format, cmd.StorageLocation); err != nil {
+	if _, err := asset.AddVideo(
+		cmd.Label,
+		cmd.Format,
+		cmd.StorageLocation,
+		cmd.Width,
+		cmd.Height,
+		cmd.Duration,
+		cmd.Bitrate,
+		cmd.Codec,
+		cmd.Size,
+		cmd.ContentType,
+		cmd.VideoCodec,
+		cmd.AudioCodec,
+		cmd.FrameRate,
+		cmd.AudioChannels,
+		cmd.AudioSampleRate,
+		cmd.StreamInfo,
+	); err != nil {
 		return errors.NewValidationError("failed to add video", err)
 	}
 
@@ -109,8 +127,22 @@ func (s *CommandService) UpdateVideoStatus(ctx context.Context, cmd commands.Upd
 }
 
 func (s *CommandService) UpdateVideoMetadata(ctx context.Context, cmd commands.UpdateVideoMetadataCommand) error {
-	//TODO: Implement this
-	return nil
+	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
+	if err != nil {
+		return errors.NewInternalError("failed to find asset", err)
+	}
+	if asset == nil {
+		return errors.NewNotFoundError("asset not found", nil)
+	}
+	contentTypeVO, err := valueobjects.NewContentType(cmd.ContentType)
+	if err != nil {
+		return errors.NewValidationError("invalid content type", err)
+	}
+	transcodingInfo := valueobjects.NewTranscodingInfo(cmd.Width, cmd.Height, cmd.Duration, cmd.Bitrate, cmd.Codec, cmd.Size, *contentTypeVO)
+	if err := asset.UpdateVideoTranscodingInfo(cmd.VideoID, *transcodingInfo); err != nil {
+		return errors.NewValidationError("failed to update video metadata", err)
+	}
+	return s.saver.Update(ctx, asset)
 }
 
 func (s *CommandService) AddImage(ctx context.Context, cmd commands.AddImageCommand) error {

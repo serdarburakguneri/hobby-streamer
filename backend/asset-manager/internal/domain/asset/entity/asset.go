@@ -224,8 +224,39 @@ func (a *Asset) IsReadyForPublishing() bool {
 	return hasReadyVideos
 }
 
-func (a *Asset) AddVideo(label string, format *valueobjects.VideoFormat, storageLocation valueobjects.S3Object) (*Video, error) {
-	video, err := NewVideo(label, format, storageLocation, 0, 0, "", "video/*", 0)
+func (a *Asset) AddVideo(
+	label string,
+	format *valueobjects.VideoFormat,
+	storageLocation valueobjects.S3Object,
+	width, height int,
+	duration float64,
+	bitrate int,
+	codec string,
+	size int64,
+	contentType string,
+	videoCodec, audioCodec string,
+	frameRate string,
+	audioChannels, audioSampleRate int,
+	streamInfo *valueobjects.StreamInfo,
+) (*Video, error) {
+	video, err := NewVideo(
+		label,
+		format,
+		storageLocation,
+		width,
+		height,
+		duration,
+		bitrate,
+		codec,
+		size,
+		contentType,
+		videoCodec,
+		audioCodec,
+		frameRate,
+		audioChannels,
+		audioSampleRate,
+		streamInfo,
+	)
 	if err != nil {
 		return nil, err
 	}
