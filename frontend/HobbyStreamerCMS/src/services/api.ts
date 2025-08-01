@@ -20,6 +20,7 @@ const ASSET_BASE_FIELDS = gql`
     updatedAt
     metadata
     ownerId
+    parentId
   }
 `;
 
@@ -59,12 +60,12 @@ const IMAGE_FIELDS = gql`
     height
     size
     contentType
-    metadata
     streamInfo {
       downloadUrl
       cdnPrefix
       url
     }
+    metadata
     createdAt
     updatedAt
   }
@@ -73,6 +74,7 @@ const IMAGE_FIELDS = gql`
 const VIDEO_FIELDS = gql`
   fragment VideoFields on Video {
     id
+    label
     type
     format
     storageLocation {
@@ -95,8 +97,10 @@ const VIDEO_FIELDS = gql`
     metadata
     status
     thumbnail {
+      id
       fileName
       url
+      type
       storageLocation {
         bucket
         key
@@ -107,6 +111,8 @@ const VIDEO_FIELDS = gql`
       size
       contentType
       metadata
+      createdAt
+      updatedAt
     }
     transcodingInfo {
       jobId
@@ -121,6 +127,14 @@ const VIDEO_FIELDS = gql`
     isReady
     isProcessing
     isFailed
+    segmentCount
+    videoCodec
+    audioCodec
+    avgSegmentDuration
+    segments
+    frameRate
+    audioChannels
+    audioSampleRate
   }
 `;
 
@@ -129,11 +143,24 @@ const ASSET_FULL_FIELDS = gql`
     ...AssetBaseFields
     ...AssetParentFields
     ...AssetPublishRuleFields
+    parent {
+      id
+      title
+      type
+    }
+    children {
+      ...AssetBaseFields
+    }
     images {
       ...ImageFields
     }
     videos {
       ...VideoFields
+    }
+    credits {
+      role
+      name
+      personId
     }
   }
 `;
@@ -146,6 +173,8 @@ const BUCKET_BASE_FIELDS = gql`
     description
     type
     status
+    ownerId
+    metadata
     createdAt
     updatedAt
   }
@@ -166,10 +195,20 @@ const VIDEO_THUMBNAIL_FIELDS = gql`
     fileName
     url
     type
+    storageLocation {
+      bucket
+      key
+      url
+    }
     width
     height
     size
     contentType
+    streamInfo {
+      downloadUrl
+      cdnPrefix
+      url
+    }
     metadata
     createdAt
     updatedAt
@@ -410,6 +449,7 @@ const GET_BUCKETS = gql`
         ...BucketFullFields
       }
       nextKey
+      hasMore
     }
   }
   ${BUCKET_FULL_FIELDS}
@@ -469,16 +509,17 @@ const GET_ASSET = gql`
 `;
 
 const SEARCH_ASSETS = gql`
-  query SearchAssets($query: String!, $limit: Int) {
-    searchAssets(query: $query, limit: $limit) {
-      items {
-        id
-        slug
-        title
-        type
-      }
+  query SearchAssets($query: String!, $limit: Int, $offset: Int) {
+    searchAssets(query: $query, limit: $limit, offset: $offset) {
+      ...AssetFullFields
     }
   }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
 `;
 
 
@@ -580,7 +621,7 @@ const ADD_VIDEO = gql`
 `;
 
 const CREATE_BUCKET = gql`
-  mutation CreateBucket($input: CreateBucketInput!) {
+  mutation CreateBucket($input: BucketInput!) {
     createBucket(input: $input) {
       ...BucketFullFields
     }
@@ -596,8 +637,8 @@ const CREATE_BUCKET = gql`
 `;
 
 const UPDATE_BUCKET = gql`
-  mutation UpdateBucket($input: UpdateBucketInput!) {
-    updateBucket(input: $input) {
+  mutation UpdateBucket($id: ID!, $input: BucketInput!) {
+    updateBucket(id: $id, input: $input) {
       ...BucketFullFields
     }
   }
@@ -612,14 +653,14 @@ const UPDATE_BUCKET = gql`
 `;
 
 const DELETE_BUCKET = gql`
-  mutation DeleteBucket($id: ID!, $ownerId: String!) {
-    deleteBucket(input: { id: $id, ownerId: $ownerId })
+  mutation DeleteBucket($id: ID!) {
+    deleteBucket(id: $id)
   }
 `;
 
 const ADD_ASSET_TO_BUCKET = gql`
-  mutation AddAssetToBucket($bucketId: ID!, $assetId: ID!, $ownerId: String!) {
-    addAssetToBucket(input: { bucketId: $bucketId, assetId: $assetId, ownerId: $ownerId })
+  mutation AddAssetToBucket($input: AddAssetToBucketInput!) {
+    addAssetToBucket(input: $input)
   }
 `;
 
@@ -632,20 +673,6 @@ const REMOVE_ASSET_FROM_BUCKET = gql`
 const ADD_IMAGE = gql`
   mutation AddImage($input: AddImageInput!) {
     addImage(input: $input) {
-      ...AssetFullFields
-    }
-  }
-  ${ASSET_FULL_FIELDS}
-  ${ASSET_BASE_FIELDS}
-  ${ASSET_PARENT_FIELDS}
-  ${ASSET_PUBLISH_RULE_FIELDS}
-  ${IMAGE_FIELDS}
-  ${VIDEO_FIELDS}
-`;
-
-const DELETE_IMAGE = gql`
-  mutation DeleteImage($assetId: ID!, $imageId: ID!) {
-    deleteImage(assetId: $assetId, imageId: $imageId) {
       ...AssetFullFields
     }
   }
@@ -954,13 +981,13 @@ export const useAssetService = () => {
     },
 
 
-    searchAssets: async (query: string, limit = 10): Promise<{ assets: any[] }> => {
+    searchAssets: async (query: string, limit = 10, offset = 0): Promise<{ assets: any[] }> => {
       const response = await client.query({
         query: SEARCH_ASSETS,
-        variables: { query, limit },
+        variables: { query, limit, offset },
         fetchPolicy: 'no-cache',
       });
-      return { assets: response.data.searchAssets.items };
+      return { assets: response.data.searchAssets };
     },
 
 
@@ -1102,7 +1129,7 @@ export const useAssetService = () => {
     },
 
     patchBucket: async (id: string, patches: any[]): Promise<any> => {
-      const input: any = { id };
+      const input: any = {};
       
       patches.forEach(patch => {
         if (patch.op === 'replace') {
@@ -1113,22 +1140,28 @@ export const useAssetService = () => {
 
       const response = await client.mutate({
         mutation: UPDATE_BUCKET,
-        variables: { input },
+        variables: { id, input },
       });
       return response.data.updateBucket;
     },
 
-    deleteBucket: async (id: string, ownerId: string): Promise<void> => {
+    deleteBucket: async (id: string): Promise<void> => {
       await client.mutate({
         mutation: DELETE_BUCKET,
-        variables: { id, ownerId },
+        variables: { id },
       });
     },
 
     addAssetToBucket: async (bucketId: string, assetId: string, ownerId: string): Promise<boolean> => {
       const response = await client.mutate({
         mutation: ADD_ASSET_TO_BUCKET,
-        variables: { bucketId, assetId, ownerId },
+        variables: { 
+          input: { 
+            bucketId, 
+            assetId, 
+            ownerId 
+          } 
+        },
       });
       return response.data.addAssetToBucket;
     },
@@ -1190,13 +1223,6 @@ export const useAssetService = () => {
       
       console.log('GraphQL response:', response.data);
       return response.data.addImage;
-    },
-
-    deleteImageFromAsset: async (assetId: string, imageId: string): Promise<void> => {
-      await client.mutate({
-        mutation: DELETE_IMAGE,
-        variables: { assetId, imageId },
-      });
     },
 
     triggerHLSTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {

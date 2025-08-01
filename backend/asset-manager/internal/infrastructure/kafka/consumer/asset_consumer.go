@@ -26,16 +26,17 @@ func NewAssetEventConsumer(appService *AssetAppServiceAdapter, producer *events.
 }
 
 func (c *AssetEventConsumer) Start(ctx context.Context, bootstrapServers string) error {
-	cons, err := events.NewConsumer(ctx, &events.ConsumerConfig{
-		BootstrapServers: []string{bootstrapServers},
-		GroupID:          events.AssetManagerGroupID,
-		Topics: []string{
-			events.RawVideoUploadedTopic,
-			events.AnalyzeJobCompletedTopic,
-			events.HLSJobCompletedTopic,
-			events.DASHJobCompletedTopic,
-		},
-	})
+	cfg := events.DefaultConsumerConfig()
+	cfg.BootstrapServers = []string{bootstrapServers}
+	cfg.GroupID = events.AssetManagerGroupID
+	cfg.Topics = []string{
+		events.RawVideoUploadedTopic,
+		events.AnalyzeJobCompletedTopic,
+		events.HLSJobCompletedTopic,
+		events.DASHJobCompletedTopic,
+	}
+
+	cons, err := events.NewConsumer(ctx, cfg)
 	if err != nil {
 		return err
 	}

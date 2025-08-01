@@ -129,9 +129,12 @@ func (r *Repository) List(ctx context.Context, limit int, lastKey map[string]int
 	query := buildAssetListQuery()
 
 	params := map[string]interface{}{
-		"limit": limit,
+		"limit":  limit,
+		"offset": 0,
 	}
-
+	if off, ok := lastKey["offset"].(int); ok {
+		params["offset"] = off
+	}
 	result, err := session.Run(query, params)
 	if err != nil {
 		log.WithError(err).Error("Failed to list assets from Neo4j")
@@ -164,9 +167,12 @@ func (r *Repository) Search(ctx context.Context, query string, limit int, lastKe
 
 	queryStr := buildAssetSearchQuery()
 	params := map[string]interface{}{
-		"query":   query,
-		"limit":   limit,
-		"lastKey": lastKey,
+		"query":  query,
+		"limit":  limit,
+		"offset": 0,
+	}
+	if off, ok := lastKey["offset"].(int); ok {
+		params["offset"] = off
 	}
 
 	result, err := session.Run(queryStr, params)

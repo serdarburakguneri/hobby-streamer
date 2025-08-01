@@ -65,6 +65,7 @@ func buildAssetListQuery() string {
 	MATCH (a:Asset)
 	RETURN a
 	ORDER BY a.createdAt DESC
+	SKIP $offset
 	LIMIT $limit
 	`
 }
@@ -75,6 +76,7 @@ func buildAssetSearchQuery() string {
 	WITH node AS a
 	RETURN a
 	ORDER BY a.createdAt DESC
+	SKIP $offset
 	LIMIT $limit
 	`
 }

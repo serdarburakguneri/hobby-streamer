@@ -205,9 +205,14 @@ func (r *Repository) List(ctx context.Context, limit *int, offset *int) ([]*enti
 	if limit != nil {
 		limitVal = *limit
 	}
+	offsetVal := 0
+	if offset != nil {
+		offsetVal = *offset
+	}
 
 	params := map[string]interface{}{
-		"limit": limitVal,
+		"limit":  limitVal,
+		"offset": offsetVal,
 	}
 
 	result, err := session.Run(listQuery, params)
@@ -236,10 +241,15 @@ func (r *Repository) Search(ctx context.Context, query string, limit *int, offse
 	if limit != nil {
 		limitVal = *limit
 	}
+	offsetVal := 0
+	if offset != nil {
+		offsetVal = *offset
+	}
 
 	params := map[string]interface{}{
-		"query": query,
-		"limit": limitVal,
+		"query":  query,
+		"limit":  limitVal,
+		"offset": offsetVal,
 	}
 
 	result, err := session.Run(searchQuery, params)
@@ -439,10 +449,15 @@ func (r *Repository) FindByType(ctx context.Context, bucketType valueobjects.Buc
 	if limit != nil {
 		limitVal = *limit
 	}
+	offsetVal := 0
+	if offset != nil {
+		offsetVal = *offset
+	}
 
 	params := map[string]interface{}{
-		"type":  bucketType.Value(),
-		"limit": limitVal,
+		"type":   bucketType.Value(),
+		"limit":  limitVal,
+		"offset": offsetVal,
 	}
 
 	result, err := session.Run(findByTypeQuery, params)
@@ -471,10 +486,15 @@ func (r *Repository) FindByStatus(ctx context.Context, status valueobjects.Bucke
 	if limit != nil {
 		limitVal = *limit
 	}
+	offsetVal := 0
+	if offset != nil {
+		offsetVal = *offset
+	}
 
 	params := map[string]interface{}{
 		"status": status.Value(),
 		"limit":  limitVal,
+		"offset": offsetVal,
 	}
 
 	result, err := session.Run(findByStatusQuery, params)

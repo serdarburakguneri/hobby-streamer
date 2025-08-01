@@ -57,20 +57,7 @@ export function useBucketList(refreshTrigger?: number) {
 
     try {
       setDeleting(true);
-      const token = await getAuthToken();
-      let ownerId = '';
-      if (token) {
-        const { valid, user } = validateTokenLocally(token);
-        if (valid && user && user.id) {
-          ownerId = user.id;
-        }
-      }
-      if (!ownerId) {
-        Alert.alert('Error', 'Could not determine logged-in user.');
-        setDeleting(false);
-        return;
-      }
-      await assetService.deleteBucket(selectedBucket.id, ownerId);
+      await assetService.deleteBucket(selectedBucket.id);
       setSelectedBucket(null);
       await loadBuckets();
       setShowSuccessMessage(true);

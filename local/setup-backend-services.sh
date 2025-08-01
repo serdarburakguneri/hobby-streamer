@@ -22,7 +22,6 @@ until curl -s -X POST http://localhost:8082/graphql -H "Content-Type: applicatio
   sleep 3
 done
 echo "[INFO] Asset Manager GraphQL endpoint is ready."
-
 echo "[INFO] Testing Nginx CDN endpoint..."
 until curl -s http://localhost:8083/health > /dev/null 2>&1; do
   echo "[INFO] Waiting for Nginx CDN endpoint to be ready..."
