@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
@@ -26,15 +25,12 @@ func NewTranscoderEventConsumer(jobService appjob.JobApplicationService, produce
 }
 
 func (c *TranscoderEventConsumer) Start(ctx context.Context, bootstrapServers string) error {
-	consumerConfig := &events.ConsumerConfig{
-		BootstrapServers:  []string{bootstrapServers},
-		GroupID:           events.TranscoderGroupID,
-		Topics:            []string{events.AnalyzeJobRequestedTopic, events.HLSJobRequestedTopic, events.DASHJobRequestedTopic},
-		SessionTimeout:    10 * time.Second,
-		HeartbeatInterval: 3 * time.Second,
-	}
+	cfg := events.DefaultConsumerConfig()
+	cfg.BootstrapServers = []string{bootstrapServers}
+	cfg.GroupID = events.TranscoderGroupID
+	cfg.Topics = []string{events.AnalyzeJobRequestedTopic, events.HLSJobRequestedTopic, events.DASHJobRequestedTopic}
 
-	consumer, err := events.NewConsumer(ctx, consumerConfig)
+	consumer, err := events.NewConsumer(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka consumer: %w", err)
 	}
