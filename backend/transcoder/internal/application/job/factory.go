@@ -55,37 +55,40 @@ func (f *JobFactory) applyTemplate(pattern string, data interface{}) (string, er
 
 func (f *JobFactory) createTranscodeJob(assetID valueobjects.AssetID, videoID valueobjects.VideoID, payload messages.JobPayload) (*entity.Job, error) {
 	comp := f.config.GetComponent("s3").(map[string]interface{})
-	bucket := comp["default_output_bucket"].(string)
-	sourcePattern := comp["source_prefix_pattern"].(string)
-	var filename string
-	if payload.OutputKey != "" {
-		filename = payload.OutputKey
+	defaultBucket := comp["default_output_bucket"].(string)
+
+	var input string
+	if payload.Input == "" {
+		return nil, errors.NewValidationError("input path is required for transcode jobs", nil)
 	}
-	sourceKey, err := f.applyTemplate(sourcePattern, map[string]string{
-		"AssetID":  assetID.Value(),
-		"VideoID":  videoID.Value(),
-		"Filename": filename,
-	})
-	if err != nil {
-		return nil, err
+	input = payload.Input
+
+	var output string
+	if payload.OutputBucket != "" && payload.OutputKey != "" {
+		output = fmt.Sprintf("s3://%s/%s", payload.OutputBucket, payload.OutputKey)
+	} else {
+		var pattern string
+		switch payload.Format {
+		case string(valueobjects.JobFormatHLS):
+			pattern = comp["hls_output_key_pattern"].(string)
+		case string(valueobjects.JobFormatDASH):
+			pattern = comp["dash_output_key_pattern"].(string)
+		}
+		if pattern == "" {
+			pattern = "{{.AssetID}}/{{.VideoID}}/{{.Format}}/{{.Quality}}/output"
+		}
+		renderedKey, err := f.applyTemplate(pattern, map[string]string{
+			"AssetID": assetID.Value(),
+			"VideoID": videoID.Value(),
+			"Quality": payload.Quality,
+			"Format":  payload.Format,
+		})
+		if err != nil {
+			return nil, err
+		}
+		output = fmt.Sprintf("s3://%s/%s", defaultBucket, renderedKey)
 	}
-	outputPatternKey := ""
-	switch payload.Format {
-	case string(valueobjects.JobFormatHLS):
-		outputPatternKey = comp["hls_output_key_pattern"].(string)
-	case string(valueobjects.JobFormatDASH):
-		outputPatternKey = comp["dash_output_key_pattern"].(string)
-	}
-	outputKey, err := f.applyTemplate(outputPatternKey, map[string]string{
-		"AssetID": assetID.Value(),
-		"VideoID": videoID.Value(),
-		"Quality": payload.Quality,
-	})
-	if err != nil {
-		return nil, err
-	}
-	input := fmt.Sprintf("s3://%s/%s", bucket, sourceKey)
-	output := fmt.Sprintf("s3://%s/%s", bucket, outputKey)
+
 	return entity.NewTranscodeJob(assetID, videoID, input, output, payload.Quality, valueobjects.JobFormat(payload.Format)), nil
 }
 

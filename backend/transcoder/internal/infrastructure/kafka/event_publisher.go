@@ -20,28 +20,14 @@ func NewKafkaEventPublisher(producer *events.Producer) *KafkaEventPublisher {
 	}
 }
 
-func (p *KafkaEventPublisher) PublishJobCompleted(ctx context.Context, event *jobevents.JobCompletedEvent) error {
-	var topic string
-	switch event.JobType {
-	case "analyze":
-		topic = events.AnalyzeJobCompletedTopic
-	default:
-		topic = events.DASHJobCompletedTopic
-	}
-	var ceType string
-	switch event.JobType {
-	case "analyze":
-		ceType = events.JobAnalyzeCompletedEventType
-	default:
-		ceType = events.JobTranscodeCompletedEventType
-	}
-	ce := events.NewEvent(ceType, event).
+func (p *KafkaEventPublisher) PublishJobCompleted(ctx context.Context, ev jobevents.CompletedEvent) error {
+	ce := events.NewEvent(ev.CloudEventType(), ev.Data()).
 		SetSource("transcoder").
-		AddExtension("subject", event.JobID)
-	if err := p.producer.SendEvent(ctx, topic, ce); err != nil {
-		p.logger.WithError(err).Error("Failed to publish job completion event", "topic", topic, "job_id", event.JobID)
+		AddExtension("subject", ev.ID())
+	if err := p.producer.SendEvent(ctx, ev.Topic(), ce); err != nil {
+		p.logger.WithError(err).Error("Failed to publish job completion event", "topic", ev.Topic(), "job_id", ev.ID())
 		return err
 	}
-	p.logger.Info("Published job completion event", "topic", topic, "job_id", event.JobID, "success", event.Success)
+	p.logger.Info("Published job completion event", "topic", ev.Topic(), "job_id", ev.ID())
 	return nil
 }

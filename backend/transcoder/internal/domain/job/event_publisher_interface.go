@@ -7,5 +7,5 @@ import (
 )
 
 type EventPublisher interface {
-	PublishJobCompleted(ctx context.Context, event *events.JobCompletedEvent) error
+	PublishJobCompleted(ctx context.Context, event events.CompletedEvent) error
 }
