@@ -84,7 +84,7 @@ func buildAssetSearchQuery() string {
 func buildParentRelationshipQuery() string {
 	return `
 	MATCH (child:Asset {id: $childID})
-	MATCH (parent:Asset {id: a.parentId})
+	MATCH (parent:Asset {id: $parentID})
 	MERGE (child)-[:IS_CHILD_OF]->(parent)
 	`
 }

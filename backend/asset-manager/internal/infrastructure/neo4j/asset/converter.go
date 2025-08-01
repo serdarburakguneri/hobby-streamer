@@ -22,7 +22,7 @@ func NewAssetConverter(logger *logger.Logger) *AssetConverter {
 }
 
 func (c *AssetConverter) AssetToParams(a *entity.Asset) map[string]interface{} {
-	var title, description, assetType, genre, ownerID string
+	var title, description, assetType, genre, ownerID, parentID string
 	if a.Title() != nil {
 		title = a.Title().Value()
 	}
@@ -38,6 +38,9 @@ func (c *AssetConverter) AssetToParams(a *entity.Asset) map[string]interface{} {
 	if a.OwnerID() != nil {
 		ownerID = a.OwnerID().Value()
 	}
+	if a.ParentID() != nil {
+		parentID = a.ParentID().Value()
+	}
 
 	params := map[string]interface{}{
 		"id":          a.ID().Value(),
@@ -49,6 +52,7 @@ func (c *AssetConverter) AssetToParams(a *entity.Asset) map[string]interface{} {
 		"genres":      c.genresToStringSlice(a.Genres()),
 		"tags":        c.tagsToStringSlice(a.Tags()),
 		"ownerId":     ownerID,
+		"parentId":    parentID,
 		"createdAt":   a.CreatedAt().Value().Format(time.RFC3339),
 		"updatedAt":   a.UpdatedAt().Value().Format(time.RFC3339),
 		"publishRule": nil,

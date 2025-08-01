@@ -9,6 +9,7 @@ type CreateAssetCommand struct {
 	Title     *valueobjects.Title
 	AssetType *valueobjects.AssetType
 	OwnerID   *valueobjects.OwnerID
+	ParentID  *valueobjects.AssetID
 }
 
 type PatchAssetCommand struct {

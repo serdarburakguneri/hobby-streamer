@@ -38,6 +38,9 @@ func (s *CommandService) CreateAsset(ctx context.Context, cmd commands.CreateAss
 	if cmd.OwnerID != nil {
 		asset.SetOwnerID(cmd.OwnerID)
 	}
+	if cmd.ParentID != nil {
+		asset.SetParentID(cmd.ParentID)
+	}
 
 	if err := s.saver.Save(ctx, asset); err != nil {
 		return nil, errors.NewInternalError("failed to save asset", err)

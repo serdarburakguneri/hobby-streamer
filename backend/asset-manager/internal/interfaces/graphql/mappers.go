@@ -37,11 +37,20 @@ func MapCreateAssetInput(input CreateAssetInput) (assetCommands.CreateAssetComma
 		}
 		owner = o
 	}
+	var parent *assetvo.AssetID
+	if input.ParentID != nil {
+		p, err := assetvo.NewAssetID(*input.ParentID)
+		if err != nil {
+			return assetCommands.CreateAssetCommand{}, err
+		}
+		parent = p
+	}
 	return assetCommands.CreateAssetCommand{
 		Slug:      *slug,
 		Title:     title,
 		AssetType: at,
 		OwnerID:   owner,
+		ParentID:  parent,
 	}, nil
 }
 
