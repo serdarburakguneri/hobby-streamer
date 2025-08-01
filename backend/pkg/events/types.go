@@ -41,6 +41,7 @@ const (
 
 	AnalyzeJobRequestedTopic = "analyze.job.requested"
 	HLSJobRequestedTopic     = "hls.job.requested"
+	DASHJobRequestedTopic    = "dash.job.requested"
 
 	AnalyzeJobCompletedTopic = "analyze.job.completed"
 	HLSJobCompletedTopic     = "hls.job.completed"

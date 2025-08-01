@@ -11,7 +11,7 @@ import (
 
 type TestEventPublisher struct{}
 
-func (m *TestEventPublisher) PublishJobCompleted(ctx context.Context, event *events.JobCompletedEvent) error {
+func (m *TestEventPublisher) PublishJobCompleted(ctx context.Context, event events.CompletedEvent) error {
 	return nil
 }
 

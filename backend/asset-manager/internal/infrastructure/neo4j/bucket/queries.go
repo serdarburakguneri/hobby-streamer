@@ -51,6 +51,7 @@ const (
 		MATCH (b:Bucket)
 		RETURN b
 		ORDER BY b.createdAt DESC
+		SKIP $offset
 		LIMIT $limit
 	`
 
@@ -59,6 +60,7 @@ const (
 		WHERE b.name CONTAINS $query OR b.description CONTAINS $query
 		RETURN b
 		ORDER BY b.createdAt DESC
+		SKIP $offset
 		LIMIT $limit
 	`
 
@@ -107,6 +109,7 @@ const (
 		MATCH (b:Bucket {type: $type})
 		RETURN b
 		ORDER BY b.createdAt DESC
+		SKIP $offset
 		LIMIT $limit
 	`
 
@@ -114,6 +117,7 @@ const (
 		MATCH (b:Bucket {status: $status})
 		RETURN b
 		ORDER BY b.createdAt DESC
+		SKIP $offset
 		LIMIT $limit
 	`
 

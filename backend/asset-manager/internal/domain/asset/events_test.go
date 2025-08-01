@@ -36,7 +36,7 @@ func TestAssetEvents(t *testing.T) {
 
 		videoFormat := valueobjects.VideoFormat("hls")
 		s3Object, _ := valueobjects.NewS3Object("test-bucket", "test-key", "https://test-bucket.s3.amazonaws.com/test-key")
-		video, _ := asset.AddVideo("main", &videoFormat, *s3Object)
+		video, _ := asset.AddVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil)
 
 		event := events.NewVideoAddedEvent(asset.ID().Value(), video.ID().Value(), video.Label().Value(), string(video.Format()))
 		cloudEvent := event.EventType()

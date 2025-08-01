@@ -1,7 +1,9 @@
 package job
 
 import (
+	"bytes"
 	"fmt"
+	"text/template"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -39,44 +41,57 @@ func (f *JobFactory) CreateJob(payload messages.JobPayload) (*entity.Job, error)
 	}
 }
 
-func (f *JobFactory) createAnalyzeJob(assetID valueobjects.AssetID, videoID valueobjects.VideoID, payload messages.JobPayload) (*entity.Job, error) {
-	return entity.NewAnalyzeJob(assetID, videoID, payload.Input), nil
+func (f *JobFactory) applyTemplate(pattern string, data interface{}) (string, error) {
+	tpl, err := template.New("pattern").Parse(pattern)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (f *JobFactory) createTranscodeJob(assetID valueobjects.AssetID, videoID valueobjects.VideoID, payload messages.JobPayload) (*entity.Job, error) {
-	format, outputKey, err := f.determineFormatAndOutputKey(payload)
-	if err != nil {
-		return nil, err
-	}
+	comp := f.config.GetComponent("s3").(map[string]interface{})
+	defaultBucket := comp["default_output_bucket"].(string)
 
-	outputBucket := payload.OutputBucket
-	if outputBucket == "" {
-		if comp := f.config.GetComponent("s3"); comp != nil {
-			if compMap, ok := comp.(map[string]interface{}); ok {
-				if bucket, ok2 := compMap["default_output_bucket"].(string); ok2 {
-					outputBucket = bucket
-				}
-			}
+	var input string
+	if payload.Input == "" {
+		return nil, errors.NewValidationError("input path is required for transcode jobs", nil)
+	}
+	input = payload.Input
+
+	var output string
+	if payload.OutputBucket != "" && payload.OutputKey != "" {
+		output = fmt.Sprintf("s3://%s/%s", payload.OutputBucket, payload.OutputKey)
+	} else {
+		var pattern string
+		switch payload.Format {
+		case string(valueobjects.JobFormatHLS):
+			pattern = comp["hls_output_key_pattern"].(string)
+		case string(valueobjects.JobFormatDASH):
+			pattern = comp["dash_output_key_pattern"].(string)
 		}
-	}
-	finalOutputKey := payload.OutputKey
-	if finalOutputKey == "" {
-		finalOutputKey = outputKey
+		if pattern == "" {
+			pattern = "{{.AssetID}}/{{.VideoID}}/{{.Format}}/{{.Quality}}/output"
+		}
+		renderedKey, err := f.applyTemplate(pattern, map[string]string{
+			"AssetID": assetID.Value(),
+			"VideoID": videoID.Value(),
+			"Quality": payload.Quality,
+			"Format":  payload.Format,
+		})
+		if err != nil {
+			return nil, err
+		}
+		output = fmt.Sprintf("s3://%s/%s", defaultBucket, renderedKey)
 	}
 
-	outputPath := fmt.Sprintf("s3://%s/%s", outputBucket, finalOutputKey)
-	return entity.NewTranscodeJob(assetID, videoID, payload.Input, outputPath, payload.Quality, format), nil
+	return entity.NewTranscodeJob(assetID, videoID, input, output, payload.Quality, valueobjects.JobFormat(payload.Format)), nil
 }
 
-func (f *JobFactory) determineFormatAndOutputKey(payload messages.JobPayload) (valueobjects.JobFormat, string, error) {
-	switch payload.Format {
-	case string(valueobjects.JobFormatHLS):
-		outputKey := fmt.Sprintf("%s/hls/%s/playlist.m3u8", payload.AssetID, payload.Quality)
-		return valueobjects.JobFormatHLS, outputKey, nil
-	case string(valueobjects.JobFormatDASH):
-		outputKey := fmt.Sprintf("%s/dash/%s/manifest.mpd", payload.AssetID, payload.Quality)
-		return valueobjects.JobFormatDASH, outputKey, nil
-	default:
-		return "", "", errors.NewValidationError(fmt.Sprintf("unsupported format: %s", payload.Format), nil)
-	}
+func (f *JobFactory) createAnalyzeJob(assetID valueobjects.AssetID, videoID valueobjects.VideoID, payload messages.JobPayload) (*entity.Job, error) {
+	return entity.NewAnalyzeJob(assetID, videoID, payload.Input), nil
 }

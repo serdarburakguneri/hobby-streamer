@@ -46,6 +46,10 @@ func NewConsumer(ctx context.Context, config *ConsumerConfig) (*Consumer, error)
 		config = DefaultConsumerConfig()
 	}
 
+	if config.SessionTimeout == 0 || config.HeartbeatInterval == 0 || config.AutoOffsetReset == "" {
+		return nil, fmt.Errorf("invalid consumer configuration: SessionTimeout, HeartbeatInterval and AutoOffsetReset must be set")
+	}
+
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
