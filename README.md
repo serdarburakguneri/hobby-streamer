@@ -10,6 +10,12 @@ Features include video upload, transcoding (HLS, DASH), stream delivery, asset m
 
 Services: [`asset-manager`](backend/asset-manager/README.md), [`auth-service`](backend/auth-service/README.md), [`transcoder`](backend/transcoder/README.md), [`streaming-api`](backend/streaming-api/README.md), AWS Lambdas ([`raw_video_uploaded`](backend/lambdas/cmd/raw_video_uploaded/README.md), [`hls_job_requested`](backend/lambdas/cmd/hls_job_requested/README.md), [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md), [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md), [`delete_files`](backend/lambdas/cmd/delete_files/README.md)), and React Native frontends ([`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md), [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md)). Shared code lives under `backend/pkg`.
 
+## Architecture
+
+![Architecture Diagram](docs/arch.png)
+
+Docs: [CDN Proposal](docs/cdn-proposal.md), [Kafka Architecture](docs/kafka-architecture.md)
+
 ## Tech Stack
 
 Go, GraphQL, Neo4j, Keycloak, FFmpeg, Redis, Kafka, Docker Compose, LocalStack, Fluentd, Elasticsearch, Kibana, Nginx, React Native, AWS Lambda.
@@ -27,11 +33,10 @@ Starts the services, UIs, dependencies, and logging pipeline.
 ## Development
 
 ```
-cd backend
-make install-tools
-make lint test
-./scripts/pre-commit.sh
-make generate build
+make backend-install-tools
+make backend-lint 
+make backend-test
+make backend-generate backend-build
 ```
 
 ## Testing
@@ -42,6 +47,3 @@ Integration tests live in `integration-tests` and use Karate for end-to-end API 
 
 See `local/LOGGING.md` for Fluentd → Elasticsearch → Kibana setup with structured logs and correlation IDs.
 
----
-
-Built by a software engineer as a fun playground for learning. Feel free to explore, experiment, and send feedback!
