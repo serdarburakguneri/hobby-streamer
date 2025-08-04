@@ -1,11 +1,14 @@
-package errors
+package resilience
 
 import (
 	"context"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type FallbackFunc func(ctx context.Context) error
+
 type FallbackResult struct {
 	Success bool
 	Error   error
@@ -46,41 +49,26 @@ func (fc *FallbackChain) Execute(ctx context.Context) *FallbackResult {
 	if fc.primary != nil {
 		err := fc.primary(ctx)
 		if err == nil {
-			return &FallbackResult{
-				Success: true,
-				Error:   nil,
-				Used:    fc.names[0],
-			}
+			return &FallbackResult{Success: true, Error: nil, Used: fc.names[0]}
 		}
 	}
 
 	for i, fallback := range fc.fallbacks {
 		select {
 		case <-ctx.Done():
-			return &FallbackResult{
-				Success: false,
-				Error:   ctx.Err(),
-				Used:    "timeout",
-			}
+			return &FallbackResult{Success: false, Error: ctx.Err(), Used: "timeout"}
 		default:
 		}
 
-		err := fallback(ctx)
-		if err == nil {
-			return &FallbackResult{
-				Success: true,
-				Error:   nil,
-				Used:    fc.names[i+1],
-			}
+		if err := fallback(ctx); err == nil {
+			return &FallbackResult{Success: true, Error: nil, Used: fc.names[i+1]}
 		}
 	}
 
-	return &FallbackResult{
-		Success: false,
-		Error:   NewInternalError("all fallback options failed", nil),
-		Used:    "none",
-	}
+	return &FallbackResult{Success: false, Error: pkgerrors.NewInternalError("all fallback options failed", nil), Used: "none"}
 }
+
+// Simple cache / fallback wrapper
 
 type CacheFallback struct {
 	cache    interface{}
@@ -88,10 +76,7 @@ type CacheFallback struct {
 }
 
 func NewCacheFallback(cache, fallback interface{}) *CacheFallback {
-	return &CacheFallback{
-		cache:    cache,
-		fallback: fallback,
-	}
+	return &CacheFallback{cache: cache, fallback: fallback}
 }
 
 func (cf *CacheFallback) Get() interface{} {
@@ -100,14 +85,10 @@ func (cf *CacheFallback) Get() interface{} {
 	}
 	return cf.fallback
 }
+func (cf *CacheFallback) SetCache(v interface{})    { cf.cache = v }
+func (cf *CacheFallback) SetFallback(v interface{}) { cf.fallback = v }
 
-func (cf *CacheFallback) SetCache(value interface{}) {
-	cf.cache = value
-}
-
-func (cf *CacheFallback) SetFallback(value interface{}) {
-	cf.fallback = value
-}
+// Degradation management
 
 type DegradationLevel int
 
@@ -123,33 +104,20 @@ type DegradationManager struct {
 }
 
 func NewDegradationManager() *DegradationManager {
-	return &DegradationManager{
-		level:    DegradationNone,
-		handlers: make(map[DegradationLevel]func()),
-	}
+	return &DegradationManager{level: DegradationNone, handlers: make(map[DegradationLevel]func())}
 }
 
-func (dm *DegradationManager) SetLevel(level DegradationLevel) {
-	if dm.level != level {
-		dm.level = level
-		if handler, exists := dm.handlers[level]; exists {
-			handler()
+func (dm *DegradationManager) SetLevel(l DegradationLevel) {
+	if dm.level != l {
+		dm.level = l
+		if h, ok := dm.handlers[l]; ok {
+			h()
 		}
 	}
 }
-
-func (dm *DegradationManager) GetLevel() DegradationLevel {
-	return dm.level
+func (dm *DegradationManager) GetLevel() DegradationLevel { return dm.level }
+func (dm *DegradationManager) OnLevelChange(l DegradationLevel, h func()) {
+	dm.handlers[l] = h
 }
-
-func (dm *DegradationManager) OnLevelChange(level DegradationLevel, handler func()) {
-	dm.handlers[level] = handler
-}
-
-func (dm *DegradationManager) IsDegraded() bool {
-	return dm.level > DegradationNone
-}
-
-func (dm *DegradationManager) IsFullyDegraded() bool {
-	return dm.level == DegradationFull
-}
+func (dm *DegradationManager) IsDegraded() bool      { return dm.level > DegradationNone }
+func (dm *DegradationManager) IsFullyDegraded() bool { return dm.level == DegradationFull }

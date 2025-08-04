@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/domain/job"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/domain/job/entity"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/domain/job/valueobjects"
@@ -40,7 +41,7 @@ func (h *HLSTranscoder) Transcode(ctx context.Context, job *entity.Job, localPat
 			outputPath)
 		return cmd.Run()
 	}
-	if err := pkgerrors.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
+	if err := resilience.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
 		return "", pkgerrors.NewInternalError("HLS transcoding failed", err)
 	}
 	if job.Type().IsTranscode() && strings.HasPrefix(job.Output(), "s3://") {

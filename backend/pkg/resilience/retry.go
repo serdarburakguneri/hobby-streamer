@@ -1,4 +1,4 @@
-package errors
+package resilience
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"math"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type RetryConfig struct {
@@ -14,7 +16,7 @@ type RetryConfig struct {
 	MaxDelay        time.Duration
 	BackoffFactor   float64
 	JitterFactor    float64
-	RetryableErrors []ErrorType
+	RetryableErrors []pkgerrors.ErrorType
 }
 
 type RetryableFunc func(ctx context.Context) error
@@ -26,10 +28,10 @@ func DefaultRetryConfig() *RetryConfig {
 		MaxDelay:      5 * time.Second,
 		BackoffFactor: 2.0,
 		JitterFactor:  0.1,
-		RetryableErrors: []ErrorType{
-			ErrorTypeTransient,
-			ErrorTypeTimeout,
-			ErrorTypeExternal,
+		RetryableErrors: []pkgerrors.ErrorType{
+			pkgerrors.ErrorTypeTransient,
+			pkgerrors.ErrorTypeTimeout,
+			pkgerrors.ErrorTypeExternal,
 		},
 	}
 }
@@ -39,7 +41,7 @@ func (c *RetryConfig) IsRetryableError(err error) bool {
 		return false
 	}
 
-	errorType := GetErrorType(err)
+	errorType := pkgerrors.GetErrorType(err)
 	for _, retryableType := range c.RetryableErrors {
 		if errorType == retryableType {
 			return true
@@ -118,10 +120,10 @@ func RetryWithBackoff(ctx context.Context, fn RetryableFunc, maxAttempts int) er
 		MaxDelay:      5 * time.Second,
 		BackoffFactor: 2.0,
 		JitterFactor:  0.1,
-		RetryableErrors: []ErrorType{
-			ErrorTypeTransient,
-			ErrorTypeTimeout,
-			ErrorTypeExternal,
+		RetryableErrors: []pkgerrors.ErrorType{
+			pkgerrors.ErrorTypeTransient,
+			pkgerrors.ErrorTypeTimeout,
+			pkgerrors.ErrorTypeExternal,
 		},
 	}
 	return Retry(ctx, fn, config)
@@ -134,9 +136,9 @@ func RetryFast(ctx context.Context, fn RetryableFunc) error {
 		MaxDelay:      200 * time.Millisecond,
 		BackoffFactor: 2.0,
 		JitterFactor:  0.1,
-		RetryableErrors: []ErrorType{
-			ErrorTypeTransient,
-			ErrorTypeTimeout,
+		RetryableErrors: []pkgerrors.ErrorType{
+			pkgerrors.ErrorTypeTransient,
+			pkgerrors.ErrorTypeTimeout,
 		},
 	}
 	return Retry(ctx, fn, config)

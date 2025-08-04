@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	assetentity "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset/entity"
 	assetvalueobjects "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset/valueobjects"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/bucket"
@@ -17,10 +18,10 @@ import (
 type BucketRepository struct {
 	client         *Client
 	logger         *logger.Logger
-	circuitBreaker *errors.CircuitBreaker
+	circuitBreaker *resilience.CircuitBreaker
 }
 
-func NewBucketRepository(client *Client, circuitBreaker *errors.CircuitBreaker) bucket.Repository {
+func NewBucketRepository(client *Client, circuitBreaker *resilience.CircuitBreaker) bucket.Repository {
 	return &BucketRepository{
 		client:         client,
 		logger:         logger.Get().WithService("bucket-graphql-repository"),
@@ -40,7 +41,7 @@ func (r *BucketRepository) GetByID(ctx context.Context, id bucketvalueobjects.Bu
 		}
 	}
 
-	return nil, errors.NewNotFoundError("bucket not found", nil)
+	return nil, pkgerrors.NewNotFoundError("bucket not found", nil)
 }
 
 func (r *BucketRepository) GetByKey(ctx context.Context, key bucketvalueobjects.BucketKey) (*bucketentity.Bucket, error) {
@@ -57,11 +58,11 @@ func (r *BucketRepository) GetByKey(ctx context.Context, key bucketvalueobjects.
 	})
 
 	if err != nil {
-		return nil, errors.WithContext(err, map[string]interface{}{"operation": "get_bucket", "key": key.Value()})
+		return nil, pkgerrors.WithContext(err, map[string]interface{}{"operation": "get_bucket", "key": key.Value()})
 	}
 
 	if response.BucketByKey == nil {
-		return nil, errors.NewNotFoundError("bucket not found", nil)
+		return nil, pkgerrors.NewNotFoundError("bucket not found", nil)
 	}
 
 	return r.convertGraphQLBucketWithAssetsToDomain(response.BucketByKey)
@@ -83,7 +84,7 @@ func (r *BucketRepository) GetAll(ctx context.Context, limit int, nextKey *strin
 	})
 
 	if err != nil {
-		return nil, errors.WithContext(err, map[string]interface{}{"operation": "get_buckets"})
+		return nil, pkgerrors.WithContext(err, map[string]interface{}{"operation": "get_buckets"})
 	}
 
 	var buckets []*bucketentity.Bucket
@@ -182,7 +183,7 @@ func (r *BucketRepository) GetAssets(ctx context.Context, bucket *bucketentity.B
 }
 
 func (r *BucketRepository) GetRecommendations(ctx context.Context, bucket *bucketentity.Bucket, limit int) ([]*assetentity.Asset, error) {
-	return nil, errors.NewNotFoundError("recommendations not implemented", nil)
+	return nil, pkgerrors.NewNotFoundError("recommendations not implemented", nil)
 }
 
 func (r *BucketRepository) convertGraphQLBucketWithAssetsToDomain(graphQLBucket *GraphQLBucketWithAssets) (*bucketentity.Bucket, error) {

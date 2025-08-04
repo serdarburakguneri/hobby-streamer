@@ -10,6 +10,7 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security v0.0.0
 	github.com/stretchr/testify v1.10.0
 )
@@ -48,3 +49,5 @@ replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
 
 replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/security => ../pkg/security
+
+replace github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience => ../pkg/resilience

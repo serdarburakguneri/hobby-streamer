@@ -10,6 +10,7 @@ import (
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/domain/job/entity"
 	"github.com/serdarburakguneri/hobby-streamer/backend/transcoder/internal/domain/job/valueobjects"
 )
@@ -26,7 +27,7 @@ func (a *AnalyzeTranscoder) ValidateInput(ctx context.Context, job *entity.Job) 
 		_, err := cmd.CombinedOutput()
 		return err
 	}
-	if err := pkgerrors.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
+	if err := resilience.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
 		return pkgerrors.NewValidationError("video validation failed", err)
 	}
 	return nil
@@ -81,7 +82,7 @@ func (a *AnalyzeTranscoder) ExtractMetadata(ctx context.Context, filePath string
 		}
 		return cmdErr
 	}
-	if err := pkgerrors.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
+	if err := resilience.RetryWithBackoff(ctx, retryFunc, 2); err != nil {
 		return nil, pkgerrors.NewInternalError("ffprobe command failed", err)
 	}
 
