@@ -132,6 +132,31 @@ fi
 
 popd > /dev/null
 
+pushd ../backend/lambdas/cmd/dash_job_requested > /dev/null
+echo "[INFO] Building DASH job requested Lambda..."
+echo "[INFO] Resolving dependencies..."
+go mod tidy
+
+GOOS=linux GOARCH=amd64 go build -o main main.go
+zip -j function.zip main
+
+if awslocal --no-cli-pager --region $AWS_REGION lambda get-function --function-name dash-job-requested > /dev/null 2>&1; then
+  echo "[INFO] Updating existing Lambda function: dash-job-requested"
+  awslocal --no-cli-pager --region $AWS_REGION lambda update-function-code --function-name dash-job-requested --zip-file fileb://function.zip > /dev/null
+else
+  echo "[INFO] Creating Lambda function: dash-job-requested"
+  awslocal --no-cli-pager --region $AWS_REGION lambda create-function \
+    --function-name dash-job-requested \
+    --runtime go1.x \
+    --handler main \
+    --zip-file fileb://function.zip \
+    --role arn:aws:iam::000000000000:role/lambda-role \
+    --environment "Variables={KAFKA_BOOTSTRAP_SERVERS=kafka:29092}" \
+    --region $AWS_REGION > /dev/null
+fi
+
+popd > /dev/null
+
 echo "[INFO] Setting up S3 event triggers..."
 ./setup-s3-lambda-triggers.sh
 

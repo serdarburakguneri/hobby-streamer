@@ -73,22 +73,12 @@ export default function VideoSection({ asset, onVideoAdded }: VideoSectionProps)
         const input = `s3://${rawVideo.storageLocation.bucket}/${rawVideo.storageLocation.key}`;
         await assetService.triggerHLSTranscode(asset.id, rawVideo.id, input);
         Alert.alert('Success', 'HLS transcoding triggered successfully');
-      } else {
-        //TODO: Add DASH transcoding trigger here
-        const bucket = 'content-east';
-        await assetService.addVideo(
-          asset.id,
-          videoType,
-          format,
-          bucket,
-          `${asset.id}/${rawVideo.id}/${format}/playlist.${format === VideoFormat.DASH ? 'mpd' : 'm3u8'}`,
-          `s3://${rawVideo.storageLocation.bucket}/${rawVideo.storageLocation.key}`,
-          rawVideo.contentType || 'video/mp4',
-          rawVideo.size || 0
-        );
-        Alert.alert('Success', `${format.toUpperCase()} transcoding triggered successfully`);
+      } else if (format === VideoFormat.DASH) {
+        const input = `s3://${rawVideo.storageLocation.bucket}/${rawVideo.storageLocation.key}`;
+        await assetService.triggerDASHTranscode(asset.id, rawVideo.id, input);
+        Alert.alert('Success', 'DASH transcoding triggered successfully');
       }
-      
+            
       onVideoAdded();
     } catch (error) {
       console.error('Error triggering transcoding:', error);

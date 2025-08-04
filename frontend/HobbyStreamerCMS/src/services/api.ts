@@ -1243,6 +1243,25 @@ export const useAssetService = () => {
         throw new Error('Failed to trigger HLS transcode');
       }
     },
+
+    triggerDASHTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {
+      try {
+        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/dash-job-requested`, {
+          assetId,
+          videoId,
+          input
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        return response.data;
+      } catch (error) {
+        console.error('Error triggering DASH transcode:', error);
+        throw new Error('Failed to trigger DASH transcode');
+      }
+    },
   };
 };
 

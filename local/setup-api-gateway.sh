@@ -69,6 +69,11 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   HLS_JOB_ID=$(echo $HLS_JOB_RESPONSE | jq -r '.id')
   echo "[INFO] HLS Job Requested Resource ID: $HLS_JOB_ID"
 
+  echo "[INFO] Creating dash-job-requested resource..."
+  DASH_JOB_RESPONSE=$(aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-resource --rest-api-id $API_ID --parent-id $ROOT_ID --path-part dash-job-requested)
+  DASH_JOB_ID=$(echo $DASH_JOB_RESPONSE | jq -r '.id')
+  echo "[INFO] DASH Job Requested Resource ID: $DASH_JOB_ID"
+
   create_method_with_cors() {
       local resource_id=$1
       local http_method=$2
@@ -200,6 +205,10 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   create_method_with_cors $HLS_JOB_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:hls-job-requested/invocations"
   create_options_method $HLS_JOB_ID
 
+  echo "[INFO] Setting up DASH job requested endpoint..."
+  create_method_with_cors $DASH_JOB_ID "POST" "AWS_PROXY" "arn:aws:apigateway:$AWS_REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$AWS_REGION:000000000000:function:dash-job-requested/invocations"
+  create_options_method $DASH_JOB_ID
+
   echo "[INFO] Deploying API..."
   aws --endpoint-url=$LOCALSTACK_EXTERNAL_ENDPOINT apigateway create-deployment \
     --rest-api-id $API_ID \
@@ -227,6 +236,7 @@ if [ ! -f ".api-gateway-id" ] || [ -z "$(cat .api-gateway-id)" ]; then
   add_lambda_permission "generate-video-upload-url" "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/upload"
   add_lambda_permission "generate-image-upload-url" "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/image-upload"
   add_lambda_permission "hls-job-requested" "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/hls-job-requested"
+  add_lambda_permission "dash-job-requested" "arn:aws:execute-api:$AWS_REGION:000000000000:$API_ID/*/POST/dash-job-requested"
 
   echo $API_ID > .api-gateway-id
   echo "[INFO] API ID saved to .api-gateway-id"
