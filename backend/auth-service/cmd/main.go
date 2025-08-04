@@ -38,12 +38,10 @@ func main() {
 		return nil, errors.New("no keyfunc provided")
 	}
 
-	dynamicCfg := configManager.GetDynamicConfig()
-	kc := dynamicCfg.Keycloak()
-	keycloakURL := kc.URL()
-	realm := kc.Realm()
-	clientID := kc.ClientID()
-	clientSecret := kc.ClientSecret()
+	keycloakURL := cfg.Keycloak.URL
+	realm := cfg.Keycloak.Realm
+	clientID := cfg.Keycloak.ClientID
+	clientSecret := secretsManager.Get("keycloak_client_secret")
 
 	authService := service.NewAuthService(
 		keycloakURL,

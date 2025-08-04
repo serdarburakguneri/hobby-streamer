@@ -40,11 +40,10 @@ func main() {
 	log.Info("Starting streaming-api service", "environment", cfg.Environment)
 
 	dynamicCfg := configManager.GetDynamicConfig()
-	assetManagerURL := dynamicCfg.AssetManager().URL()
-	kc := dynamicCfg.Keycloak()
-	keycloakURL := kc.URL()
-	realm := kc.Realm()
-	clientID := kc.ClientID()
+	assetManagerURL := dynamicCfg.GetStringFromComponent("asset_manager", "url")
+	keycloakURL := cfg.Keycloak.URL
+	realm := cfg.Keycloak.Realm
+	clientID := cfg.Keycloak.ClientID
 	clientSecret := secretsManager.Get("keycloak_client_secret")
 
 	circuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{

@@ -65,6 +65,21 @@ type CacheConfig struct {
 	TTL time.Duration `mapstructure:"ttl" validate:"min=1s"`
 }
 
+// KeycloakConfig holds Keycloak settings shared across services
+
+type KeycloakConfig struct {
+	URL      string `mapstructure:"url" validate:"required"`
+	Realm    string `mapstructure:"realm" validate:"required"`
+	ClientID string `mapstructure:"client_id" validate:"required"`
+}
+
+// KafkaConfig holds Kafka settings shared across services
+
+type KafkaConfig struct {
+	BootstrapServers string `mapstructure:"bootstrap_servers" validate:"required"`
+	MaxMessageBytes  int    `mapstructure:"max_message_bytes" validate:"min=1"`
+}
+
 type BaseConfig struct {
 	Environment    Environment            `mapstructure:"environment" validate:"required,oneof=development staging production test"`
 	Service        string                 `mapstructure:"service" validate:"required"`
@@ -75,6 +90,8 @@ type BaseConfig struct {
 	CircuitBreaker CircuitBreakerConfig   `mapstructure:"circuit_breaker"`
 	Retry          RetryConfig            `mapstructure:"retry"`
 	Cache          CacheConfig            `mapstructure:"cache"`
+	Keycloak       KeycloakConfig         `mapstructure:"keycloak"`
+	Kafka          KafkaConfig            `mapstructure:"kafka"`
 	Components     map[string]interface{} `mapstructure:"components"`
 }
 
@@ -190,30 +207,6 @@ func (dc *DynamicConfig) GetDurationFromComponent(componentName, key string, def
 	return defaultValue
 }
 
-// ---------- Typed component helpers ----------
-// KeycloakComponent wraps the generic component map for type-safe access.
-// Expected keys: url, realm, client_id, client_secret
-
-type KeycloakComponent struct{ data map[string]interface{} }
-
-func (kc KeycloakComponent) URL() string          { return str(kc.data["url"]) }
-func (kc KeycloakComponent) Realm() string        { return str(kc.data["realm"]) }
-func (kc KeycloakComponent) ClientID() string     { return str(kc.data["client_id"]) }
-func (kc KeycloakComponent) ClientSecret() string { return str(kc.data["client_secret"]) }
-
-// AssetManagerComponent – currently only url field
-
-type AssetManagerComponent struct{ data map[string]interface{} }
-
-func (am AssetManagerComponent) URL() string { return str(am.data["url"]) }
-
-// KafkaComponent example – bootstrap_servers, max_message_bytes
-
-type KafkaComponent struct{ data map[string]interface{} }
-
-func (k KafkaComponent) BootstrapServers() string { return str(k.data["bootstrap_servers"]) }
-func (k KafkaComponent) MaxMessageBytes() int     { return intNum(k.data["max_message_bytes"]) }
-
 // Helpers to safely cast
 func str(v interface{}) string {
 	if s, ok := v.(string); ok {
@@ -230,15 +223,4 @@ func intNum(v interface{}) int {
 	default:
 		return 0
 	}
-}
-
-// Exposed helpers on ComponentConfig
-func (dc *DynamicConfig) Keycloak() KeycloakComponent {
-	return KeycloakComponent{data: dc.GetComponentAsMap("keycloak")}
-}
-func (dc *DynamicConfig) AssetManager() AssetManagerComponent {
-	return AssetManagerComponent{data: dc.GetComponentAsMap("asset_manager")}
-}
-func (dc *DynamicConfig) Kafka() KafkaComponent {
-	return KafkaComponent{data: dc.GetComponentAsMap("kafka")}
 }
