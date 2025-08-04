@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . .
 
 # Build the application
-RUN cd asset-manager && go mod download && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o asset-manager ./cmd/main.go
+RUN cd asset-manager && go mod tidy && go mod download && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o asset-manager ./cmd/main.go
 
 # Final stage
 FROM alpine:latest

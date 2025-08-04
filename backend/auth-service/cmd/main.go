@@ -68,7 +68,7 @@ func main() {
 			cfg.Security.CORS.AllowedHeaders,
 		)(handler)
 		handler = security.InputValidationMiddleware()(handler)
-		handler = security.LoggingMiddleware(log)(handler)
+		handler = logger.RequestLoggingMiddleware(log)(handler)
 
 		return handler
 	}

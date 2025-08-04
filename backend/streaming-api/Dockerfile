@@ -2,7 +2,7 @@ FROM golang:1.23 AS builder
 WORKDIR /app
 
 COPY . .
-RUN cd streaming-api && go mod download
+RUN cd streaming-api && go mod tidy && go mod download
 
 # Build the application
 RUN cd streaming-api && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o streaming-api ./cmd/main.go
