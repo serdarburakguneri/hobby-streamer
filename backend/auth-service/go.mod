@@ -11,6 +11,7 @@ require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience v0.0.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.40.0
 )
@@ -42,4 +43,5 @@ replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors => ../pkg/errors
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger => ../pkg/logger
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/security => ../pkg/security
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience => ../pkg/resilience
 )

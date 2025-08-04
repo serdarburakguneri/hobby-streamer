@@ -2,7 +2,7 @@ FROM golang:1.23-alpine as builder
 WORKDIR /app
 
 COPY . .
-RUN cd auth-service && go mod download
+RUN cd auth-service && go mod tidy && go mod download
 
 # Run tests (fail build if tests fail)
 RUN cd auth-service && go test ./... -v

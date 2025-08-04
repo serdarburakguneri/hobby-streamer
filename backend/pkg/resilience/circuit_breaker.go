@@ -1,9 +1,11 @@
-package errors
+package resilience
 
 import (
 	"context"
 	"sync"
 	"time"
+
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 )
 
 type CircuitState int
@@ -57,7 +59,7 @@ func (cb *CircuitBreaker) State() CircuitState {
 
 func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
 	if !cb.Ready() {
-		return NewCircuitBreakerError("circuit breaker is open", nil)
+		return pkgerrors.NewCircuitBreakerError("circuit breaker is open", nil)
 	}
 
 	err := fn()

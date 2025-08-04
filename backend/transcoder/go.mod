@@ -7,6 +7,7 @@ toolchain go1.23.4
 require (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/config v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors v0.0.0
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/events v0.0.0-00010101000000-000000000000
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger v0.0.0
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages v0.0.0
@@ -24,6 +25,7 @@ replace (
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/messages => ../pkg/messages
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3 => ../pkg/s3
 	github.com/serdarburakguneri/hobby-streamer/backend/pkg/sqs => ../pkg/sqs
+	github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience => ../pkg/resilience
 )
 
 require (

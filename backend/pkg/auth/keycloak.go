@@ -4,13 +4,9 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,9 +19,7 @@ type KeycloakValidator struct {
 	realm       string
 	clientID    string
 	httpClient  *http.Client
-	keys        map[string]*rsa.PublicKey
-	keysMutex   sync.RWMutex
-	lastFetch   time.Time
+	jwks        *jwksCache
 }
 
 type JWKSResponse struct {
@@ -55,7 +49,7 @@ func NewKeycloakValidator(keycloakURL, realm, clientID string) *KeycloakValidato
 		realm:       realm,
 		clientID:    clientID,
 		httpClient:  httpClient,
-		keys:        make(map[string]*rsa.PublicKey),
+		jwks:        newJWKSCache(fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", keycloakURL, realm)),
 	}
 }
 
@@ -116,61 +110,7 @@ func (k *KeycloakValidator) ValidateToken(ctx context.Context, token string) (*U
 }
 
 func (k *KeycloakValidator) getPublicKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
-	k.keysMutex.RLock()
-	if key, exists := k.keys[kid]; exists && time.Since(k.lastFetch) < 5*time.Minute {
-		k.keysMutex.RUnlock()
-		return key, nil
-	}
-	k.keysMutex.RUnlock()
-
-	k.keysMutex.Lock()
-	defer k.keysMutex.Unlock()
-
-	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", k.keycloakURL, k.realm)
-	resp, err := k.httpClient.Get(jwksURL)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to fetch JWKS", err)
-	}
-	defer resp.Body.Close()
-
-	var jwks JWKSResponse
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, errors.NewInternalError("failed to decode JWKS", err)
-	}
-
-	for _, jwk := range jwks.Keys {
-		if jwk.Kid == kid {
-			publicKey, err := k.jwkToPublicKey(jwk)
-			if err != nil {
-				return nil, errors.NewInternalError("failed to convert JWK to public key", err)
-			}
-			k.keys[kid] = publicKey
-			k.lastFetch = time.Now()
-			return publicKey, nil
-		}
-	}
-
-	return nil, errors.NewInternalError(fmt.Sprintf("key with kid %s not found", kid), nil)
-}
-
-func (k *KeycloakValidator) jwkToPublicKey(jwk JWK) (*rsa.PublicKey, error) {
-	nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to decode modulus", err)
-	}
-
-	eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
-	if err != nil {
-		return nil, errors.NewInternalError("failed to decode exponent", err)
-	}
-
-	n := new(big.Int).SetBytes(nBytes)
-	e := new(big.Int).SetBytes(eBytes)
-
-	return &rsa.PublicKey{
-		N: n,
-		E: int(e.Int64()),
-	}, nil
+	return k.jwks.getKey(ctx, kid)
 }
 
 func (k *KeycloakValidator) validateClaims(claims jwt.MapClaims) error {

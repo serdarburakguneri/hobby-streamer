@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
+	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset/entity"
 	assetvalueobjects "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset/valueobjects"
@@ -15,10 +16,10 @@ import (
 type AssetRepository struct {
 	client         *Client
 	logger         *logger.Logger
-	circuitBreaker *errors.CircuitBreaker
+	circuitBreaker *resilience.CircuitBreaker
 }
 
-func NewAssetRepository(client *Client, circuitBreaker *errors.CircuitBreaker) asset.Repository {
+func NewAssetRepository(client *Client, circuitBreaker *resilience.CircuitBreaker) asset.Repository {
 	return &AssetRepository{
 		client:         client,
 		logger:         logger.Get().WithService("asset-graphql-repository"),
@@ -38,7 +39,7 @@ func (r *AssetRepository) GetByID(ctx context.Context, id assetvalueobjects.Asse
 		}
 	}
 
-	return nil, errors.NewNotFoundError("asset not found", nil)
+	return nil, pkgerrors.NewNotFoundError("asset not found", nil)
 }
 
 func (r *AssetRepository) GetBySlug(ctx context.Context, slug assetvalueobjects.Slug) (*entity.Asset, error) {
@@ -53,7 +54,7 @@ func (r *AssetRepository) GetBySlug(ctx context.Context, slug assetvalueobjects.
 		}
 	}
 
-	return nil, errors.NewNotFoundError("asset not found", nil)
+	return nil, pkgerrors.NewNotFoundError("asset not found", nil)
 }
 
 func (r *AssetRepository) GetAll(ctx context.Context) ([]*entity.Asset, error) {
@@ -70,7 +71,7 @@ func (r *AssetRepository) GetAll(ctx context.Context) ([]*entity.Asset, error) {
 	})
 
 	if err != nil {
-		return nil, errors.WithContext(err, map[string]interface{}{
+		return nil, pkgerrors.WithContext(err, map[string]interface{}{
 			"operation": "get_all_assets",
 		})
 	}

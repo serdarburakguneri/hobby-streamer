@@ -8,6 +8,7 @@ import (
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/s3"
 )
 
@@ -77,7 +78,7 @@ func (s *Storage) Upload(ctx context.Context, localDir, s3Path string) error {
 		retryFunc := func(ctx context.Context) error {
 			return s.client.Upload(ctx, path, bucket, s3Key)
 		}
-		retryErr := pkgerrors.RetryWithBackoff(ctx, retryFunc, 3)
+		retryErr := resilience.RetryWithBackoff(ctx, retryFunc, 3)
 		if retryErr != nil {
 			logger.Get().WithError(retryErr).Error("Failed to upload file to S3 after retries", "local_file", path, "s3_key", s3Key)
 			return pkgerrors.NewExternalError("failed to upload file to S3", retryErr)

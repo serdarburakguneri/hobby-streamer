@@ -10,8 +10,8 @@ import (
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
+	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
 	assetapp "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application/asset"
 	bucketapp "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application/bucket"
 	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/infrastructure/graphql"
@@ -41,16 +41,16 @@ func main() {
 
 	dynamicCfg := configManager.GetDynamicConfig()
 	assetManagerURL := dynamicCfg.GetStringFromComponent("asset_manager", "url")
-	keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
-	realm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
-	clientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
+	keycloakURL := cfg.Keycloak.URL
+	realm := cfg.Keycloak.Realm
+	clientID := cfg.Keycloak.ClientID
 	clientSecret := secretsManager.Get("keycloak_client_secret")
 
-	circuitBreaker := errors.NewCircuitBreaker(errors.CircuitBreakerConfig{
+	circuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
 		Name:      "asset-manager",
 		Threshold: int64(cfg.CircuitBreaker.Threshold),
 		Timeout:   cfg.CircuitBreaker.Timeout,
-		OnStateChange: func(name string, from, to errors.CircuitState) {
+		OnStateChange: func(name string, from, to resilience.CircuitState) {
 			log.Info("Circuit breaker state changed", "name", name, "from", from, "to", to)
 		},
 	})

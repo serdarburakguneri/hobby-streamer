@@ -11,11 +11,14 @@ import (
 	"time"
 )
 
+type contextKey string
+
+var trackingIDContextKey contextKey = "tracking_id"
+
 type Logger struct {
 	*slog.Logger
 	async   bool
 	logChan chan logEntry
-	done    chan struct{}
 	wg      sync.WaitGroup
 }
 
@@ -53,7 +56,6 @@ func NewAsync(level slog.Level, format string, bufferSize int) *Logger {
 	logger := New(level, format)
 	logger.async = true
 	logger.logChan = make(chan logEntry, bufferSize)
-	logger.done = make(chan struct{})
 
 	logger.wg.Add(1)
 	go logger.processLogs()
@@ -63,28 +65,23 @@ func NewAsync(level slog.Level, format string, bufferSize int) *Logger {
 
 func (l *Logger) processLogs() {
 	defer l.wg.Done()
-	for {
-		select {
-		case entry := <-l.logChan:
-			switch entry.level {
-			case slog.LevelDebug:
-				entry.logger.Debug(entry.msg, entry.args...)
-			case slog.LevelInfo:
-				entry.logger.Info(entry.msg, entry.args...)
-			case slog.LevelWarn:
-				entry.logger.Warn(entry.msg, entry.args...)
-			case slog.LevelError:
-				entry.logger.Error(entry.msg, entry.args...)
-			}
-		case <-l.done:
-			return
+	for entry := range l.logChan {
+		switch entry.level {
+		case slog.LevelDebug:
+			entry.logger.Debug(entry.msg, entry.args...)
+		case slog.LevelInfo:
+			entry.logger.Info(entry.msg, entry.args...)
+		case slog.LevelWarn:
+			entry.logger.Warn(entry.msg, entry.args...)
+		case slog.LevelError:
+			entry.logger.Error(entry.msg, entry.args...)
 		}
 	}
 }
 
 func (l *Logger) Close() {
 	if l.async {
-		close(l.done)
+		close(l.logChan)
 		l.wg.Wait()
 	}
 }
@@ -148,7 +145,7 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 		attrs = append(attrs, "request_id", requestID)
 	}
 
-	if trackingID := ctx.Value(TrackingIDContextKey); trackingID != nil {
+	if trackingID := ctx.Value(trackingIDContextKey); trackingID != nil {
 		attrs = append(attrs, "tracking_id", trackingID)
 	}
 

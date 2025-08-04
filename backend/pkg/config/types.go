@@ -65,6 +65,21 @@ type CacheConfig struct {
 	TTL time.Duration `mapstructure:"ttl" validate:"min=1s"`
 }
 
+// KeycloakConfig holds Keycloak settings shared across services
+
+type KeycloakConfig struct {
+	URL      string `mapstructure:"url" validate:"required"`
+	Realm    string `mapstructure:"realm" validate:"required"`
+	ClientID string `mapstructure:"client_id" validate:"required"`
+}
+
+// KafkaConfig holds Kafka settings shared across services
+
+type KafkaConfig struct {
+	BootstrapServers string `mapstructure:"bootstrap_servers" validate:"required"`
+	MaxMessageBytes  int    `mapstructure:"max_message_bytes" validate:"min=1"`
+}
+
 type BaseConfig struct {
 	Environment    Environment            `mapstructure:"environment" validate:"required,oneof=development staging production test"`
 	Service        string                 `mapstructure:"service" validate:"required"`
@@ -75,6 +90,8 @@ type BaseConfig struct {
 	CircuitBreaker CircuitBreakerConfig   `mapstructure:"circuit_breaker"`
 	Retry          RetryConfig            `mapstructure:"retry"`
 	Cache          CacheConfig            `mapstructure:"cache"`
+	Keycloak       KeycloakConfig         `mapstructure:"keycloak"`
+	Kafka          KafkaConfig            `mapstructure:"kafka"`
 	Components     map[string]interface{} `mapstructure:"components"`
 }
 
@@ -188,4 +205,22 @@ func (dc *DynamicConfig) GetDurationFromComponent(componentName, key string, def
 		}
 	}
 	return defaultValue
+}
+
+// Helpers to safely cast
+func str(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+func intNum(v interface{}) int {
+	switch t := v.(type) {
+	case int:
+		return t
+	case float64:
+		return int(t)
+	default:
+		return 0
+	}
 }

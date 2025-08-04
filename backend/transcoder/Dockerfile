@@ -2,7 +2,7 @@ FROM golang:1.23 AS builder
 WORKDIR /app
 
 COPY . .
-RUN cd transcoder && go mod download
+RUN cd transcoder && go mod tidy && go mod download
 
 # Run tests (fail build if tests fail)
 RUN cd transcoder && go test ./... -v

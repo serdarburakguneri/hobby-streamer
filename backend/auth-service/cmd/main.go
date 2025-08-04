@@ -38,11 +38,10 @@ func main() {
 		return nil, errors.New("no keyfunc provided")
 	}
 
-	dynamicCfg := configManager.GetDynamicConfig()
-	keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
-	realm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
-	clientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
-	clientSecret := dynamicCfg.GetStringFromComponent("keycloak", "client_secret")
+	keycloakURL := cfg.Keycloak.URL
+	realm := cfg.Keycloak.Realm
+	clientID := cfg.Keycloak.ClientID
+	clientSecret := secretsManager.Get("keycloak_client_secret")
 
 	authService := service.NewAuthService(
 		keycloakURL,
@@ -67,7 +66,7 @@ func main() {
 			cfg.Security.CORS.AllowedHeaders,
 		)(handler)
 		handler = security.InputValidationMiddleware()(handler)
-		handler = security.LoggingMiddleware(log)(handler)
+		handler = logger.RequestLoggingMiddleware(log)(handler)
 
 		return handler
 	}

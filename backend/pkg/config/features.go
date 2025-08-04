@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"sync"
 	"time"
 )
@@ -123,7 +122,7 @@ func (ffm *FeatureFlagsManager) List() []*FeatureFlag {
 	return flags
 }
 
-func (ffm *FeatureFlagsManager) Watch(ctx context.Context, configManager *Manager) {
+func (ffm *FeatureFlagsManager) Watch(configManager *Manager) {
 	configManager.OnConfigChange(func(config *BaseConfig) {
 		ffm.mu.Lock()
 		defer ffm.mu.Unlock()
