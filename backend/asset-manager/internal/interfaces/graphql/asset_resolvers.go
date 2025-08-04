@@ -117,6 +117,11 @@ func (r *mutationResolver) AddImage(ctx context.Context, input AddImageInput) (*
 	if err != nil {
 		return nil, err
 	}
+	
+	cdnPrefix, playURL := r.cdnService.BuildPlayURL(input.Key)
+	if si, err := assetvo.NewStreamInfo(nil, &cdnPrefix, &playURL); err == nil {
+		imgVO.SetStreamInfo(si)
+	}
 	if err := r.assetCommandService.AddImage(ctx, assetCommands.AddImageCommand{AssetID: *idVO, Image: *imgVO}); err != nil {
 		return nil, err
 	}

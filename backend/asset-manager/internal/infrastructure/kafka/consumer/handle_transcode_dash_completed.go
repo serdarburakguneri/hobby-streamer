@@ -30,6 +30,9 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 	if err != nil {
 		return err
 	}
+	cdnPrefix, playURL := h.cdn.BuildPlayURL(payload.Key)
+	si, _ := valueobjects.NewStreamInfo(nil, &cdnPrefix, &playURL)
+
 	cmd := commands.AddVideoCommand{
 		AssetID:         *assetIDVO,
 		Label:           path.Base(payload.Key),
@@ -47,7 +50,7 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 		Width:           payload.Width,
 		Height:          payload.Height,
 		Size:            payload.Size,
-		StreamInfo:      nil,
+		StreamInfo:      si,
 	}
 	return h.appService.AddVideo(ctx, cmd)
 }

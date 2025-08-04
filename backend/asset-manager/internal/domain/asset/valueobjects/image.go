@@ -144,3 +144,8 @@ func (img *Image) UpdatedAt() time.Time {
 func (img *Image) Equals(other Image) bool {
 	return img.id.Equals(other.id)
 }
+
+func (img *Image) SetStreamInfo(streamInfo *StreamInfo) {
+	img.streamInfo = streamInfo
+	img.updatedAt = time.Now().UTC()
+}

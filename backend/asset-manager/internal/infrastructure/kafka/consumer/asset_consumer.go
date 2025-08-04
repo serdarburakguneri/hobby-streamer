@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 
+	cdn "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/cdn"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
@@ -13,15 +14,17 @@ type AssetEventConsumer struct {
 	consumer   *events.Consumer
 	handlers   *EventHandlers
 	logger     *logger.Logger
+	cdnService cdn.Service
 }
 
-func NewAssetEventConsumer(appService *AssetAppServiceAdapter, producer *events.Producer) *AssetEventConsumer {
+func NewAssetEventConsumer(appService *AssetAppServiceAdapter, producer *events.Producer, cdnService cdn.Service) *AssetEventConsumer {
 	l := logger.WithService("asset-event-consumer")
 	return &AssetEventConsumer{
 		appService: appService,
 		producer:   producer,
 		logger:     l,
-		handlers:   NewEventHandlers(appService, producer, l),
+		cdnService: cdnService,
+		handlers:   NewEventHandlers(appService, producer, cdnService, l),
 	}
 }
 

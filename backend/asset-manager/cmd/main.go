@@ -29,14 +29,16 @@ func main() {
 	neo4jDriver := bootstrap.InitNeo4j(dynamicCfg, secretsManager)
 	defer neo4jDriver.Close()
 
+	cdnService := bootstrap.InitCDNService(dynamicCfg)
+
 	domainProducer, _ := bootstrap.InitKafkaProducers(ctx, dynamicCfg)
 
 	assetCmdService, assetQryService, bucketCmdService, bucketQryService := bootstrap.InitServices(neo4jDriver)
 
-	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, dynamicCfg)
+	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, dynamicCfg)
 	defer assetEventConsumer.Stop()
 
-	gqlHandler := bootstrap.InitGraphQL(assetCmdService, assetQryService, bucketCmdService, bucketQryService, cfg)
+	gqlHandler := bootstrap.InitGraphQL(assetCmdService, assetQryService, bucketCmdService, bucketQryService, cdnService, cfg)
 	authHandlerFunc := bootstrap.InitAuth(dynamicCfg)
 	router := bootstrap.InitRouter(gqlHandler, authHandlerFunc)
 	handler := bootstrap.InitMiddleware(router, cfg)
