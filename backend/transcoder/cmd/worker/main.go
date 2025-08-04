@@ -37,8 +37,9 @@ func main() {
 
 	ctx := context.Background()
 
-	bootstrapServers := dynamicCfg.GetStringFromComponent("kafka", "bootstrap_servers")
-	maxMessageBytes := dynamicCfg.GetIntFromComponent("kafka", "max_message_bytes")
+	kafkaCfg := dynamicCfg.Kafka()
+	bootstrapServers := kafkaCfg.BootstrapServers()
+	maxMessageBytes := kafkaCfg.MaxMessageBytes()
 
 	completionProducerConfig := &events.ProducerConfig{
 		BootstrapServers: []string{bootstrapServers},

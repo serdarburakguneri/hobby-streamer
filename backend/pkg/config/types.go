@@ -189,3 +189,56 @@ func (dc *DynamicConfig) GetDurationFromComponent(componentName, key string, def
 	}
 	return defaultValue
 }
+
+// ---------- Typed component helpers ----------
+// KeycloakComponent wraps the generic component map for type-safe access.
+// Expected keys: url, realm, client_id, client_secret
+
+type KeycloakComponent struct{ data map[string]interface{} }
+
+func (kc KeycloakComponent) URL() string          { return str(kc.data["url"]) }
+func (kc KeycloakComponent) Realm() string        { return str(kc.data["realm"]) }
+func (kc KeycloakComponent) ClientID() string     { return str(kc.data["client_id"]) }
+func (kc KeycloakComponent) ClientSecret() string { return str(kc.data["client_secret"]) }
+
+// AssetManagerComponent – currently only url field
+
+type AssetManagerComponent struct{ data map[string]interface{} }
+
+func (am AssetManagerComponent) URL() string { return str(am.data["url"]) }
+
+// KafkaComponent example – bootstrap_servers, max_message_bytes
+
+type KafkaComponent struct{ data map[string]interface{} }
+
+func (k KafkaComponent) BootstrapServers() string { return str(k.data["bootstrap_servers"]) }
+func (k KafkaComponent) MaxMessageBytes() int     { return intNum(k.data["max_message_bytes"]) }
+
+// Helpers to safely cast
+func str(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+func intNum(v interface{}) int {
+	switch t := v.(type) {
+	case int:
+		return t
+	case float64:
+		return int(t)
+	default:
+		return 0
+	}
+}
+
+// Exposed helpers on ComponentConfig
+func (dc *DynamicConfig) Keycloak() KeycloakComponent {
+	return KeycloakComponent{data: dc.GetComponentAsMap("keycloak")}
+}
+func (dc *DynamicConfig) AssetManager() AssetManagerComponent {
+	return AssetManagerComponent{data: dc.GetComponentAsMap("asset_manager")}
+}
+func (dc *DynamicConfig) Kafka() KafkaComponent {
+	return KafkaComponent{data: dc.GetComponentAsMap("kafka")}
+}

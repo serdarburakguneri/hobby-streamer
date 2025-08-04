@@ -39,10 +39,11 @@ func main() {
 	}
 
 	dynamicCfg := configManager.GetDynamicConfig()
-	keycloakURL := dynamicCfg.GetStringFromComponent("keycloak", "url")
-	realm := dynamicCfg.GetStringFromComponent("keycloak", "realm")
-	clientID := dynamicCfg.GetStringFromComponent("keycloak", "client_id")
-	clientSecret := dynamicCfg.GetStringFromComponent("keycloak", "client_secret")
+	kc := dynamicCfg.Keycloak()
+	keycloakURL := kc.URL()
+	realm := kc.Realm()
+	clientID := kc.ClientID()
+	clientSecret := kc.ClientSecret()
 
 	authService := service.NewAuthService(
 		keycloakURL,
