@@ -1,8 +1,8 @@
 # Hobby Streamer
 
-> A personal playground for exploring video streaming ideas, built by a software engineer for fun and learning.
+> A personal playground for exploring video streaming ideas, asset management and platform building, built by a software engineer for fun and learning.
 
-Hobby Streamer is where I tinker with video processing pipelines, domain-driven design, and event-driven microservices. It handles video uploads, HLS and DASH transcoding, and streaming delivery with authentication (Keycloak), logging, monitoring, and developer tooling.
+Hobby Streamer is where I tinker with video processing pipelines, asset management, domain-driven design, and event-driven microservices. It handles video uploads, HLS and DASH transcoding, and streaming delivery with authentication (Keycloak), logging, monitoring, and developer tooling.
 
 ## What's Here
 
