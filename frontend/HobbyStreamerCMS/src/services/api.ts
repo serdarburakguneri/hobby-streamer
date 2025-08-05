@@ -537,9 +537,51 @@ const CREATE_ASSET = gql`
   ${VIDEO_FIELDS}
 `;
 
-const PATCH_ASSET = gql`
-  mutation PatchAsset($id: ID!, $patches: [JSONPatch!]!) {
-    patchAsset(id: $id, patches: $patches) {
+const UPDATE_ASSET_TITLE = gql`
+  mutation UpdateAssetTitle($id: ID!, $title: String!) {
+    updateAssetTitle(id: $id, title: $title) {
+      ...AssetFullFields
+    }
+  }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
+const UPDATE_ASSET_DESCRIPTION = gql`
+  mutation UpdateAssetDescription($id: ID!, $description: String!) {
+    updateAssetDescription(id: $id, description: $description) {
+      ...AssetFullFields
+    }
+  }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
+const SET_ASSET_PUBLISH_RULE = gql`
+  mutation SetAssetPublishRule($id: ID!, $rule: PublishRuleInput!) {
+    setAssetPublishRule(id: $id, rule: $rule) {
+      ...AssetFullFields
+    }
+  }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
+const CLEAR_ASSET_PUBLISH_RULE = gql`
+  mutation ClearAssetPublishRule($id: ID!) {
+    clearAssetPublishRule(id: $id) {
       ...AssetFullFields
     }
   }
@@ -818,87 +860,25 @@ export const useAssetService = () => {
 
 
     updateAsset: async (id: string, assetData: AssetUpdateDTO, clearFields: string[] = []): Promise<Asset> => {
-      const patches: any[] = [];
-      
+      // For now, we'll only handle title and description updates
+      // Other fields like genre, tags, etc. would need separate mutations
       if (assetData.title !== undefined) {
-        if (assetData.title === null || assetData.title === '') {
-          patches.push({ op: 'remove', path: '/title' });
-        } else {
-          patches.push({ op: 'replace', path: '/title', value: assetData.title });
-        }
+        const response = await client.mutate({
+          mutation: UPDATE_ASSET_TITLE,
+          variables: { id, title: assetData.title },
+        });
+        return convertAssetMetadata(response.data.updateAssetTitle);
       }
       
       if (assetData.description !== undefined) {
-        if (assetData.description === null || assetData.description === '') {
-          patches.push({ op: 'remove', path: '/description' });
-        } else {
-          patches.push({ op: 'replace', path: '/description', value: assetData.description });
-        }
-      }
-
-      if (assetData.type !== undefined) {
-        if (assetData.type === null) {
-          patches.push({ op: 'remove', path: '/type' });
-        } else {
-          patches.push({ op: 'replace', path: '/type', value: assetData.type });
-        }
+        const response = await client.mutate({
+          mutation: UPDATE_ASSET_DESCRIPTION,
+          variables: { id, description: assetData.description },
+        });
+        return convertAssetMetadata(response.data.updateAssetDescription);
       }
       
-      if (assetData.genre !== undefined) {
-        if (assetData.genre === null || assetData.genre === '' || assetData.genre.includes('undefined')) {
-          patches.push({ op: 'remove', path: '/genre' });
-        } else {
-          patches.push({ op: 'replace', path: '/genre', value: assetData.genre.toUpperCase() });
-        }
-      }
-      
-      if (assetData.genres !== undefined) {
-        if (assetData.genres === null || assetData.genres.length === 0) {
-          patches.push({ op: 'remove', path: '/genres' });
-        } else {
-          patches.push({ op: 'replace', path: '/genres', value: JSON.stringify(assetData.genres) });
-        }
-      }
-      
-      if (assetData.tags !== undefined) {
-        if (assetData.tags === null || assetData.tags.length === 0) {
-          patches.push({ op: 'remove', path: '/tags' });
-        } else {
-          patches.push({ op: 'replace', path: '/tags', value: JSON.stringify(assetData.tags) });
-        }
-      }
-      
-      if (assetData.metadata !== undefined) {
-        if (assetData.metadata === null || Object.keys(assetData.metadata).length === 0) {
-          patches.push({ op: 'remove', path: '/metadata' });
-        } else {
-          patches.push({ op: 'replace', path: '/metadata', value: JSON.stringify(assetData.metadata) });
-        }
-      }
-      
-      if (assetData.ownerId !== undefined) {
-        if (assetData.ownerId === null || assetData.ownerId === '') {
-          patches.push({ op: 'remove', path: '/ownerId' });
-        } else {
-          patches.push({ op: 'replace', path: '/ownerId', value: assetData.ownerId });
-        }
-      }
-      
-      if (assetData.parentId !== undefined) {
-        if (assetData.parentId === null || assetData.parentId === '') {
-          patches.push({ op: 'remove', path: '/parentId' });
-        } else {
-          patches.push({ op: 'replace', path: '/parentId', value: assetData.parentId });
-        }
-      }
-      
-      console.log('Sending patches to backend:', { id, patches, assetData });
-      
-      const response = await client.mutate({
-        mutation: PATCH_ASSET,
-        variables: { id, patches },
-      });
-      return convertAssetMetadata(response.data.patchAsset);
+      throw new Error('Only title and description updates are currently supported');
     },
 
 
@@ -920,30 +900,28 @@ export const useAssetService = () => {
 
 
     publishAsset: async (id: string, publishAt?: string | null, unpublishAt?: string | null, regions?: string[], ageRating?: string | null, clearFields: string[] = []): Promise<Asset> => {
-      const patches: any[] = [];
-      if (publishAt !== undefined) {
-        patches.push({ op: 'replace', path: '/publishAt', value: publishAt ? new Date(publishAt).toISOString() : '' });
-      }
-      if (unpublishAt !== undefined) {
-        patches.push({ op: 'replace', path: '/unpublishAt', value: unpublishAt ? new Date(unpublishAt).toISOString() : '' });
-      }
-      if (regions !== undefined) {
-        patches.push({ op: 'replace', path: '/regions', value: JSON.stringify(regions) });
-      }
-      if (ageRating !== undefined) {
-        patches.push({ op: 'replace', path: '/ageRating', value: ageRating || '' });
+
+      if (clearFields.length > 0 && (!publishAt && !unpublishAt && !regions && !ageRating)) {
+        const response = await client.mutate({
+          mutation: CLEAR_ASSET_PUBLISH_RULE,
+          variables: { id },
+        });
+        return convertAssetMetadata(response.data.clearAssetPublishRule);
       }
       
-      // Add remove operations for cleared fields
-      clearFields.forEach(field => {
-        patches.push({ op: 'remove', path: `/${field}` });
-      });
+
+      const rule = {
+        publishAt: publishAt ? new Date(publishAt) : null,
+        unpublishAt: unpublishAt ? new Date(unpublishAt) : null,
+        regions: regions || [],
+        ageRating: ageRating || null,
+      };
       
       const response = await client.mutate({
-        mutation: PATCH_ASSET,
-        variables: { id, patches },
+        mutation: SET_ASSET_PUBLISH_RULE,
+        variables: { id, rule },
       });
-      return convertAssetMetadata(response.data.patchAsset);
+      return convertAssetMetadata(response.data.setAssetPublishRule);
     },
 
 
