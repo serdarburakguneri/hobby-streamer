@@ -19,10 +19,11 @@ model:
 
 # Where should the resolver implementations go?
 resolver:
-  layout: follow-schema
+  layout: single-file
   dir: internal/interfaces/graphql
   package: graphql
-  filename_template: "{name}.resolvers.go"
+  filename: resolver.go
+
   # Optional: turn on to not generate template comments above resolvers
   # omit_template_comment: false
 
@@ -58,7 +59,7 @@ resolver:
 # nullable_input_omittable: true
 
 # Optional: set to speed up generation time by not performing a final validation pass.
-# skip_validation: true
+skip_validation: true
 
 # Optional: set to skip running `go mod tidy` when generating server code
 # skip_mod_tidy: true

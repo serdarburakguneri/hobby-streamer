@@ -12,17 +12,6 @@ type CreateAssetCommand struct {
 	ParentID  *valueobjects.AssetID
 }
 
-type PatchAssetCommand struct {
-	ID      valueobjects.AssetID
-	Patches []JSONPatchOperation
-}
-
-type JSONPatchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
-}
-
 type DeleteAssetCommand struct {
 	ID valueobjects.AssetID
 }
@@ -83,4 +72,23 @@ type RemoveImageCommand struct {
 type PublishAssetCommand struct {
 	AssetID     valueobjects.AssetID
 	PublishRule *valueobjects.PublishRule
+}
+
+type SetAssetPublishRuleCommand struct {
+	AssetID     valueobjects.AssetID
+	PublishRule valueobjects.PublishRule
+}
+
+type ClearAssetPublishRuleCommand struct {
+	AssetID valueobjects.AssetID
+}
+
+type UpdateAssetTitleCommand struct {
+	AssetID valueobjects.AssetID
+	Title   valueobjects.Title
+}
+
+type UpdateAssetDescriptionCommand struct {
+	AssetID     valueobjects.AssetID
+	Description valueobjects.Description
 }

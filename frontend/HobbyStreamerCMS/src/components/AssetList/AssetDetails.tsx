@@ -81,31 +81,24 @@ export default function AssetDetails({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Genres</Text>
-        <EditableField
-          label="Primary Genre"
-          field="primaryGenre"
-          value={asset.genre}
-          onUpdate={onUpdate}
-          type="genre"
-        />
-        <EditableField
-          label="Additional Genres"
-          field="additionalGenres"
-          value={asset.genres}
-          onUpdate={onUpdate}
-          type="multiGenre"
-        />
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Primary Genre:</Text>
+          <Text style={styles.detailValue}>{asset.genre || 'Not set'}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Additional Genres:</Text>
+          <Text style={styles.detailValue}>{asset.genres?.length > 0 ? asset.genres.join(', ') : 'None'}</Text>
+        </View>
+        <Text style={styles.noteText}>Note: Genre editing is not yet supported with the new API</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Tags</Text>
-        <EditableField
-          label="Tags"
-          field="tags"
-          value={asset.tags}
-          onUpdate={onUpdate}
-          placeholder="Enter tags (comma separated)"
-        />
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Tags:</Text>
+          <Text style={styles.detailValue}>{asset.tags?.length > 0 ? asset.tags.join(', ') : 'None'}</Text>
+        </View>
+        <Text style={styles.noteText}>Note: Tag editing is not yet supported with the new API</Text>
       </View>
 
       <VideoSection 
@@ -173,5 +166,11 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontWeight: 'bold',
+  },
+  noteText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 }); 

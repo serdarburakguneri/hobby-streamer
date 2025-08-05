@@ -70,10 +70,12 @@ func buildAssetListQuery() string {
 	`
 }
 
+// TODO: Makes this more efficient by using a full-text search index on the title and slug properties.
 func buildAssetSearchQuery() string {
 	return `
-	CALL db.index.fulltext.queryNodes("assetSearch", $query) YIELD node
-	WITH node AS a
+	MATCH (a:Asset)
+	WHERE toLower(a.title) CONTAINS toLower($query)
+	   OR toLower(a.slug) CONTAINS toLower($query)
 	RETURN a
 	ORDER BY a.createdAt DESC
 	SKIP $offset

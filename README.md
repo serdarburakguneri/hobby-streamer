@@ -1,14 +1,14 @@
 # Hobby Streamer
 
-> A personal playground for exploring video streaming ideas, asset management and platform building, built by a software engineer for fun and learning.
+> A personal playfround for exploring video streaming ideas, testing asset management best practices, new technologies, and learning.
 
-Hobby Streamer is where I tinker with video processing pipelines, asset management, domain-driven design, and event-driven microservices. It handles video uploads, HLS and DASH transcoding, and streaming delivery with authentication (Keycloak), logging, monitoring, and developer tooling.
+Hobby Streamer is my testing ground for video processing pipelines, asset management systems, domain-driven design patterns, and event-driven microservices. It's where I try out new ideas, test different architectural approaches, and experiment with various technologies. The platform handles video uploads, HLS and DASH transcoding, and streaming delivery while incorporating authentication (Keycloak), logging, monitoring, and developer tooling as I explore best practices.
 
 ## What's Here
 
 Features include video upload, transcoding (HLS, DASH), stream delivery, asset metadata, Keycloak auth, Redis caching, Kafka event streaming, AWS Lambdas, circuit breakers, retries, health checks, and rate limiting.
 
-Services: [`asset-manager`](backend/asset-manager/README.md), [`auth-service`](backend/auth-service/README.md), [`transcoder`](backend/transcoder/README.md), [`streaming-api`](backend/streaming-api/README.md), AWS Lambdas ([`raw_video_uploaded`](backend/lambdas/cmd/raw_video_uploaded/README.md), [`hls_job_requested`](backend/lambdas/cmd/hls_job_requested/README.md), [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md), [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md), [`delete_files`](backend/lambdas/cmd/delete_files/README.md)), and React Native frontends ([`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md), [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md)). Shared code lives under `backend/pkg`.
+Services: [`asset-manager`](backend/asset-manager/README.md), [`auth-service`](backend/auth-service/README.md), [`transcoder`](backend/transcoder/README.md), [`streaming-api`](backend/streaming-api/README.md), AWS Lambdas ([`raw_video_uploaded`](backend/lambdas/cmd/raw_video_uploaded/README.md), [`hls_job_requested`](backend/lambdas/cmd/hls_job_requested/README.md), [`dash_job_requested`](backend/lambdas/cmd/dash_job_requested/README.md), [`generate_video_upload_url`](backend/lambdas/cmd/generate_video_upload_url/README.md), [`generate_image_upload_url`](backend/lambdas/cmd/generate_image_upload_url/README.md), [`delete_files`](backend/lambdas/cmd/delete_files/README.md)), and React Native frontends ([`HobbyStreamerCMS`](frontend/HobbyStreamerCMS/README.md), [`HobbyStreamerUI`](frontend/HobbyStreamerUI/README.md)). Shared code lives under `backend/pkg`.
 
 ## Architecture
 

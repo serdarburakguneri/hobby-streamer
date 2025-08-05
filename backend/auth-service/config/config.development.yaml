@@ -11,6 +11,12 @@ server:
   write_timeout: "15s"
   idle_timeout: "60s"
 
+keycloak:
+  url: "https://keycloak:8443"
+  realm: "hobby"
+  client_id: "asset-manager"
+  client_secret: ""  
+
 features:
   enable_circuit_breaker: true
   enable_retry: true
@@ -51,9 +57,3 @@ security:
       - "Authorization"
       - "X-Requested-With"
 
-components:
-  keycloak:
-    url: "https://keycloak:8443"
-    realm: "hobby"
-    client_id: "asset-manager"
-    client_secret: "" 

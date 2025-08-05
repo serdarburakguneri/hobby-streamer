@@ -132,12 +132,6 @@ type Image struct {
 	UpdatedAt       time.Time   `json:"updatedAt"`
 }
 
-type JSONPatch struct {
-	Op    string  `json:"op"`
-	Path  string  `json:"path"`
-	Value *string `json:"value,omitempty"`
-}
-
 type Mutation struct {
 }
 
@@ -145,6 +139,13 @@ type PublishRule struct {
 	PublishAt   *time.Time `json:"publishAt,omitempty"`
 	UnpublishAt *time.Time `json:"unpublishAt,omitempty"`
 	Regions     []string   `json:"regions"`
+	AgeRating   *string    `json:"ageRating,omitempty"`
+}
+
+type PublishRuleInput struct {
+	PublishAt   *time.Time `json:"publishAt,omitempty"`
+	UnpublishAt *time.Time `json:"unpublishAt,omitempty"`
+	Regions     []string   `json:"regions,omitempty"`
 	AgeRating   *string    `json:"ageRating,omitempty"`
 }
 

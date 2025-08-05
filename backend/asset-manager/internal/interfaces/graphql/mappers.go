@@ -54,18 +54,6 @@ func MapCreateAssetInput(input CreateAssetInput) (assetCommands.CreateAssetComma
 	}, nil
 }
 
-func MapPatchAssetInput(id string, patches []*JSONPatch) (assetCommands.PatchAssetCommand, error) {
-	idVO, err := assetvo.NewAssetID(id)
-	if err != nil {
-		return assetCommands.PatchAssetCommand{}, err
-	}
-	ops := make([]assetCommands.JSONPatchOperation, len(patches))
-	for i, p := range patches {
-		ops[i] = assetCommands.JSONPatchOperation{Op: p.Op, Path: p.Path, Value: p.Value}
-	}
-	return assetCommands.PatchAssetCommand{ID: *idVO, Patches: ops}, nil
-}
-
 func MapDeleteAssetInput(id string) (assetCommands.DeleteAssetCommand, error) {
 	idVO, err := assetvo.NewAssetID(id)
 	if err != nil {

@@ -112,16 +112,14 @@ export function useAssetList(refreshTrigger?: number) {
       setUpdating(true);
       const updateData: any = {};
 
+
       if (field === 'title') {
         updateData.title = value;
       } else if (field === 'description') {
         updateData.description = value;
-      } else if (field === 'primaryGenre') {
-        updateData.genre = value;
-      } else if (field === 'additionalGenres') {
-        updateData.genres = value;
-      } else if (field === 'tags') {
-        updateData.tags = value;
+      } else {
+        Alert.alert('Not Supported', `${field} updates are not yet supported with the new API.`);
+        return;
       }
 
       const updatedAsset = await assetService.updateAsset(selectedAsset.id, updateData);
@@ -141,35 +139,31 @@ export function useAssetList(refreshTrigger?: number) {
     if (!selectedAsset) return;
 
     try {
-      setPublishing(true);
-      
-      const clearFields: string[] = [];
-      let publishAtToSend = publishAt ? publishAt.toISOString() : undefined;
-      let unpublishAtToSend = unpublishAt ? unpublishAt.toISOString() : undefined;
-      let ageRatingToSend = ageRating || undefined;
-      
-      if (selectedAsset.publishRule?.publishAt && !publishAt) {
-        publishAtToSend = undefined;
-        clearFields.push('publishAt');
+      setPublishing(true);      
+  
+      if (!publishAt && !unpublishAt && !ageRating) {
+        const updatedAsset = await assetService.publishAsset(
+          selectedAsset.id,
+          null,
+          null,
+          [],
+          null,
+          ['publishAt', 'unpublishAt', 'ageRating']
+        );
+        setSelectedAsset(updatedAsset);
+        await loadAssets();
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+        return;
       }
       
-      if (selectedAsset.publishRule?.unpublishAt && !unpublishAt) {
-        unpublishAtToSend = undefined;
-        clearFields.push('unpublishAt');
-      }
-      
-      if (selectedAsset.publishRule?.ageRating && !ageRating) {
-        ageRatingToSend = undefined;
-        clearFields.push('ageRating');
-      }
-      
+
       const updatedAsset = await assetService.publishAsset(
         selectedAsset.id,
-        publishAtToSend,
-        unpublishAtToSend,
-        undefined,
-        ageRatingToSend,
-        clearFields
+        publishAt ? publishAt.toISOString() : null,
+        unpublishAt ? unpublishAt.toISOString() : null,
+        [], // regions - not supported in UI yet
+        ageRating || null
       );
       
       setSelectedAsset(updatedAsset);

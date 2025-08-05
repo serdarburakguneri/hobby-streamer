@@ -49,17 +49,6 @@ func (s *CommandService) CreateAsset(ctx context.Context, cmd commands.CreateAss
 	return asset, nil
 }
 
-func (s *CommandService) PatchAsset(ctx context.Context, cmd commands.PatchAssetCommand) error {
-	asset, err := s.finder.FindByID(ctx, cmd.ID)
-	if err != nil {
-		return errors.NewInternalError("failed to find asset", err)
-	}
-	if asset == nil {
-		return errors.NewNotFoundError("asset not found", nil)
-	}
-	return s.saver.Update(ctx, asset)
-}
-
 func (s *CommandService) DeleteAsset(ctx context.Context, cmd commands.DeleteAssetCommand) error {
 	return s.saver.Delete(ctx, cmd.ID)
 }
@@ -175,5 +164,57 @@ func (s *CommandService) RemoveImage(ctx context.Context, cmd commands.RemoveIma
 		return errors.NewValidationError("failed to remove image", err)
 	}
 
+	return s.saver.Update(ctx, asset)
+}
+
+func (s *CommandService) SetPublishRule(ctx context.Context, cmd commands.SetAssetPublishRuleCommand) error {
+	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
+	if err != nil {
+		return errors.NewInternalError("failed to find asset", err)
+	}
+	if asset == nil {
+		return errors.NewNotFoundError("asset not found", nil)
+	}
+	if err := asset.SetPublishRule(&cmd.PublishRule); err != nil {
+		return errors.NewValidationError("failed to set publish rule", err)
+	}
+	return s.saver.Update(ctx, asset)
+}
+
+func (s *CommandService) ClearPublishRule(ctx context.Context, cmd commands.ClearAssetPublishRuleCommand) error {
+	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
+	if err != nil {
+		return errors.NewInternalError("failed to find asset", err)
+	}
+	if asset == nil {
+		return errors.NewNotFoundError("asset not found", nil)
+	}
+	if err := asset.SetPublishRule(nil); err != nil {
+		return errors.NewValidationError("failed to clear publish rule", err)
+	}
+	return s.saver.Update(ctx, asset)
+}
+
+func (s *CommandService) UpdateAssetTitle(ctx context.Context, cmd commands.UpdateAssetTitleCommand) error {
+	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
+	if err != nil {
+		return errors.NewInternalError("failed to find asset", err)
+	}
+	if asset == nil {
+		return errors.NewNotFoundError("asset not found", nil)
+	}
+	asset.UpdateTitle(&cmd.Title)
+	return s.saver.Update(ctx, asset)
+}
+
+func (s *CommandService) UpdateAssetDescription(ctx context.Context, cmd commands.UpdateAssetDescriptionCommand) error {
+	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
+	if err != nil {
+		return errors.NewInternalError("failed to find asset", err)
+	}
+	if asset == nil {
+		return errors.NewNotFoundError("asset not found", nil)
+	}
+	asset.UpdateDescription(&cmd.Description)
 	return s.saver.Update(ctx, asset)
 }
