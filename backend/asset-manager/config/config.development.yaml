@@ -89,4 +89,3 @@ components:
 
   lambda:
     delete_files_endpoint: "http://localstack:4566/2015-03-31/functions/delete-files/invocations"
-    update_cdn_prefix_endpoint: "http://localstack:4566/2015-03-31/functions/update-cdn-prefix/invocations" 

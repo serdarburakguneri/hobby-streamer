@@ -6,10 +6,10 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 };
 
 export const API_CONFIG = {
-  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', 'f2cpwrrojm'),
-  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/f2cpwrrojm/dev'),
-  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/f2cpwrrojm/dev/auth'),
-  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/f2cpwrrojm/dev/graphql'),
+  API_GATEWAY_ID: getEnvVar('REACT_APP_API_GATEWAY_ID', 'jvnxzzifbu'),
+  API_GATEWAY_BASE_URL: getEnvVar('REACT_APP_API_GATEWAY_BASE_URL', 'http://localhost:4566/_aws/execute-api/jvnxzzifbu/dev'),
+  AUTH_BASE_URL: getEnvVar('REACT_APP_AUTH_BASE_URL', 'http://localhost:4566/_aws/execute-api/jvnxzzifbu/dev/auth'),
+  GRAPHQL_BASE_URL: getEnvVar('REACT_APP_GRAPHQL_BASE_URL', 'http://localhost:4566/_aws/execute-api/jvnxzzifbu/dev/graphql'),
   LOCALSTACK_BASE_URL: getEnvVar('REACT_APP_LOCALSTACK_BASE_URL', 'http://localhost:4566'),
   CDN_BASE_URL: getEnvVar('REACT_APP_CDN_BASE_URL', 'http://localhost:8083/cdn')
 }; 
