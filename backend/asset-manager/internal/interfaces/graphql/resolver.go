@@ -29,3 +29,11 @@ func NewResolver(
 		cdnService:           cdnService,
 	}
 }
+
+func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+func (r *Resolver) Query() QueryResolver       { return &queryResolver{r} }
+func (r *Resolver) Bucket() BucketResolver     { return &bucketResolver{r} }
+
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }
+type bucketResolver struct{ *Resolver }

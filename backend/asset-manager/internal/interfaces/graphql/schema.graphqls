@@ -13,8 +13,11 @@ type Query {
 
 type Mutation {
   createAsset(input: CreateAssetInput!): Asset!
-  patchAsset(id: ID!, patches: [JSONPatch!]!): Asset!
   deleteAsset(id: ID!): Boolean!
+  updateAssetTitle(id: ID!, title: String!): Asset!
+  updateAssetDescription(id: ID!, description: String!): Asset!
+  setAssetPublishRule(id: ID!, rule: PublishRuleInput!): Asset!
+  clearAssetPublishRule(id: ID!): Asset!
   addVideo(input: AddVideoInput!): Video!
   deleteVideo(assetId: ID!, videoId: ID!): Asset!
   
@@ -235,12 +238,6 @@ input RemoveAssetFromBucketInput {
   ownerId: String!
 }
 
-input JSONPatch {
-  op: String!
-  path: String!
-  value: String
-}
-
 input AddVideoInput {
   assetId: ID!
   label: String!
@@ -250,6 +247,13 @@ input AddVideoInput {
   url: String!
   contentType: String!
   size: Int!
+}
+
+input PublishRuleInput {
+  publishAt: Time
+  unpublishAt: Time
+  regions: [String!]
+  ageRating: String
 }
 
 input AddImageInput {

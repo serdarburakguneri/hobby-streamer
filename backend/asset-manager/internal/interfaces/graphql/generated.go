@@ -120,17 +120,20 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddAssetToBucket      func(childComplexity int, input AddAssetToBucketInput) int
-		AddImage              func(childComplexity int, input AddImageInput) int
-		AddVideo              func(childComplexity int, input AddVideoInput) int
-		CreateAsset           func(childComplexity int, input CreateAssetInput) int
-		CreateBucket          func(childComplexity int, input BucketInput) int
-		DeleteAsset           func(childComplexity int, id string) int
-		DeleteBucket          func(childComplexity int, id string) int
-		DeleteVideo           func(childComplexity int, assetID string, videoID string) int
-		PatchAsset            func(childComplexity int, id string, patches []*JSONPatch) int
-		RemoveAssetFromBucket func(childComplexity int, input RemoveAssetFromBucketInput) int
-		UpdateBucket          func(childComplexity int, id string, input BucketInput) int
+		AddAssetToBucket       func(childComplexity int, input AddAssetToBucketInput) int
+		AddImage               func(childComplexity int, input AddImageInput) int
+		AddVideo               func(childComplexity int, input AddVideoInput) int
+		ClearAssetPublishRule  func(childComplexity int, id string) int
+		CreateAsset            func(childComplexity int, input CreateAssetInput) int
+		CreateBucket           func(childComplexity int, input BucketInput) int
+		DeleteAsset            func(childComplexity int, id string) int
+		DeleteBucket           func(childComplexity int, id string) int
+		DeleteVideo            func(childComplexity int, assetID string, videoID string) int
+		RemoveAssetFromBucket  func(childComplexity int, input RemoveAssetFromBucketInput) int
+		SetAssetPublishRule    func(childComplexity int, id string, rule PublishRuleInput) int
+		UpdateAssetDescription func(childComplexity int, id string, description string) int
+		UpdateAssetTitle       func(childComplexity int, id string, title string) int
+		UpdateBucket           func(childComplexity int, id string, input BucketInput) int
 	}
 
 	PublishRule struct {
@@ -211,8 +214,11 @@ type BucketResolver interface {
 }
 type MutationResolver interface {
 	CreateAsset(ctx context.Context, input CreateAssetInput) (*Asset, error)
-	PatchAsset(ctx context.Context, id string, patches []*JSONPatch) (*Asset, error)
 	DeleteAsset(ctx context.Context, id string) (bool, error)
+	UpdateAssetTitle(ctx context.Context, id string, title string) (*Asset, error)
+	UpdateAssetDescription(ctx context.Context, id string, description string) (*Asset, error)
+	SetAssetPublishRule(ctx context.Context, id string, rule PublishRuleInput) (*Asset, error)
+	ClearAssetPublishRule(ctx context.Context, id string) (*Asset, error)
 	AddVideo(ctx context.Context, input AddVideoInput) (*Video, error)
 	DeleteVideo(ctx context.Context, assetID string, videoID string) (*Asset, error)
 	CreateBucket(ctx context.Context, input BucketInput) (*Bucket, error)
@@ -659,6 +665,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddVideo(childComplexity, args["input"].(AddVideoInput)), true
 
+	case "Mutation.clearAssetPublishRule":
+		if e.complexity.Mutation.ClearAssetPublishRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_clearAssetPublishRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ClearAssetPublishRule(childComplexity, args["id"].(string)), true
+
 	case "Mutation.createAsset":
 		if e.complexity.Mutation.CreateAsset == nil {
 			break
@@ -719,18 +737,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.DeleteVideo(childComplexity, args["assetId"].(string), args["videoId"].(string)), true
 
-	case "Mutation.patchAsset":
-		if e.complexity.Mutation.PatchAsset == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_patchAsset_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.PatchAsset(childComplexity, args["id"].(string), args["patches"].([]*JSONPatch)), true
-
 	case "Mutation.removeAssetFromBucket":
 		if e.complexity.Mutation.RemoveAssetFromBucket == nil {
 			break
@@ -742,6 +748,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveAssetFromBucket(childComplexity, args["input"].(RemoveAssetFromBucketInput)), true
+
+	case "Mutation.setAssetPublishRule":
+		if e.complexity.Mutation.SetAssetPublishRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAssetPublishRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetAssetPublishRule(childComplexity, args["id"].(string), args["rule"].(PublishRuleInput)), true
+
+	case "Mutation.updateAssetDescription":
+		if e.complexity.Mutation.UpdateAssetDescription == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAssetDescription_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAssetDescription(childComplexity, args["id"].(string), args["description"].(string)), true
+
+	case "Mutation.updateAssetTitle":
+		if e.complexity.Mutation.UpdateAssetTitle == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAssetTitle_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAssetTitle(childComplexity, args["id"].(string), args["title"].(string)), true
 
 	case "Mutation.updateBucket":
 		if e.complexity.Mutation.UpdateBucket == nil {
@@ -1186,7 +1228,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAddVideoInput,
 		ec.unmarshalInputBucketInput,
 		ec.unmarshalInputCreateAssetInput,
-		ec.unmarshalInputJSONPatch,
+		ec.unmarshalInputPublishRuleInput,
 		ec.unmarshalInputRemoveAssetFromBucketInput,
 	)
 	first := true
@@ -1388,6 +1430,34 @@ func (ec *executionContext) field_Mutation_addVideo_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_clearAssetPublishRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_clearAssetPublishRule_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_clearAssetPublishRule_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_createAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1551,57 +1621,6 @@ func (ec *executionContext) field_Mutation_deleteVideo_argsVideoID(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_patchAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_patchAsset_argsID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := ec.field_Mutation_patchAsset_argsPatches(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["patches"] = arg1
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_patchAsset_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["id"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_patchAsset_argsPatches(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]*JSONPatch, error) {
-	if _, ok := rawArgs["patches"]; !ok {
-		var zeroVal []*JSONPatch
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("patches"))
-	if tmp, ok := rawArgs["patches"]; ok {
-		return ec.unmarshalNJSONPatch2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐJSONPatchᚄ(ctx, tmp)
-	}
-
-	var zeroVal []*JSONPatch
-	return zeroVal, nil
-}
-
 func (ec *executionContext) field_Mutation_removeAssetFromBucket_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1627,6 +1646,159 @@ func (ec *executionContext) field_Mutation_removeAssetFromBucket_argsInput(
 	}
 
 	var zeroVal RemoveAssetFromBucketInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setAssetPublishRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setAssetPublishRule_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_setAssetPublishRule_argsRule(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["rule"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setAssetPublishRule_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setAssetPublishRule_argsRule(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (PublishRuleInput, error) {
+	if _, ok := rawArgs["rule"]; !ok {
+		var zeroVal PublishRuleInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("rule"))
+	if tmp, ok := rawArgs["rule"]; ok {
+		return ec.unmarshalNPublishRuleInput2githubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐPublishRuleInput(ctx, tmp)
+	}
+
+	var zeroVal PublishRuleInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAssetDescription_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateAssetDescription_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_updateAssetDescription_argsDescription(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["description"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateAssetDescription_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAssetDescription_argsDescription(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["description"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+	if tmp, ok := rawArgs["description"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAssetTitle_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateAssetTitle_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_updateAssetTitle_argsTitle(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["title"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateAssetTitle_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAssetTitle_argsTitle(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["title"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+	if tmp, ok := rawArgs["title"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -4918,8 +5090,8 @@ func (ec *executionContext) fieldContext_Mutation_createAsset(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_patchAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_patchAsset(ctx, field)
+func (ec *executionContext) _Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteAsset(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -4932,7 +5104,62 @@ func (ec *executionContext) _Mutation_patchAsset(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PatchAsset(rctx, fc.Args["id"].(string), fc.Args["patches"].([]*JSONPatch))
+		return ec.resolvers.Mutation().DeleteAsset(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAssetTitle(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateAssetTitle(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateAssetTitle(rctx, fc.Args["id"].(string), fc.Args["title"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4949,7 +5176,7 @@ func (ec *executionContext) _Mutation_patchAsset(ctx context.Context, field grap
 	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_patchAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_updateAssetTitle(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -5008,15 +5235,15 @@ func (ec *executionContext) fieldContext_Mutation_patchAsset(ctx context.Context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_patchAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_updateAssetTitle_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_deleteAsset(ctx, field)
+func (ec *executionContext) _Mutation_updateAssetDescription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateAssetDescription(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5029,7 +5256,7 @@ func (ec *executionContext) _Mutation_deleteAsset(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteAsset(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Mutation().UpdateAssetDescription(rctx, fc.Args["id"].(string), fc.Args["description"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5041,19 +5268,61 @@ func (ec *executionContext) _Mutation_deleteAsset(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*Asset)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_deleteAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_updateAssetDescription(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Asset_id(ctx, field)
+			case "slug":
+				return ec.fieldContext_Asset_slug(ctx, field)
+			case "title":
+				return ec.fieldContext_Asset_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Asset_description(ctx, field)
+			case "type":
+				return ec.fieldContext_Asset_type(ctx, field)
+			case "genre":
+				return ec.fieldContext_Asset_genre(ctx, field)
+			case "genres":
+				return ec.fieldContext_Asset_genres(ctx, field)
+			case "tags":
+				return ec.fieldContext_Asset_tags(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Asset_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Asset_updatedAt(ctx, field)
+			case "ownerId":
+				return ec.fieldContext_Asset_ownerId(ctx, field)
+			case "parentId":
+				return ec.fieldContext_Asset_parentId(ctx, field)
+			case "parent":
+				return ec.fieldContext_Asset_parent(ctx, field)
+			case "children":
+				return ec.fieldContext_Asset_children(ctx, field)
+			case "images":
+				return ec.fieldContext_Asset_images(ctx, field)
+			case "videos":
+				return ec.fieldContext_Asset_videos(ctx, field)
+			case "credits":
+				return ec.fieldContext_Asset_credits(ctx, field)
+			case "publishRule":
+				return ec.fieldContext_Asset_publishRule(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Asset_metadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Asset_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
 		},
 	}
 	defer func() {
@@ -5063,7 +5332,201 @@ func (ec *executionContext) fieldContext_Mutation_deleteAsset(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_updateAssetDescription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAssetPublishRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setAssetPublishRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetAssetPublishRule(rctx, fc.Args["id"].(string), fc.Args["rule"].(PublishRuleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Asset)
+	fc.Result = res
+	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setAssetPublishRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Asset_id(ctx, field)
+			case "slug":
+				return ec.fieldContext_Asset_slug(ctx, field)
+			case "title":
+				return ec.fieldContext_Asset_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Asset_description(ctx, field)
+			case "type":
+				return ec.fieldContext_Asset_type(ctx, field)
+			case "genre":
+				return ec.fieldContext_Asset_genre(ctx, field)
+			case "genres":
+				return ec.fieldContext_Asset_genres(ctx, field)
+			case "tags":
+				return ec.fieldContext_Asset_tags(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Asset_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Asset_updatedAt(ctx, field)
+			case "ownerId":
+				return ec.fieldContext_Asset_ownerId(ctx, field)
+			case "parentId":
+				return ec.fieldContext_Asset_parentId(ctx, field)
+			case "parent":
+				return ec.fieldContext_Asset_parent(ctx, field)
+			case "children":
+				return ec.fieldContext_Asset_children(ctx, field)
+			case "images":
+				return ec.fieldContext_Asset_images(ctx, field)
+			case "videos":
+				return ec.fieldContext_Asset_videos(ctx, field)
+			case "credits":
+				return ec.fieldContext_Asset_credits(ctx, field)
+			case "publishRule":
+				return ec.fieldContext_Asset_publishRule(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Asset_metadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Asset_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAssetPublishRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_clearAssetPublishRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_clearAssetPublishRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ClearAssetPublishRule(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Asset)
+	fc.Result = res
+	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_clearAssetPublishRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Asset_id(ctx, field)
+			case "slug":
+				return ec.fieldContext_Asset_slug(ctx, field)
+			case "title":
+				return ec.fieldContext_Asset_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Asset_description(ctx, field)
+			case "type":
+				return ec.fieldContext_Asset_type(ctx, field)
+			case "genre":
+				return ec.fieldContext_Asset_genre(ctx, field)
+			case "genres":
+				return ec.fieldContext_Asset_genres(ctx, field)
+			case "tags":
+				return ec.fieldContext_Asset_tags(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Asset_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Asset_updatedAt(ctx, field)
+			case "ownerId":
+				return ec.fieldContext_Asset_ownerId(ctx, field)
+			case "parentId":
+				return ec.fieldContext_Asset_parentId(ctx, field)
+			case "parent":
+				return ec.fieldContext_Asset_parent(ctx, field)
+			case "children":
+				return ec.fieldContext_Asset_children(ctx, field)
+			case "images":
+				return ec.fieldContext_Asset_images(ctx, field)
+			case "videos":
+				return ec.fieldContext_Asset_videos(ctx, field)
+			case "credits":
+				return ec.fieldContext_Asset_credits(ctx, field)
+			case "publishRule":
+				return ec.fieldContext_Asset_publishRule(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Asset_metadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Asset_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_clearAssetPublishRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -10759,41 +11222,48 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputJSONPatch(ctx context.Context, obj any) (JSONPatch, error) {
-	var it JSONPatch
+func (ec *executionContext) unmarshalInputPublishRuleInput(ctx context.Context, obj any) (PublishRuleInput, error) {
+	var it PublishRuleInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"op", "path", "value"}
+	fieldsInOrder := [...]string{"publishAt", "unpublishAt", "regions", "ageRating"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "op":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("op"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+		case "publishAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Op = data
-		case "path":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			it.PublishAt = data
+		case "unpublishAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unpublishAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Path = data
-		case "value":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			it.UnpublishAt = data
+		case "regions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("regions"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Regions = data
+		case "ageRating":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ageRating"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Value = data
+			it.AgeRating = data
 		}
 	}
 
@@ -11309,16 +11779,37 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "patchAsset":
+		case "deleteAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_patchAsset(ctx, field)
+				return ec._Mutation_deleteAsset(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "deleteAsset":
+		case "updateAssetTitle":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteAsset(ctx, field)
+				return ec._Mutation_updateAssetTitle(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAssetDescription":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAssetDescription(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setAssetPublishRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAssetPublishRule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clearAssetPublishRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearAssetPublishRule(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -12585,24 +13076,9 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNJSONPatch2ᚕᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐJSONPatchᚄ(ctx context.Context, v any) ([]*JSONPatch, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]*JSONPatch, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNJSONPatch2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐJSONPatch(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) unmarshalNJSONPatch2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐJSONPatch(ctx context.Context, v any) (*JSONPatch, error) {
-	res, err := ec.unmarshalInputJSONPatch(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNPublishRuleInput2githubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐPublishRuleInput(ctx context.Context, v any) (PublishRuleInput, error) {
+	res, err := ec.unmarshalInputPublishRuleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNRemoveAssetFromBucketInput2githubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐRemoveAssetFromBucketInput(ctx context.Context, v any) (RemoveAssetFromBucketInput, error) {
