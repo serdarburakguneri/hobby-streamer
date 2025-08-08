@@ -44,5 +44,5 @@ func (h *EventHandlers) HandleRawVideoUploaded(ctx context.Context, ev *events.E
 		return err
 	}
 	evt := events.NewJobAnalyzeRequestedEvent(payload.AssetID, payload.VideoID, payload.StorageLocation)
-	return h.producer.SendEvent(ctx, events.AnalyzeJobRequestedTopic, evt)
+	return h.publisher.Publish(ctx, events.AnalyzeJobRequestedTopic, evt)
 }

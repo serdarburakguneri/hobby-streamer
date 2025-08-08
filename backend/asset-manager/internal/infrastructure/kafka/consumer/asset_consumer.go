@@ -17,14 +17,16 @@ type AssetEventConsumer struct {
 	cdnService cdn.Service
 }
 
-func NewAssetEventConsumer(appService *AssetAppServiceAdapter, producer *events.Producer, cdnService cdn.Service) *AssetEventConsumer {
+func NewAssetEventConsumer(appService *AssetAppServiceAdapter, publisher interface {
+	Publish(context.Context, string, *events.Event) error
+}, cdnService cdn.Service) *AssetEventConsumer {
 	l := logger.WithService("asset-event-consumer")
 	return &AssetEventConsumer{
 		appService: appService,
-		producer:   producer,
+		producer:   nil,
 		logger:     l,
 		cdnService: cdnService,
-		handlers:   NewEventHandlers(appService, producer, cdnService, l),
+		handlers:   NewEventHandlers(appService, publisher, cdnService, l),
 	}
 }
 

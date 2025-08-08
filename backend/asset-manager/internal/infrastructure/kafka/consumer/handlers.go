@@ -17,13 +17,17 @@ type AssetAppService interface {
 	UpsertVideo(ctx context.Context, cmd commands.UpsertVideoCommand) (*domainentity.Asset, *domainentity.Video, error)
 }
 
+type Publisher interface {
+	Publish(ctx context.Context, topic string, ev *events.Event) error
+}
+
 type EventHandlers struct {
 	appService AssetAppService
-	producer   *events.Producer
+	publisher  Publisher
 	cdn        cdn.Service
 	logger     *logger.Logger
 }
 
-func NewEventHandlers(app AssetAppService, producer *events.Producer, cdnService cdn.Service, l *logger.Logger) *EventHandlers {
-	return &EventHandlers{appService: app, producer: producer, cdn: cdnService, logger: l}
+func NewEventHandlers(app AssetAppService, publisher Publisher, cdnService cdn.Service, l *logger.Logger) *EventHandlers {
+	return &EventHandlers{appService: app, publisher: publisher, cdn: cdnService, logger: l}
 }

@@ -20,6 +20,7 @@ features:
   enable_caching: true
   enable_metrics: false
   enable_tracing: false
+  enable_outbox: true
 
 circuit_breaker:
   threshold: 5
