@@ -22,7 +22,7 @@ func (h *EventHandlers) HandleTranscodeHlsJobCompleted(ctx context.Context, ev *
 		}
 		statusFailed := valueobjects.VideoStatusFailed
 		formatVO, _ := valueobjects.NewVideoFormat(string(valueobjects.VideoFormatHLS))
-		_, _, _ = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
+		h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
 			AssetID:       *assetIDVO,
 			Label:         path.Base(payload.Key),
 			Format:        formatVO,

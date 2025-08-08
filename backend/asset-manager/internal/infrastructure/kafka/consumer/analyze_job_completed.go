@@ -55,6 +55,7 @@ func (h *EventHandlers) HandleAnalyzeJobCompleted(ctx context.Context, ev *event
 		})
 		input = payload.URL
 		hlsEvt := events.NewJobTranscodeRequestedEvent(payload.AssetID, payload.VideoID, input, valueobjects.VideoFormatHLS.Value(), payload.Bucket, hlsKey)
+		hlsEvt.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(events.BuildJobCorrelationID(payload.AssetID, payload.VideoID, "transcode", valueobjects.VideoFormatHLS.Value(), "main")).SetCausationID(ev.ID)
 		if err := h.producer.SendEvent(ctx, events.HLSJobRequestedTopic, hlsEvt); err != nil {
 			return err
 		}
@@ -70,6 +71,7 @@ func (h *EventHandlers) HandleAnalyzeJobCompleted(ctx context.Context, ev *event
 			InitialStatus:   &statusTranscoding,
 		})
 		dashEvt := events.NewJobTranscodeRequestedEvent(payload.AssetID, payload.VideoID, input, valueobjects.VideoFormatDASH.Value(), payload.Bucket, dashKey)
+		dashEvt.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(events.BuildJobCorrelationID(payload.AssetID, payload.VideoID, "transcode", valueobjects.VideoFormatDASH.Value(), "main")).SetCausationID(ev.ID)
 		if err := h.producer.SendEvent(ctx, events.DASHJobRequestedTopic, dashEvt); err != nil {
 			return err
 		}

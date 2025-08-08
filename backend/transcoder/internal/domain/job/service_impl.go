@@ -97,5 +97,5 @@ func (s *DomainServiceImpl) ProcessJob(ctx context.Context, jobObj *entity.Job) 
 
 func (s *DomainServiceImpl) publishJobCompletion(ctx context.Context, jobObj *entity.Job, success bool, metadata interface{}, errorMessage string) {
 	completionEvent := events.BuildCompletedEvent(jobObj, success, metadata, errorMessage)
-	_ = s.eventPublisher.PublishJobCompleted(ctx, completionEvent)
+	s.eventPublisher.PublishJobCompleted(ctx, completionEvent)
 }

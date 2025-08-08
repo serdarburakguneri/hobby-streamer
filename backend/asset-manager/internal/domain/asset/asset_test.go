@@ -410,7 +410,7 @@ func TestComplexValueObjects(t *testing.T) {
 
 	t.Run("TranscodingInfo", func(t *testing.T) {
 		contentType, _ := valueobjects.NewContentType("video/mp4")
-		transcodingInfo := valueobjects.NewTranscodingInfo(1920, 1080, 120.5, 5000, "h264", 1024*1024*100, *contentType)
+		transcodingInfo := valueobjects.NewMediaInfo(1920, 1080, 120.5, 5000, "h264", 1024*1024*100, *contentType, "h264", "aac", "30fps", 2, 48000)
 		assert.Equal(t, 1920, transcodingInfo.Width())
 		assert.Equal(t, 1080, transcodingInfo.Height())
 		assert.Equal(t, 120.5, transcodingInfo.Duration())

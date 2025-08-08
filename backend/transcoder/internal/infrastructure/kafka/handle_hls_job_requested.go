@@ -11,6 +11,7 @@ type HLSJobRequestedEvent struct {
 	AssetID string `json:"assetId"`
 	VideoID string `json:"videoId"`
 	Input   string `json:"input"`
+	JobID   string `json:"jobId,omitempty"`
 }
 
 func (c *TranscoderEventConsumer) HandleHLSJobRequested(ctx context.Context, event *events.Event) error {
@@ -23,6 +24,7 @@ func (c *TranscoderEventConsumer) HandleHLSJobRequested(ctx context.Context, eve
 	}
 
 	payload := messages.JobPayload{
+		JobID:   e.JobID,
 		JobType: "transcode",
 		AssetID: e.AssetID,
 		VideoID: e.VideoID,
