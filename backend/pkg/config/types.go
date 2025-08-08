@@ -48,6 +48,7 @@ type FeatureFlags struct {
 	EnableCaching        bool `mapstructure:"enable_caching"`
 	EnableMetrics        bool `mapstructure:"enable_metrics"`
 	EnableTracing        bool `mapstructure:"enable_tracing"`
+	EnableOutbox         bool `mapstructure:"enable_outbox"`
 }
 
 type CircuitBreakerConfig struct {

@@ -35,7 +35,7 @@ func main() {
 
 	assetCmdService, assetQryService, bucketCmdService, bucketQryService := bootstrap.InitServices(neo4jDriver)
 
-	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, dynamicCfg)
+	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, dynamicCfg, neo4jDriver)
 	defer assetEventConsumer.Stop()
 
 	gqlHandler := bootstrap.InitGraphQL(assetCmdService, assetQryService, bucketCmdService, bucketQryService, cdnService, cfg)

@@ -68,6 +68,10 @@ func NewProducer(ctx context.Context, config *ProducerConfig) (*Producer, error)
 	}, nil
 }
 
+func (p *Producer) Publish(ctx context.Context, topic string, event *Event) error {
+	return p.SendEvent(ctx, topic, event)
+}
+
 func (p *Producer) SendEvent(ctx context.Context, topic string, event *Event) error {
 	if event == nil {
 		return fmt.Errorf("event cannot be nil")
