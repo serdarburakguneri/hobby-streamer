@@ -267,6 +267,80 @@ func (a *Asset) AddVideo(
 	return video, nil
 }
 
+func (a *Asset) findVideoByLabelAndFormat(label string, format valueobjects.VideoFormat) (string, *Video) {
+	for id, v := range a.videos {
+		if v.Label().Value() == label && v.Format().Equals(format) {
+			return id, v
+		}
+	}
+	return "", nil
+}
+
+func (a *Asset) UpsertVideo(
+	label string,
+	format *valueobjects.VideoFormat,
+	storageLocation valueobjects.S3Object,
+	width, height int,
+	duration float64,
+	bitrate int,
+	codec string,
+	size int64,
+	contentType string,
+	videoCodec, audioCodec string,
+	frameRate string,
+	audioChannels, audioSampleRate int,
+	streamInfo *valueobjects.StreamInfo,
+	initialStatus *valueobjects.VideoStatus,
+) (*Video, error) {
+	if format == nil {
+		return nil, errors.New("format cannot be nil")
+	}
+	if _, existing := a.findVideoByLabelAndFormat(label, *format); existing != nil {
+		existing.UpdateStorageLocation(storageLocation)
+		if streamInfo != nil {
+			existing.SetStreamInfo(streamInfo)
+		}
+		ct, err := valueobjects.NewContentType(contentType)
+		if err != nil {
+			return nil, err
+		}
+		existing.UpdateMediaInfo(*valueobjects.NewMediaInfo(
+			width, height, duration, bitrate, codec, size, *ct, videoCodec, audioCodec, frameRate, audioChannels, audioSampleRate,
+		))
+		if initialStatus != nil {
+			existing.UpdateStatus(*initialStatus)
+		}
+		a.touch()
+		return existing, nil
+	}
+	video, err := a.AddVideo(
+		label,
+		format,
+		storageLocation,
+		width,
+		height,
+		duration,
+		bitrate,
+		codec,
+		size,
+		contentType,
+		videoCodec,
+		audioCodec,
+		frameRate,
+		audioChannels,
+		audioSampleRate,
+		streamInfo,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if initialStatus != nil {
+		video.UpdateStatus(*initialStatus)
+	}
+	a.touch()
+	return video, nil
+}
+
 func (a *Asset) RemoveVideo(videoID string) error {
 	if _, exists := a.videos[videoID]; exists {
 		delete(a.videos, videoID)
@@ -285,9 +359,9 @@ func (a *Asset) UpdateVideoStatus(videoID string, status valueobjects.VideoStatu
 	return errors.New("video not found")
 }
 
-func (a *Asset) UpdateVideoTranscodingInfo(videoID string, transcodingInfo valueobjects.TranscodingInfo) error {
+func (a *Asset) UpdateVideoMediaInfo(videoID string, transcodingInfo valueobjects.TranscodingInfo) error {
 	if video, exists := a.videos[videoID]; exists {
-		video.UpdateTranscodingInfo(transcodingInfo)
+		video.UpdateMediaInfo(transcodingInfo)
 		video.UpdateStatus(valueobjects.VideoStatus("ready"))
 		a.touch()
 		return nil

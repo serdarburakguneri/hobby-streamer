@@ -177,7 +177,7 @@ func (v *Video) UpdateSize(size int64) {
 	v.timestamps.Update()
 }
 
-func (v *Video) UpdateTranscodingInfo(info valueobjects.TranscodingInfo) {
+func (v *Video) UpdateMediaInfo(info valueobjects.TranscodingInfo) {
 	v.width = info.Width()
 	v.height = info.Height()
 	v.duration = info.Duration()
@@ -185,9 +185,21 @@ func (v *Video) UpdateTranscodingInfo(info valueobjects.TranscodingInfo) {
 	v.codec = info.Codec()
 	v.size = info.Size()
 	v.contentType = info.ContentType()
+	v.videoCodec = info.VideoCodec()
+	v.audioCodec = info.AudioCodec()
+	v.frameRate = info.FrameRate()
+	v.audioChannels = info.AudioChannels()
+	v.audioSampleRate = info.AudioSampleRate()
 	v.timestamps.Update()
 }
 
 func (v *Video) IsReady() bool      { return v.status.IsReady() }
 func (v *Video) IsFailed() bool     { return v.status.IsFailed() }
 func (v *Video) IsProcessing() bool { return v.status.IsProcessing() }
+
+func (v *Video) UpdateStorageLocation(location valueobjects.S3Object) {
+	v.storageLocation = location
+	v.timestamps.Update()
+}
+
+// removed UpdateTechnicalDetails in favor of UpdateMediaInfo

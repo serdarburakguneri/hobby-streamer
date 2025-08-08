@@ -54,15 +54,39 @@ func (s *CommandService) DeleteAsset(ctx context.Context, cmd commands.DeleteAss
 }
 
 func (s *CommandService) AddVideo(ctx context.Context, cmd commands.AddVideoCommand) error {
+	initial := valueobjects.VideoStatusReady
+	_, _, err := s.UpsertVideo(ctx, commands.UpsertVideoCommand{
+		AssetID:         cmd.AssetID,
+		Label:           cmd.Label,
+		Format:          cmd.Format,
+		StorageLocation: cmd.StorageLocation,
+		StreamInfo:      cmd.StreamInfo,
+		Codec:           cmd.Codec,
+		VideoCodec:      cmd.VideoCodec,
+		AudioCodec:      cmd.AudioCodec,
+		FrameRate:       cmd.FrameRate,
+		AudioChannels:   cmd.AudioChannels,
+		AudioSampleRate: cmd.AudioSampleRate,
+		Duration:        cmd.Duration,
+		Bitrate:         cmd.Bitrate,
+		Width:           cmd.Width,
+		Height:          cmd.Height,
+		Size:            cmd.Size,
+		ContentType:     cmd.ContentType,
+		InitialStatus:   &initial,
+	})
+	return err
+}
+
+func (s *CommandService) UpsertVideo(ctx context.Context, cmd commands.UpsertVideoCommand) (*entity.Asset, *entity.Video, error) {
 	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
 	if err != nil {
-		return errors.NewInternalError("failed to find asset", err)
+		return nil, nil, errors.NewInternalError("failed to find asset", err)
 	}
 	if asset == nil {
-		return errors.NewNotFoundError("asset not found", nil)
+		return nil, nil, errors.NewNotFoundError("asset not found", nil)
 	}
-
-	if _, err := asset.AddVideo(
+	video, err := asset.UpsertVideo(
 		cmd.Label,
 		cmd.Format,
 		cmd.StorageLocation,
@@ -79,11 +103,15 @@ func (s *CommandService) AddVideo(ctx context.Context, cmd commands.AddVideoComm
 		cmd.AudioChannels,
 		cmd.AudioSampleRate,
 		cmd.StreamInfo,
-	); err != nil {
-		return errors.NewValidationError("failed to add video", err)
+		cmd.InitialStatus,
+	)
+	if err != nil {
+		return nil, nil, errors.NewValidationError("failed to upsert video", err)
 	}
-
-	return s.saver.Update(ctx, asset)
+	if err := s.saver.Update(ctx, asset); err != nil {
+		return nil, nil, errors.NewInternalError("failed to save asset", err)
+	}
+	return asset, video, nil
 }
 
 func (s *CommandService) RemoveVideo(ctx context.Context, cmd commands.RemoveVideoCommand) error {
@@ -130,8 +158,8 @@ func (s *CommandService) UpdateVideoMetadata(ctx context.Context, cmd commands.U
 	if err != nil {
 		return errors.NewValidationError("invalid content type", err)
 	}
-	transcodingInfo := valueobjects.NewTranscodingInfo(cmd.Width, cmd.Height, cmd.Duration, cmd.Bitrate, cmd.Codec, cmd.Size, *contentTypeVO)
-	if err := asset.UpdateVideoTranscodingInfo(cmd.VideoID, *transcodingInfo); err != nil {
+	transcodingInfo := valueobjects.NewMediaInfo(cmd.Width, cmd.Height, cmd.Duration, cmd.Bitrate, cmd.Codec, cmd.Size, *contentTypeVO, "", "", "", 0, 0)
+	if err := asset.UpdateVideoMediaInfo(cmd.VideoID, *transcodingInfo); err != nil {
 		return errors.NewValidationError("failed to update video metadata", err)
 	}
 	return s.saver.Update(ctx, asset)

@@ -6,7 +6,7 @@ import (
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/commands"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/queries"
-	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/entity"
+	domainentity "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/entity"
 )
 
 type AssetAppServiceAdapter struct {
@@ -21,7 +21,7 @@ func NewAssetAppServiceAdapter(commandService *asset.CommandService, queryServic
 	}
 }
 
-func (a *AssetAppServiceAdapter) GetAsset(ctx context.Context, query queries.GetAssetQuery) (*entity.Asset, error) {
+func (a *AssetAppServiceAdapter) GetAsset(ctx context.Context, query queries.GetAssetQuery) (*domainentity.Asset, error) {
 	return a.queryService.GetAsset(ctx, query)
 }
 
@@ -35,4 +35,8 @@ func (a *AssetAppServiceAdapter) UpdateVideoStatus(ctx context.Context, cmd comm
 
 func (a *AssetAppServiceAdapter) UpdateVideoMetadata(ctx context.Context, cmd commands.UpdateVideoMetadataCommand) error {
 	return a.commandService.UpdateVideoMetadata(ctx, cmd)
+}
+
+func (a *AssetAppServiceAdapter) UpsertVideo(ctx context.Context, cmd commands.UpsertVideoCommand) (*domainentity.Asset, *domainentity.Video, error) {
+	return a.commandService.UpsertVideo(ctx, cmd)
 }

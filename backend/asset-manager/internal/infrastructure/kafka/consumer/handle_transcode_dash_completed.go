@@ -16,6 +16,19 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 		return err
 	}
 	if !payload.Success {
+		assetIDVO, err := valueobjects.NewAssetID(payload.AssetID)
+		if err != nil {
+			return err
+		}
+		statusFailed := valueobjects.VideoStatusFailed
+		formatVO, _ := valueobjects.NewVideoFormat(string(valueobjects.VideoFormatDASH))
+		_, _, _ = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
+			AssetID:       *assetIDVO,
+			Label:         path.Base(payload.Key),
+			Format:        formatVO,
+			ContentType:   payload.ContentType,
+			InitialStatus: &statusFailed,
+		})
 		return nil
 	}
 	assetIDVO, err := valueobjects.NewAssetID(payload.AssetID)
@@ -33,7 +46,8 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 	cdnPrefix, playURL := h.cdn.BuildPlayURL(payload.Key)
 	si, _ := valueobjects.NewStreamInfo(nil, &cdnPrefix, &playURL)
 
-	cmd := commands.AddVideoCommand{
+	statusReady := valueobjects.VideoStatusReady
+	_, _, err = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
 		AssetID:         *assetIDVO,
 		Label:           path.Base(payload.Key),
 		Format:          formatVO,
@@ -51,6 +65,7 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 		Height:          payload.Height,
 		Size:            payload.Size,
 		StreamInfo:      si,
-	}
-	return h.appService.AddVideo(ctx, cmd)
+		InitialStatus:   &statusReady,
+	})
+	return err
 }
