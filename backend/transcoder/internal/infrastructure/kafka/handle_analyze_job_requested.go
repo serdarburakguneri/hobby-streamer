@@ -11,6 +11,7 @@ type JobAnalyzeRequestedEvent struct {
 	AssetID string `json:"assetId"`
 	VideoID string `json:"videoId"`
 	Input   string `json:"input"`
+	JobID   string `json:"jobId,omitempty"`
 }
 
 func (c *TranscoderEventConsumer) HandleAnalyzeJobRequested(ctx context.Context, event *events.Event) error {
@@ -23,6 +24,7 @@ func (c *TranscoderEventConsumer) HandleAnalyzeJobRequested(ctx context.Context,
 	}
 
 	payload := messages.JobPayload{
+		JobID:   e.JobID,
 		JobType: "analyze",
 		AssetID: e.AssetID,
 		VideoID: e.VideoID,

@@ -1,6 +1,7 @@
 package messages
 
 type JobPayload struct {
+	JobID        string `json:"jobId,omitempty"`
 	JobType      string `json:"jobType"`
 	Input        string `json:"input"`
 	AssetID      string `json:"assetId"`
@@ -12,6 +13,7 @@ type JobPayload struct {
 }
 
 type JobCompletionPayload struct {
+	JobID              string   `json:"jobId,omitempty"`
 	JobType            string   `json:"jobType"`
 	AssetID            string   `json:"assetId"`
 	VideoID            string   `json:"videoId"`

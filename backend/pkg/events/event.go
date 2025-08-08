@@ -23,6 +23,7 @@ type Event struct {
 	Data            interface{}            `json:"data,omitempty"`
 	CorrelationID   string                 `json:"correlationid,omitempty"`
 	CausationID     string                 `json:"causationid,omitempty"`
+	EventVersion    string                 `json:"eventversion,omitempty"`
 	Extensions      map[string]interface{} `json:"-"`
 }
 
@@ -50,6 +51,11 @@ func (e *Event) SetCorrelationID(correlationID string) *Event {
 
 func (e *Event) SetCausationID(causationID string) *Event {
 	e.CausationID = causationID
+	return e
+}
+
+func (e *Event) SetEventVersion(version string) *Event {
+	e.EventVersion = version
 	return e
 }
 
