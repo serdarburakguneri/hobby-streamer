@@ -34,13 +34,41 @@ func (h *EventHandlers) HandleAnalyzeJobCompleted(ctx context.Context, ev *event
 		if err := h.appService.UpdateVideoMetadata(ctx, cmd); err != nil {
 			return err
 		}
+		// Pre-create placeholders for HLS and DASH as transcoding
+		statusTranscoding := valueobjects.VideoStatusTranscoding
 		input := payload.URL
 		hlsKey := path.Join(payload.AssetID, payload.VideoID, "hls", path.Base(payload.Key))
+		hlsS3, _ := valueobjects.NewS3Object(payload.Bucket, hlsKey, "")
+		hlsFmt, _ := valueobjects.NewVideoFormat(string(valueobjects.VideoFormatHLS))
+		_, _, _ = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
+			AssetID:         *assetIDVO,
+			Label:           path.Base(hlsKey),
+			Format:          hlsFmt,
+			StorageLocation: *hlsS3,
+			Duration:        0,
+			Bitrate:         0,
+			Width:           0,
+			Height:          0,
+			Size:            0,
+			ContentType:     "application/x-mpegURL",
+			InitialStatus:   &statusTranscoding,
+		})
+		input = payload.URL
 		hlsEvt := events.NewJobTranscodeRequestedEvent(payload.AssetID, payload.VideoID, input, valueobjects.VideoFormatHLS.Value(), payload.Bucket, hlsKey)
 		if err := h.producer.SendEvent(ctx, events.HLSJobRequestedTopic, hlsEvt); err != nil {
 			return err
 		}
 		dashKey := path.Join(payload.AssetID, payload.VideoID, "dash", path.Base(payload.Key))
+		dashS3, _ := valueobjects.NewS3Object(payload.Bucket, dashKey, "")
+		dashFmt, _ := valueobjects.NewVideoFormat(string(valueobjects.VideoFormatDASH))
+		_, _, _ = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
+			AssetID:         *assetIDVO,
+			Label:           path.Base(dashKey),
+			Format:          dashFmt,
+			StorageLocation: *dashS3,
+			ContentType:     "application/dash+xml",
+			InitialStatus:   &statusTranscoding,
+		})
 		dashEvt := events.NewJobTranscodeRequestedEvent(payload.AssetID, payload.VideoID, input, valueobjects.VideoFormatDASH.Value(), payload.Bucket, dashKey)
 		if err := h.producer.SendEvent(ctx, events.DASHJobRequestedTopic, dashEvt); err != nil {
 			return err
