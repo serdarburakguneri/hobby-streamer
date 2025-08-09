@@ -37,24 +37,27 @@ type AddVideoCommand struct {
 }
 
 type UpsertVideoCommand struct {
-	AssetID         valueobjects.AssetID
-	Label           string
-	Format          *valueobjects.VideoFormat
-	StorageLocation valueobjects.S3Object
-	StreamInfo      *valueobjects.StreamInfo
-	Codec           string
-	VideoCodec      string
-	AudioCodec      string
-	FrameRate       string
-	AudioChannels   int
-	AudioSampleRate int
-	Duration        float64
-	Bitrate         int
-	Width           int
-	Height          int
-	Size            int64
-	ContentType     string
-	InitialStatus   *valueobjects.VideoStatus
+	AssetID            valueobjects.AssetID
+	Label              string
+	Format             *valueobjects.VideoFormat
+	StorageLocation    valueobjects.S3Object
+	StreamInfo         *valueobjects.StreamInfo
+	Codec              string
+	VideoCodec         string
+	AudioCodec         string
+	FrameRate          string
+	AudioChannels      int
+	AudioSampleRate    int
+	Duration           float64
+	Bitrate            int
+	Width              int
+	Height             int
+	Size               int64
+	ContentType        string
+	InitialStatus      *valueobjects.VideoStatus
+	SegmentCount       int
+	AvgSegmentDuration float64
+	Segments           []string
 }
 
 type RemoveVideoCommand struct {

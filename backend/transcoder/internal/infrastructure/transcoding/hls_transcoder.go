@@ -2,6 +2,7 @@ package transcoding
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -111,6 +112,74 @@ func (h *HLSTranscoder) ExtractMetadata(ctx context.Context, filePath string, jo
 	metadata.Duration = totalDur
 	if count > 0 {
 		metadata.AvgSegmentDuration = totalDur / float64(count)
+	}
+
+	if count > 0 {
+		firstSeg := segments[0]
+		segPath := firstSeg
+		if !filepath.IsAbs(firstSeg) {
+			segPath = filepath.Join(filepath.Dir(filePath), firstSeg)
+		}
+		var out []byte
+		probe := exec.CommandContext(ctx, "ffprobe",
+			"-v", "quiet",
+			"-print_format", "json",
+			"-show_format",
+			"-show_streams",
+			segPath)
+		out, _ = probe.CombinedOutput()
+		type Stream struct {
+			CodecType    string `json:"codec_type"`
+			CodecName    string `json:"codec_name"`
+			Width        int    `json:"width"`
+			Height       int    `json:"height"`
+			SampleRate   string `json:"sample_rate"`
+			Channels     int    `json:"channels"`
+			RFrameRate   string `json:"r_frame_rate"`
+			AvgFrameRate string `json:"avg_frame_rate"`
+		}
+		var probeResult struct {
+			Format struct {
+				BitRate string `json:"bit_rate"`
+			} `json:"format"`
+			Streams []Stream `json:"streams"`
+		}
+		if len(out) > 0 && json.Unmarshal(out, &probeResult) == nil {
+			for _, s := range probeResult.Streams {
+				if s.CodecType == "video" {
+					if s.Width > 0 {
+						metadata.Width = s.Width
+					}
+					if s.Height > 0 {
+						metadata.Height = s.Height
+					}
+					if s.CodecName != "" {
+						metadata.VideoCodec = s.CodecName
+						metadata.Codec = s.CodecName
+					}
+					if s.AvgFrameRate != "" {
+						metadata.FrameRate = s.AvgFrameRate
+					}
+				} else if s.CodecType == "audio" {
+					if s.Channels > 0 {
+						metadata.AudioChannels = s.Channels
+					}
+					if s.SampleRate != "" {
+						if sr, err := strconv.Atoi(s.SampleRate); err == nil {
+							metadata.AudioSampleRate = sr
+						}
+					}
+					if s.CodecName != "" {
+						metadata.AudioCodec = s.CodecName
+					}
+				}
+			}
+			if probeResult.Format.BitRate != "" {
+				if b, err := strconv.Atoi(probeResult.Format.BitRate); err == nil {
+					metadata.Bitrate = b
+				}
+			}
+		}
 	}
 	return metadata, nil
 }

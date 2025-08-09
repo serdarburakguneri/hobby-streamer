@@ -36,12 +36,14 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
   const dashRef = useRef<dashjs.MediaPlayerClass | null>(null);
 
   const getVideoUrl = () => {
-    if (video.streamInfo?.url) {
-      return video.streamInfo.url;
+    if (video?.streamInfo?.url) return video.streamInfo.url;
+    if (video?.streamInfo?.cdnPrefix && video?.storageLocation?.key) {
+      const prefix = video.streamInfo.cdnPrefix.replace(/\/$/, '');
+      const key = video.storageLocation.key.replace(/^\//, '');
+      return `${prefix}/${key}`;
     }
-    if (video.storageLocation?.url) {
-      return convertS3UrlToHttp(video.storageLocation.url);
-    }
+    if (video?.storageLocation?.url) return convertS3UrlToHttp(video.storageLocation.url);
+    if (video?.storageLocation?.key) return `${API_CONFIG.CDN_BASE_URL}/${video.storageLocation.key}`;
     return null;
   };
 
@@ -236,6 +238,29 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
               <Ionicons name="warning" size={48} color="#ff6b6b" />
               <Text style={styles.errorText}>No video URL available</Text>
               <Text style={styles.errorSubtext}>This video cannot be previewed</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Native DASH preview is not widely supported in expo-av; guide user to use HLS
+  if (Platform.OS !== 'web' && video.format === 'dash') {
+    return (
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Video Preview</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.errorContainer}>
+              <Ionicons name="warning" size={48} color="#ff6b6b" />
+              <Text style={styles.errorText}>DASH preview is not supported on this device</Text>
+              <Text style={styles.errorSubtext}>Please use an HLS rendition or open on web</Text>
             </View>
           </View>
         </View>

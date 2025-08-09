@@ -83,6 +83,9 @@ func (s *CommandService) UpsertVideo(ctx context.Context, cmd commands.UpsertVid
 	if err != nil {
 		return nil, nil, errors.NewValidationError("failed to upsert video", err)
 	}
+	if cmd.SegmentCount > 0 || cmd.AvgSegmentDuration > 0 || len(cmd.Segments) > 0 {
+		video.UpdateStreamingDetails(cmd.SegmentCount, cmd.AvgSegmentDuration, cmd.Segments)
+	}
 	if err := s.saver.Update(ctx, asset); err != nil {
 		return nil, nil, errors.NewInternalError("failed to save asset", err)
 	}

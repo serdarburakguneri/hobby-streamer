@@ -202,4 +202,9 @@ func (v *Video) UpdateStorageLocation(location valueobjects.S3Object) {
 	v.timestamps.Update()
 }
 
-// removed UpdateTechnicalDetails in favor of UpdateMediaInfo
+func (v *Video) UpdateStreamingDetails(segmentCount int, avgSegmentDuration float64, segments []string) {
+	v.segmentCount = segmentCount
+	v.avgSegmentDuration = avgSegmentDuration
+	v.segments = segments
+	v.timestamps.Update()
+}

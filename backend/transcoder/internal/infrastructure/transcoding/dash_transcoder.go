@@ -2,11 +2,13 @@ package transcoding
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -100,6 +102,71 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 		codecs := mpd.Period.AdaptationSet.Representations[0].Codecs
 		metadata.VideoCodec = codecs
 		metadata.Codec = codecs
+	}
+	
+	baseDir := filepath.Dir(filePath)
+	files, _ := ioutil.ReadDir(baseDir)
+	var firstSeg string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".m4s") {
+			firstSeg = filepath.Join(baseDir, f.Name())
+			break
+		}
+	}
+	if firstSeg != "" {
+		probe := exec.CommandContext(ctx, "ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", firstSeg)
+		if out, err := probe.CombinedOutput(); err == nil {
+			type Stream struct {
+				CodecType    string `json:"codec_type"`
+				CodecName    string `json:"codec_name"`
+				Width        int    `json:"width"`
+				Height       int    `json:"height"`
+				SampleRate   string `json:"sample_rate"`
+				Channels     int    `json:"channels"`
+				AvgFrameRate string `json:"avg_frame_rate"`
+			}
+			var pr struct {
+				Format struct {
+					BitRate string `json:"bit_rate"`
+				} `json:"format"`
+				Streams []Stream `json:"streams"`
+			}
+			if json.Unmarshal(out, &pr) == nil {
+				for _, s := range pr.Streams {
+					if s.CodecType == "video" {
+						if s.Width > 0 {
+							metadata.Width = s.Width
+						}
+						if s.Height > 0 {
+							metadata.Height = s.Height
+						}
+						if s.CodecName != "" {
+							metadata.VideoCodec = s.CodecName
+						}
+						if s.AvgFrameRate != "" {
+							metadata.FrameRate = s.AvgFrameRate
+						}
+					} else if s.CodecType == "audio" {
+						if s.Channels > 0 {
+							metadata.AudioChannels = s.Channels
+						}
+						if s.SampleRate != "" {
+							if sr, err := strconv.Atoi(s.SampleRate); err == nil {
+								metadata.AudioSampleRate = sr
+							}
+						}
+						if s.CodecName != "" {
+							metadata.AudioCodec = s.CodecName
+						}
+					}
+				}
+				if pr.Format.BitRate != "" {
+					if b, err := strconv.Atoi(pr.Format.BitRate); err == nil {
+						metadata.Bitrate = b
+					}
+				}
+			}
+		}
 	}
 	return metadata, nil
 }
