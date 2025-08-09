@@ -135,6 +135,41 @@ func (dc *DynamicConfig) GetComponentAsMap(name string) map[string]interface{} {
 	return nil
 }
 
+// Helper accessors from generic map[string]interface{}
+func GetStringFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func GetIntFromMap(m map[string]interface{}, key string) int {
+	if v, ok := m[key]; ok {
+		switch t := v.(type) {
+		case int:
+			return t
+		case int64:
+			return int(t)
+		case float64:
+			return int(t)
+		case string:
+			return 0
+		}
+	}
+	return 0
+}
+
+func GetMapFromMap(m map[string]interface{}, key string) map[string]interface{} {
+	if v, ok := m[key]; ok {
+		if mm, ok := v.(map[string]interface{}); ok {
+			return mm
+		}
+	}
+	return nil
+}
+
 func (dc *DynamicConfig) GetComponentAsStringMap(name string) map[string]string {
 	if componentMap := dc.GetComponentAsMap(name); componentMap != nil {
 		result := make(map[string]string)
@@ -206,22 +241,4 @@ func (dc *DynamicConfig) GetDurationFromComponent(componentName, key string, def
 		}
 	}
 	return defaultValue
-}
-
-// Helpers to safely cast
-func str(v interface{}) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
-}
-func intNum(v interface{}) int {
-	switch t := v.(type) {
-	case int:
-		return t
-	case float64:
-		return int(t)
-	default:
-		return 0
-	}
 }

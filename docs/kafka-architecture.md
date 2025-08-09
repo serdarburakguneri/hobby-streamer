@@ -5,22 +5,14 @@ Event streaming architecture using Apache Kafka with CloudEvents format.
 ## Architecture Overview
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Upload Lambda │    │   CMS Lambda    │    │   Asset Manager │
-│   (S3 Trigger)  │    │  (API Gateway)  │    │   (Consumer)    │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          ▼                      ▼                      ▼
+┌─────────────────┐                           ┌─────────────────┐
+│   Upload Lambda │                           │   Asset Manager │
+│   (S3 Trigger)  │                           │   (Producer)    │
+└─────────┬───────┘                           └─────────┬───────┘
+          │                                             │
+          ▼                                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Apache Kafka                             │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐│
-│  │raw-video-   │ │analyze.job. │ │hls.job.     │ │analyze.job. ││
-│  │uploaded     │ │requested    │ │requested    │ │completed    ││
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘│
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐│
-│  │hls.job.     │ │dash.job.    │ │asset-events │ │bucket-events││
-│  │completed    │ │completed    │ │             │ │             ││
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘│
 └─────────────────────────────────────────────────────────────────┘
           │                      │                      │
           ▼                      ▼                      ▼
@@ -39,20 +31,29 @@ Event streaming architecture using Apache Kafka with CloudEvents format.
 4. **Asset Manager** (consumer) → saves video metadata
 
 ### HLS Transcoding Flow
-1. **CMS UI** → **CMS Lambda** (API Gateway) → `hls.job.requested`
-2. **Transcoder** (consumer) → transcodes to HLS → `hls.job.completed`
-3. **Asset Manager** (consumer) → saves HLS video to asset
+1. **CMS UI** → **Asset Manager** → `hls.job.requested`
+2. **Asset Manager** (consumer) → saves HLS video to asset
+3. **Transcoder** (consumer) → transcodes to HLS → `hls.job.completed`
+4. **Asset Manager** (consumer) → updates HLS video details
+
+
+### DASH Transcoding Flow
+1. **CMS UI** → **Asset Manager** → `dash.job.requested`
+2. **Asset Manager** (consumer) → saves DASH video to asset
+3. **Transcoder** (consumer) → transcodes to DASH → `dash.job.completed`
+4. **Asset Manager** (consumer) → updates DASH video details
+
 
 ## Topics
 
 - **`raw-video-uploaded`** - Raw video upload notifications
 - **`analyze.job.requested`** - Video analysis job requests
 - **`hls.job.requested`** - HLS transcoding job requests
+- **`dash.job.requested`** - DASH transcoding job requests
 - **`analyze.job.completed`** - Video analysis job completions
 - **`hls.job.completed`** - HLS transcoding job completions
 - **`dash.job.completed`** - DASH transcoding job completions
-- **`asset-events`** - Asset domain events
-- **`bucket-events`** - Bucket domain events
+
 
 ## Consumer Groups
 

@@ -79,3 +79,7 @@ components:
     url: "http://asset-manager:8080"
     timeout: "30s"
     retry_count: 3 
+
+  kafka:
+    bootstrap_servers: "kafka:29092"
+    max_message_bytes: 1000000

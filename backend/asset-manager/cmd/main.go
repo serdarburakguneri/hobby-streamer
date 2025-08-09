@@ -37,8 +37,7 @@ func main() {
 
 	assetCmdService, assetQryService, bucketCmdService, bucketQryService, pipelineService, _ := bootstrap.InitServices(neo4jDriver)
 
-	_ = pipelineService
-	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, dynamicCfg, neo4jDriver)
+	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, pipelineService, dynamicCfg, neo4jDriver)
 	defer assetEventConsumer.Stop()
 
 	var gqlPublisher interface {

@@ -26,6 +26,8 @@ const (
 	ContentAnalysisRequestedEventType = EventNamespace + ".content.analysis.requested"
 	ContentAnalysisCompletedEventType = EventNamespace + ".content.analysis.completed"
 	ContentAnalysisFailedEventType    = EventNamespace + ".content.analysis.failed"
+
+	CDNInvalidationRequestedEventType = EventNamespace + ".cdn.invalidate.requested"
 )
 
 const (
@@ -46,6 +48,8 @@ const (
 	AnalyzeJobCompletedTopic = "analyze.job.completed"
 	HLSJobCompletedTopic     = "hls.job.completed"
 	DASHJobCompletedTopic    = "dash.job.completed"
+
+	CDNInvalidationRequestedTopic = "cdn.invalidate.requested"
 )
 
 const (
@@ -226,5 +230,11 @@ func NewContentAnalysisFailedEvent(assetID, videoID, errorMsg string) *Event {
 		"assetId": assetID,
 		"videoId": videoID,
 		"error":   errorMsg,
+	})
+}
+
+func NewCDNInvalidationRequestedEvent(keys []string) *Event {
+	return NewEvent(CDNInvalidationRequestedEventType, map[string]interface{}{
+		"keys": keys,
 	})
 }
