@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	pkgerrors "github.com/serdarburakguneri/hobby-streamer/backend/pkg/errors"
@@ -211,9 +212,9 @@ func (r *BucketRepository) convertGraphQLBucketWithAssetsToDomain(graphQLBucket 
 		description = descVO
 	}
 
-	bucketType, err := bucketvalueobjects.NewBucketType(graphQLBucket.Type)
+	bucketType, err := bucketvalueobjects.NewBucketType(strings.ToLower(graphQLBucket.Type))
 	if err != nil {
-		return nil, err
+		return nil, pkgerrors.WithContext(err, map[string]interface{}{"raw_type": graphQLBucket.Type})
 	}
 
 	var status *bucketvalueobjects.BucketStatus

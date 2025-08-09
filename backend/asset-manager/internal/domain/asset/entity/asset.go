@@ -196,6 +196,11 @@ func (a *Asset) UpdateDescription(newDescription *valueobjects.Description) {
 	a.touch()
 }
 
+func (a *Asset) UpdateGenre(newGenre *valueobjects.Genre) {
+	a.genre = newGenre
+	a.touch()
+}
+
 func (a *Asset) UpdateGenres(newGenres *valueobjects.Genres) {
 	a.genres = newGenres
 	a.touch()
