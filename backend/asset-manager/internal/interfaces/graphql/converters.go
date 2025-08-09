@@ -1,9 +1,12 @@
 package graphql
 
 import (
+	"time"
+
 	assetentity "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/entity"
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/valueobjects"
 	bucketentity "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket/entity"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 func convertVideos(videos map[string]*assetentity.Video) []*Video {
@@ -81,6 +84,7 @@ func domainAssetToGraphQL(asset *assetentity.Asset) *Asset {
 	}
 
 	var publishRule *PublishRule
+	var computedStatus string = constants.AssetStatusDraft
 	if asset.PublishRule() != nil {
 		domainRule := asset.PublishRule()
 		publishRule = &PublishRule{
@@ -88,6 +92,15 @@ func domainAssetToGraphQL(asset *assetentity.Asset) *Asset {
 			UnpublishAt: domainRule.UnpublishAt(),
 			Regions:     domainRule.Regions(),
 			AgeRating:   domainRule.AgeRating(),
+		}
+
+		now := time.Now().UTC()
+		if domainRule.PublishAt() != nil && now.Before(*domainRule.PublishAt()) {
+			computedStatus = constants.AssetStatusScheduled
+		} else if domainRule.UnpublishAt() != nil && now.After(*domainRule.UnpublishAt()) {
+			computedStatus = constants.AssetStatusExpired
+		} else {
+			computedStatus = constants.AssetStatusPublished
 		}
 	}
 
@@ -112,6 +125,7 @@ func domainAssetToGraphQL(asset *assetentity.Asset) *Asset {
 		Images:      images,
 		CreatedAt:   asset.CreatedAt().Value(),
 		UpdatedAt:   asset.UpdatedAt().Value(),
+		Status:      computedStatus,
 	}
 }
 func domainVideoToGraphQL(video *assetentity.Video) *Video {

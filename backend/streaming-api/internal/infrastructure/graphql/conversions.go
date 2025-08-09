@@ -7,6 +7,16 @@ import (
 	assetvalueobjects "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/domain/asset/valueobjects"
 )
 
+func normalizeGenreName(s string) string {
+	if s == "" {
+		return ""
+	}
+	v := strings.TrimSpace(strings.ToLower(s))
+	v = strings.ReplaceAll(v, "-", "_")
+	v = strings.ReplaceAll(v, " ", "_")
+	return v
+}
+
 func ConvertGraphQLAssetToDomain(graphQLAsset *GraphQLAsset) (*entity.Asset, error) {
 	assetID, err := assetvalueobjects.NewAssetID(graphQLAsset.ID)
 	if err != nil {
@@ -43,20 +53,30 @@ func ConvertGraphQLAssetToDomain(graphQLAsset *GraphQLAsset) (*entity.Asset, err
 
 	var genre *assetvalueobjects.Genre
 	if graphQLAsset.Genre != nil {
-		genreVO, err := assetvalueobjects.NewGenre(*graphQLAsset.Genre)
-		if err != nil {
-			return nil, err
+		g := normalizeGenreName(*graphQLAsset.Genre)
+		if g != "" {
+			if genreVO, err := assetvalueobjects.NewGenre(g); err == nil {
+				genre = genreVO
+			}
 		}
-		genre = genreVO
 	}
 
 	var genres *assetvalueobjects.Genres
 	if len(graphQLAsset.Genres) > 0 {
-		genresVO, err := assetvalueobjects.NewGenres(graphQLAsset.Genres)
-		if err != nil {
-			return nil, err
+		normalized := make([]string, 0, len(graphQLAsset.Genres))
+		for _, g := range graphQLAsset.Genres {
+			gn := normalizeGenreName(g)
+			if gn != "" {
+				if _, err := assetvalueobjects.NewGenre(gn); err == nil {
+					normalized = append(normalized, gn)
+				}
+			}
 		}
-		genres = genresVO
+		if len(normalized) > 0 {
+			if genresVO, err := assetvalueobjects.NewGenres(normalized); err == nil {
+				genres = genresVO
+			}
+		}
 	}
 
 	var tags *assetvalueobjects.Tags
@@ -201,7 +221,7 @@ func ConvertGraphQLVideoToDomain(graphQLVideo GraphQLVideo) (*entity.Video, erro
 	}
 
 	metadata := ConvertStringSliceToString(graphQLVideo.Metadata)
-	statusVO, err := assetvalueobjects.NewStatus(string(graphQLVideo.Status))
+	statusVO, err := assetvalueobjects.NewVideoStatus(string(graphQLVideo.Status))
 	if err != nil {
 		return nil, err
 	}
@@ -372,20 +392,30 @@ func ConvertGraphQLBucketAssetToDomain(graphQLAsset GraphQLBucketAsset) (*entity
 
 	var genre *assetvalueobjects.Genre
 	if graphQLAsset.Genre != nil {
-		genreVO, err := assetvalueobjects.NewGenre(*graphQLAsset.Genre)
-		if err != nil {
-			return nil, err
+		g := normalizeGenreName(*graphQLAsset.Genre)
+		if g != "" {
+			if genreVO, err := assetvalueobjects.NewGenre(g); err == nil {
+				genre = genreVO
+			}
 		}
-		genre = genreVO
 	}
 
 	var genres *assetvalueobjects.Genres
 	if len(graphQLAsset.Genres) > 0 {
-		genresVO, err := assetvalueobjects.NewGenres(graphQLAsset.Genres)
-		if err != nil {
-			return nil, err
+		normalized := make([]string, 0, len(graphQLAsset.Genres))
+		for _, g := range graphQLAsset.Genres {
+			gn := normalizeGenreName(g)
+			if gn != "" {
+				if _, err := assetvalueobjects.NewGenre(gn); err == nil {
+					normalized = append(normalized, gn)
+				}
+			}
 		}
-		genres = genresVO
+		if len(normalized) > 0 {
+			if genresVO, err := assetvalueobjects.NewGenres(normalized); err == nil {
+				genres = genresVO
+			}
+		}
 	}
 
 	var tags *assetvalueobjects.Tags

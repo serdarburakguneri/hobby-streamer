@@ -20,4 +20,5 @@ Scenario: Generate image upload URL
     When method POST
     Then status 200
     And match response.url != null
-    And def result = response 
+    And def result = response
+

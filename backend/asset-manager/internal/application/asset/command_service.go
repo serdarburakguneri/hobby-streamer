@@ -35,6 +35,16 @@ func (s *CommandService) CreateAsset(ctx context.Context, cmd commands.CreateAss
 		return nil, errors.NewValidationError("failed to create new asset", err)
 	}
 
+	if cmd.Genre != nil {
+		asset.UpdateGenre(cmd.Genre)
+	}
+	if cmd.Genres != nil {
+		asset.UpdateGenres(cmd.Genres)
+	}
+	if cmd.Tags != nil {
+		asset.UpdateTags(cmd.Tags)
+	}
+
 	if cmd.OwnerID != nil {
 		asset.SetOwnerID(cmd.OwnerID)
 	}

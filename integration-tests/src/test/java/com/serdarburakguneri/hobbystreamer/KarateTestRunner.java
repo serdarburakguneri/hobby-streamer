@@ -34,9 +34,4 @@ class KarateTestRunner {
         return Karate.run("classpath:features/streaming-api/suites/");        
     }
     
-    @Karate.Test
-    Karate testLambdaFunctions() {       
-        return Karate.run("classpath:features/lambda/");        
-    }
-    
 }

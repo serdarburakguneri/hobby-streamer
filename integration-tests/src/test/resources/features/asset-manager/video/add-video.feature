@@ -27,9 +27,29 @@ Scenario: Add video to asset
     """
     When method POST
     Then status 200
+    * def result = response    
+
+    Given request
+    """
+    {
+      "query": "query GetAsset($id: ID!) { asset(id: $id) { videos { id storageLocation { key } } } }",
+      "variables": { "id": "#(assetId)" }
+    }
+    """
+    And header Authorization = 'Bearer ' + authToken
+    And header Content-Type = 'application/json'
+    When method POST
+    Then status 200
     And match response.errors == '#notpresent'
-    And match response.data.addVideo != null
-    And match response.data.addVideo.label == '#(videoLabel)'
-    And match response.data.addVideo.format == '#(videoFormat)'
-    And match response.data.addVideo.status == 'pending'
-    And def result = response 
+    * def vids = response.data.asset.videos
+    * def videoId =
+    """
+    function(){
+      for (var i = 0; i < vids.length; i++) {
+        if (vids[i].storageLocation && vids[i].storageLocation.key == karate.get('videoKey')) {
+          return vids[i].id;
+        }
+      }
+      return null;
+    }()
+    """

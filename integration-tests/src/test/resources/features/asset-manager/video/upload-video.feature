@@ -8,19 +8,21 @@ Scenario: Upload video file
     * def videoFileName = videoInfo.fileName
     * def videoContentType = videoInfo.contentType
     * def videoSize = videoInfo.size
-    * def videoUploadResult = call read('classpath:features/lambda/generate-video-upload-url.feature') { assetId: '#(assetId)', fileName: '#(videoFileName)', videoType: 'main' }
-    * print 'Video upload URL result =', videoUploadResult
-    * print 'Actual upload URL =', videoUploadResult.result.url
     * def videoBucket = 'content-east'
     * def videoKey = assetId + '/source/' + videoFileName
-     # too lazy for etc host defs
-    * def uploadUrl = videoUploadResult.result.url.replace('localstack:4566', 'localhost:4566')
-    * print 'Modified upload URL =', uploadUrl
+    * def uploadUrlResult = call read('classpath:features/lambda/generate-video-upload-url.feature') { assetId: '#(assetId)', fileName: '#(videoFileName)', videoType: 'main' }
+    * def rawUrl = uploadUrlResult.result.url
+    * def uploadUrl = rawUrl.replace('localstack:4566', 'localhost:4566')
+    # Build object URL without query for upsert equality and pass that to addVideo
+    * def parts = rawUrl.split('\?')
+    * def objectUrl = parts[0].replace('localstack:4566', 'localhost:4566')
     * url uploadUrl
     * header Content-Type = '#(videoContentType)'
     * request read('classpath:samples/videos/' + videoFileName)
     When method PUT
     Then status 200
-    * def addVideoResult = call read('classpath:features/asset-manager/video/add-video.feature') { assetId: '#(assetId)', videoLabel: 'main', videoFormat: 'raw', videoBucket: '#(videoBucket)', videoKey: '#(videoKey)', videoUrl: '#(videoUploadResult.result.url)', contentType: '#(videoContentType)', videoSize: '#(videoSize)' }
+    * def addVideoResult = call read('classpath:features/asset-manager/video/add-video.feature') { assetId: '#(assetId)', videoLabel: 'main', videoFormat: 'raw', videoBucket: '#(videoBucket)', videoKey: '#(videoKey)', videoUrl: '#(objectUrl)', contentType: '#(videoContentType)', videoSize: '#(videoSize)' }
     * print 'Add video result =', addVideoResult
-    * def result = addVideoResult 
+    * def videoId = addVideoResult.videoId
+    * def result = addVideoResult
+    * def input = objectUrl

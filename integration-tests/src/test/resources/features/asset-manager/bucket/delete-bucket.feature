@@ -10,12 +10,9 @@ Scenario: Delete bucket
     Given request
     """
     {
-        "query": "mutation DeleteBucket($input: DeleteBucketInput!) { deleteBucket(input: $input) }",
+        "query": "mutation DeleteBucket($id: ID!) { deleteBucket(id: $id) }",
         "variables": {
-            "input": {
-                "id": "#(bucketId)",
-                "ownerId": "#(ownerId)"
-            }
+            "id": "#(bucketId)"
         }
     }
     """

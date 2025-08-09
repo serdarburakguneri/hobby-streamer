@@ -32,13 +32,29 @@ func NewCommandService(
 }
 
 func (s *CommandService) CreateBucket(ctx context.Context, cmd commands.CreateBucketCommand) (*entity.Bucket, error) {
-	bucket, err := entity.NewBucket(cmd.Name, cmd.Key)
+	var desc *string
+	if cmd.Description != nil {
+		v := cmd.Description.Value()
+		desc = &v
+	}
+	var typ *string
+	if cmd.Type != nil {
+		v := cmd.Type.Value()
+		typ = &v
+	}
+	var stat *string
+	if cmd.Status != nil {
+		v := cmd.Status.Value()
+		stat = &v
+	}
+	var owner *string
+	if cmd.OwnerID != nil {
+		v := cmd.OwnerID.Value()
+		owner = &v
+	}
+	bucket, err := entity.NewBucketWithProperties(cmd.Name, cmd.Key, desc, typ, stat, owner, cmd.Metadata)
 	if err != nil {
 		return nil, errors.NewValidationError("failed to create new bucket", err)
-	}
-
-	if cmd.OwnerID != nil {
-		bucket.UpdateOwnerID(cmd.OwnerID)
 	}
 
 	if err := s.saver.Save(ctx, bucket); err != nil {

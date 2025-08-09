@@ -15,6 +15,12 @@ const (
 	GenreSports      = "sports"
 	GenreKids        = "kids"
 	GenreEducational = "educational"
+	GenreWestern     = "western"
+	GenreAnimation   = "animation"
+	GenreFamily      = "family"
+	GenreMystery     = "mystery"
+	GenreWar         = "war"
+	GenreCrime       = "crime"
 )
 
 var AllowedGenres = map[string]struct{}{
@@ -32,6 +38,12 @@ var AllowedGenres = map[string]struct{}{
 	GenreSports:      {},
 	GenreKids:        {},
 	GenreEducational: {},
+	GenreWestern:     {},
+	GenreAnimation:   {},
+	GenreFamily:      {},
+	GenreMystery:     {},
+	GenreWar:         {},
+	GenreCrime:       {},
 }
 
 func IsValidGenre(g string) bool {

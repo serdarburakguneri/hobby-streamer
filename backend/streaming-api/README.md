@@ -14,6 +14,4 @@ Bucket and asset list/detail: 15/30 minutes.
 ## Running
 ```bash
 cd backend/streaming-api && go run cmd/main.go
-# or with Docker
-docker build -t streaming-api . && docker run -p 8080:8080 streaming-api
 ```

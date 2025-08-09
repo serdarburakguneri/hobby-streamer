@@ -45,10 +45,37 @@ func MapCreateAssetInput(input CreateAssetInput) (assetCommands.CreateAssetComma
 		}
 		parent = p
 	}
+	var genre *assetvo.Genre
+	if input.Genre != nil {
+		g, err := assetvo.NewGenre(*input.Genre)
+		if err != nil {
+			return assetCommands.CreateAssetCommand{}, err
+		}
+		genre = g
+	}
+	var genres *assetvo.Genres
+	if input.Genres != nil && len(input.Genres) > 0 {
+		gs, err := assetvo.NewGenres(input.Genres)
+		if err != nil {
+			return assetCommands.CreateAssetCommand{}, err
+		}
+		genres = gs
+	}
+	var tags *assetvo.Tags
+	if input.Tags != nil && len(input.Tags) > 0 {
+		ts, err := assetvo.NewTags(input.Tags)
+		if err != nil {
+			return assetCommands.CreateAssetCommand{}, err
+		}
+		tags = ts
+	}
 	return assetCommands.CreateAssetCommand{
 		Slug:      *slug,
 		Title:     title,
 		AssetType: at,
+		Genre:     genre,
+		Genres:    genres,
+		Tags:      tags,
 		OwnerID:   owner,
 		ParentID:  parent,
 	}, nil
@@ -71,7 +98,31 @@ func MapCreateBucketInput(input BucketInput) (bucketCommands.CreateBucketCommand
 		}
 		owner = o
 	}
-	return bucketCommands.CreateBucketCommand{Name: *input.Name, Key: *input.Key, OwnerID: owner}, nil
+	var desc *bucketvo.BucketDescription
+	if input.Description != nil {
+		d, err := bucketvo.NewBucketDescription(*input.Description)
+		if err != nil {
+			return bucketCommands.CreateBucketCommand{}, err
+		}
+		desc = d
+	}
+	var typ *bucketvo.BucketType
+	if input.Type != nil {
+		t, err := bucketvo.NewBucketType(*input.Type)
+		if err != nil {
+			return bucketCommands.CreateBucketCommand{}, err
+		}
+		typ = t
+	}
+	var stat *bucketvo.BucketStatus
+	if input.Status != nil {
+		s, err := bucketvo.NewBucketStatus(*input.Status)
+		if err != nil {
+			return bucketCommands.CreateBucketCommand{}, err
+		}
+		stat = s
+	}
+	return bucketCommands.CreateBucketCommand{Name: *input.Name, Key: *input.Key, OwnerID: owner, Description: desc, Type: typ, Status: stat, Metadata: map[string]interface{}{}}, nil
 }
 
 func MapUpdateBucketInput(id string, input BucketInput) (bucketCommands.UpdateBucketCommand, error) {

@@ -1,7 +1,5 @@
 # Constants Package
 
-Application constants organized by domain with validation methods.
+Application constants grouped by domain.
 
-## Usage
-
-Each file contains validation functions: `IsValidAssetType()`, `IsValidVideoFormat()`, etc.
+Use constants in domain logic; validations live in domain/services.

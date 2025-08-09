@@ -3,9 +3,13 @@ package commands
 import "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/bucket/valueobjects"
 
 type CreateBucketCommand struct {
-	Name    string
-	Key     string
-	OwnerID *valueobjects.OwnerID
+	Name        string
+	Key         string
+	OwnerID     *valueobjects.OwnerID
+	Description *valueobjects.BucketDescription
+	Type        *valueobjects.BucketType
+	Status      *valueobjects.BucketStatus
+	Metadata    map[string]interface{}
 }
 
 type UpdateBucketCommand struct {

@@ -11,7 +11,7 @@ Scenario: Create bucket simple
     Given request
     """
     {
-      "query": "mutation CreateBucket($input: CreateBucketInput!) { createBucket(input: $input) { id key name type status } }",
+      "query": "mutation CreateBucket($input: BucketInput!) { createBucket(input: $input) { id key name type status } }",
       "variables": {
         "input": {
           "key": '#(bucketKey)',

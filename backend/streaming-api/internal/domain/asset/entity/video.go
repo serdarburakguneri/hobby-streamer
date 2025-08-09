@@ -21,7 +21,7 @@ type Video struct {
 	contentType        *string
 	streamInfo         *valueobjects.StreamInfoValue
 	metadata           *string
-	status             *valueobjects.Status
+	status             *valueobjects.VideoStatus
 	thumbnail          *Image
 	createdAt          time.Time
 	updatedAt          time.Time
@@ -54,7 +54,7 @@ func NewVideo(
 	contentType *string,
 	streamInfo *valueobjects.StreamInfoValue,
 	metadata *string,
-	status *valueobjects.Status,
+	status *valueobjects.VideoStatus,
 	thumbnail *Image,
 	createdAt time.Time,
 	updatedAt time.Time,
@@ -158,7 +158,7 @@ func (v *Video) Metadata() *string {
 	return v.metadata
 }
 
-func (v *Video) Status() *valueobjects.Status {
+func (v *Video) Status() *valueobjects.VideoStatus {
 	return v.status
 }
 

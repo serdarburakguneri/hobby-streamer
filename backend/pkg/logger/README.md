@@ -32,5 +32,3 @@ ctx := context.WithValue(context.Background(), "user_id", "abc123")
 logger.WithContext(ctx).Info("User action")
 logger.WithService("streaming-api").Info("Service is up")
 ```
-
-> ℹ️ Lightweight, flexible, good defaults.

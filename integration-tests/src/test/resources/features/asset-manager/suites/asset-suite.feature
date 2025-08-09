@@ -20,14 +20,21 @@ Scenario: Asset flow
     # Step 2: Upload video
     * def uploadVideoResult = call read('classpath:features/asset-manager/video/upload-video.feature') { assetId: '#(assetId)' }
     * print 'DEBUG uploadVideoResult =', uploadVideoResult
-    * def videoId = uploadVideoResult.addVideoResult && uploadVideoResult.addVideoResult.response && uploadVideoResult.addVideoResult.response.data && uploadVideoResult.addVideoResult.response.data.addVideo ? uploadVideoResult.addVideoResult.response.data.addVideo.id : null
+    * def videoId = uploadVideoResult.videoId
     * print 'DEBUG videoId =', videoId
-    * def videoInput = uploadVideoResult.input
+    * def input = uploadVideoResult.input
 
     # Step 3: Trigger HLS
     * def triggerHLSResult = call read('classpath:features/asset-manager/video/trigger-hls.feature') { assetId: '#(assetId)', videoId: '#(videoId)', input: '#(input)' }
     * print 'Trigger HLS result =', triggerHLSResult
-    * match triggerHLSResult.response.message == "HLS job requested successfully"
+    * match triggerHLSResult.response.errors == '#notpresent'
+    * match triggerHLSResult.response.data.requestTranscode == true
+
+    # Step 3b: Trigger DASH similar to CMS flow
+    * def triggerDASHResult = call read('classpath:features/asset-manager/video/trigger-dash.feature') { assetId: '#(assetId)', videoId: '#(videoId)', input: '#(input)' }
+    * print 'Trigger DASH result =', triggerDASHResult
+    * match triggerDASHResult.response.errors == '#notpresent'
+    * match triggerDASHResult.response.data.requestTranscode == true
 
     # Step 4: Wait for HLS processing
     * print 'Waiting for HLS processing to complete...'

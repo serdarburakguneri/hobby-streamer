@@ -8,6 +8,9 @@ type CreateAssetCommand struct {
 	Slug      valueobjects.Slug
 	Title     *valueobjects.Title
 	AssetType *valueobjects.AssetType
+	Genre     *valueobjects.Genre
+	Genres    *valueobjects.Genres
+	Tags      *valueobjects.Tags
 	OwnerID   *valueobjects.OwnerID
 	ParentID  *valueobjects.AssetID
 }

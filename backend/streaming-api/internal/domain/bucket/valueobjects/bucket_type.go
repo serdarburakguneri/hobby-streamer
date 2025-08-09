@@ -2,6 +2,9 @@ package valueobjects
 
 import (
 	"errors"
+	"strings"
+
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/constants"
 )
 
 type BucketType struct {
@@ -9,23 +12,14 @@ type BucketType struct {
 }
 
 func NewBucketType(value string) (*BucketType, error) {
-	if value == "" {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if v == "" {
 		return nil, ErrInvalidBucketType
 	}
-
-	validTypes := map[string]bool{
-		"collection": true,
-		"playlist":   true,
-		"category":   true,
-		"featured":   true,
-		"trending":   true,
-	}
-
-	if !validTypes[value] {
+	if !constants.IsValidBucketType(v) {
 		return nil, ErrInvalidBucketType
 	}
-
-	return &BucketType{value: value}, nil
+	return &BucketType{value: v}, nil
 }
 
 func (t BucketType) Value() string {
