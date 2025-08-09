@@ -32,6 +32,7 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoNativeRef = useRef<any>(null);
   const hlsRef = useRef<Hls | null>(null);
   const dashRef = useRef<dashjs.MediaPlayerClass | null>(null);
 
@@ -52,6 +53,10 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
   useEffect(() => {
     if (Platform.OS === 'web' && videoUrl && videoRef.current) {
       const videoElement = videoRef.current;
+      // ensure cross-origin for HLS/DASH segment fetching
+      try {
+        (videoElement as any).crossOrigin = 'anonymous';
+      } catch {}
       
       if (video.format === 'hls') {
         if (Hls.isSupported()) {
@@ -182,7 +187,33 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
     setIsPlaying(false);
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
+    if (Platform.OS === 'web') {
+      const el = videoRef.current;
+      if (!el) return;
+      try {
+        if (isPlaying) {
+          el.pause();
+          setIsPlaying(false);
+        } else {
+          await el.play();
+          setIsPlaying(true);
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Playback blocked by browser. Click to play.');
+      }
+      return;
+    }
+    const nativeEl = videoNativeRef.current;
+    if (nativeEl) {
+      try {
+        if (isPlaying) {
+          await nativeEl.pauseAsync?.();
+        } else {
+          await nativeEl.playAsync?.();
+        }
+      } catch {}
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -311,6 +342,7 @@ export default function VideoPreview({ video, visible, onClose }: VideoPreviewPr
               />
             ) : (
               <Video
+                ref={videoNativeRef}
                 source={{ uri: videoUrl }}
                 style={styles.video}
                 resizeMode={ResizeMode.CONTAIN}
@@ -484,6 +516,7 @@ const styles = StyleSheet.create({
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 2,
   },
   videoInfo: {
     padding: 16,
