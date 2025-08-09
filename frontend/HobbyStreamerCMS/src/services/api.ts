@@ -662,6 +662,12 @@ const ADD_VIDEO = gql`
   ${VIDEO_THUMBNAIL_FIELDS}
 `;
 
+const REQUEST_TRANSCODE = gql`
+  mutation RequestTranscode($assetId: ID!, $videoId: ID!, $format: VideoFormat!) {
+    requestTranscode(assetId: $assetId, videoId: $videoId, format: $format)
+  }
+`;
+
 const CREATE_BUCKET = gql`
   mutation CreateBucket($input: BucketInput!) {
     createBucket(input: $input) {
@@ -1203,42 +1209,20 @@ export const useAssetService = () => {
       return response.data.addImage;
     },
 
-    triggerHLSTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {
-      try {
-        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/hls-job-requested`, {
-          assetId,
-          videoId,
-          input
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        return response.data;
-      } catch (error) {
-        console.error('Error triggering HLS transcode:', error);
-        throw new Error('Failed to trigger HLS transcode');
-      }
+    triggerHLSTranscode: async (assetId: string, videoId: string, _input: string): Promise<{ message: string }> => {
+      await client.mutate({
+        mutation: REQUEST_TRANSCODE,
+        variables: { assetId, videoId, format: 'hls' },
+      });
+      return { message: 'HLS transcode requested' };
     },
 
-    triggerDASHTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {
-      try {
-        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/dash-job-requested`, {
-          assetId,
-          videoId,
-          input
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        return response.data;
-      } catch (error) {
-        console.error('Error triggering DASH transcode:', error);
-        throw new Error('Failed to trigger DASH transcode');
-      }
+    triggerDASHTranscode: async (assetId: string, videoId: string, _input: string): Promise<{ message: string }> => {
+      await client.mutate({
+        mutation: REQUEST_TRANSCODE,
+        variables: { assetId, videoId, format: 'dash' },
+      });
+      return { message: 'DASH transcode requested' };
     },
   };
 };

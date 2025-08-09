@@ -1,9 +1,13 @@
 package graphql
 
 import (
+	"context"
+
 	appasset "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset"
 	appbucket "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/bucket"
 	cdn "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/cdn"
+	apppipeline "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/pipeline"
+	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 )
 
 type Resolver struct {
@@ -12,6 +16,10 @@ type Resolver struct {
 	bucketCommandService *appbucket.CommandService
 	bucketQueryService   *appbucket.QueryService
 	cdnService           cdn.Service
+	pipelineService      *apppipeline.Service
+	publisher            interface {
+		Publish(ctx context.Context, topic string, ev *events.Event) error
+	}
 }
 
 func NewResolver(
@@ -20,6 +28,10 @@ func NewResolver(
 	bucketCommandService *appbucket.CommandService,
 	bucketQueryService *appbucket.QueryService,
 	cdnService cdn.Service,
+	pipelineService *apppipeline.Service,
+	publisher interface {
+		Publish(ctx context.Context, topic string, ev *events.Event) error
+	},
 ) *Resolver {
 	return &Resolver{
 		assetCommandService:  assetCommandService,
@@ -27,6 +39,8 @@ func NewResolver(
 		bucketCommandService: bucketCommandService,
 		bucketQueryService:   bucketQueryService,
 		cdnService:           cdnService,
+		pipelineService:      pipelineService,
+		publisher:            publisher,
 	}
 }
 

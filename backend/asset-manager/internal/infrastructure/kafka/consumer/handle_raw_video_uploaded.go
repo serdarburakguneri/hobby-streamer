@@ -44,5 +44,10 @@ func (h *EventHandlers) HandleRawVideoUploaded(ctx context.Context, ev *events.E
 		return err
 	}
 	evt := events.NewJobAnalyzeRequestedEvent(payload.AssetID, payload.VideoID, payload.StorageLocation)
+	corr := events.BuildJobCorrelationID(payload.AssetID, payload.VideoID, "analyze", "", "main")
+	evt.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(corr).SetCausationID(ev.ID)
+	if h.pipeline != nil {
+		_ = h.pipeline.MarkRequested(ctx, payload.AssetID, payload.VideoID, "analyze", corr, corr)
+	}
 	return h.publisher.Publish(ctx, events.AnalyzeJobRequestedTopic, evt)
 }

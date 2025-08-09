@@ -29,6 +29,9 @@ func (h *EventHandlers) HandleTranscodeHlsJobCompleted(ctx context.Context, ev *
 			ContentType:   payload.ContentType,
 			InitialStatus: &statusFailed,
 		})
+		if h.pipeline != nil {
+			_ = h.pipeline.MarkFailed(ctx, payload.AssetID, payload.VideoID, "hls", payload.Error)
+		}
 		return nil
 	}
 	assetIDVO, err := valueobjects.NewAssetID(payload.AssetID)
@@ -70,5 +73,8 @@ func (h *EventHandlers) HandleTranscodeHlsJobCompleted(ctx context.Context, ev *
 		Segments:           payload.Segments,
 		InitialStatus:      &statusReady,
 	})
+	if err == nil && h.pipeline != nil {
+		_ = h.pipeline.MarkCompleted(ctx, payload.AssetID, payload.VideoID, "hls")
+	}
 	return err
 }
