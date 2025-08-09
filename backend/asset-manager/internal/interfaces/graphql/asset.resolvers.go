@@ -7,8 +7,8 @@ import (
 
 	assetCommands "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/commands"
 	assetAppQueries "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/queries"
+	transcode "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/transcode"
 	assetvo "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/valueobjects"
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 )
 
 func (r *mutationResolver) CreateAsset(ctx context.Context, input CreateAssetInput) (*Asset, error) {
@@ -207,57 +207,9 @@ func (r *mutationResolver) ClearAssetPublishRule(ctx context.Context, id string)
 }
 
 func (r *mutationResolver) RequestTranscode(ctx context.Context, assetId string, videoId string, format VideoFormat) (bool, error) {
-	idVO, err := assetvo.NewAssetID(assetId)
-	if err != nil {
+	svc := transcode.NewService(r.assetCommandService, r.assetQueryService, r.publisher, r.pipelineService)
+	if err := svc.RequestTranscode(ctx, assetId, videoId, string(format)); err != nil {
 		return false, err
-	}
-
-	formatVO, err := assetvo.NewVideoFormat(string(format))
-	if err != nil {
-		return false, err
-	}
-
-	a, err := r.assetQueryService.GetAsset(ctx, assetAppQueries.GetAssetQuery{ID: assetId})
-	if err != nil {
-		return false, err
-	}
-	var inputURL string
-	var bucket string
-	for _, v := range a.Videos() {
-		if v.ID().Value() == videoId {
-			inputURL = v.StorageLocation().URL()
-			bucket = v.StorageLocation().Bucket()
-			break
-		}
-	}
-	if inputURL == "" || bucket == "" {
-		return false, fmt.Errorf("video input not found")
-	}
-	outKey := fmt.Sprintf("%s/%s/%s/main/%s", assetId, videoId, string(format), map[VideoFormat]string{VideoFormatHls: "playlist.m3u8", VideoFormatDash: "manifest.mpd"}[format])
-	s3Obj, _ := assetvo.NewS3Object(bucket, outKey, "")
-	label := map[VideoFormat]string{VideoFormatHls: "playlist.m3u8", VideoFormatDash: "manifest.mpd"}[format]
-	statusTranscoding := assetvo.VideoStatusTranscoding
-	_, _, _ = r.assetCommandService.UpsertVideo(ctx, assetCommands.UpsertVideoCommand{
-		AssetID:         *idVO,
-		Label:           label,
-		Format:          formatVO,
-		StorageLocation: *s3Obj,
-		ContentType:     map[VideoFormat]string{VideoFormatHls: "application/x-mpegURL", VideoFormatDash: "application/dash+xml"}[format],
-		InitialStatus:   &statusTranscoding,
-	})
-
-	corr := events.BuildJobCorrelationID(assetId, videoId, "transcode", string(format), "main")
-	evt := events.NewJobTranscodeRequestedEvent(assetId, videoId, inputURL, string(format), bucket, outKey)
-	evt.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(corr)
-	if r.publisher == nil {
-		return false, fmt.Errorf("publisher not available")
-	}
-	topic := map[VideoFormat]string{VideoFormatHls: events.HLSJobRequestedTopic, VideoFormatDash: events.DASHJobRequestedTopic}[format]
-	if err := r.publisher.Publish(ctx, topic, evt); err != nil {
-		return false, err
-	}
-	if r.pipelineService != nil {
-		_ = r.pipelineService.MarkRequested(ctx, assetId, videoId, string(format), corr, corr)
 	}
 	return true, nil
 }

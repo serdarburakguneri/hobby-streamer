@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/bootstrap"
+	outbox "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/infrastructure/outbox"
+	bootstrap_events "github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
 
@@ -33,13 +35,24 @@ func main() {
 
 	domainProducer, jobProducer := bootstrap.InitKafkaProducers(ctx, dynamicCfg)
 
-	assetCmdService, assetQryService, bucketCmdService, bucketQryService, pipelineService := bootstrap.InitServices(neo4jDriver)
+	assetCmdService, assetQryService, bucketCmdService, bucketQryService, pipelineService, _ := bootstrap.InitServices(neo4jDriver)
 
 	_ = pipelineService
 	assetEventConsumer := bootstrap.InitKafkaConsumer(ctx, assetCmdService, assetQryService, domainProducer, cdnService, dynamicCfg, neo4jDriver)
 	defer assetEventConsumer.Stop()
 
-	gqlHandler := bootstrap.InitGraphQL(assetCmdService, assetQryService, bucketCmdService, bucketQryService, cdnService, pipelineService, jobProducer, cfg)
+	var gqlPublisher interface {
+		Publish(ctx context.Context, topic string, ev *bootstrap_events.Event) error
+	}
+	if dynamicCfg.GetBaseConfig().Features.EnableOutbox {
+		store := outbox.NewNeo4jStore(neo4jDriver)
+		gqlPublisher = outbox.NewPublisher(store, jobProducer)
+		dispatcher := outbox.NewDispatcher(store, jobProducer)
+		dispatcher.Start(ctx)
+	} else {
+		gqlPublisher = jobProducer
+	}
+	gqlHandler := bootstrap.InitGraphQL(assetCmdService, assetQryService, bucketCmdService, bucketQryService, cdnService, pipelineService, gqlPublisher, cfg)
 	authHandlerFunc := bootstrap.InitAuth(dynamicCfg)
 	router := bootstrap.InitRouter(gqlHandler, authHandlerFunc)
 	handler := bootstrap.InitMiddleware(router, cfg)

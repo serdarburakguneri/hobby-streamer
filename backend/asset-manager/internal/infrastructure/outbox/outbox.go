@@ -11,7 +11,6 @@ type Record struct {
 	ID        string
 	Topic     string
 	Payload   []byte
-	Headers   map[string]string
 	Status    string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -37,12 +36,11 @@ func (s *Neo4jStore) Enqueue(ctx context.Context, topic string, payload []byte, 
 	id := time.Now().UTC().Format("20060102150405.000000000")
 	_, err := session.Run(`
         MERGE (o:Outbox {id: $id})
-        SET o.topic = $topic, o.payload = $payload, o.headers = $headers, o.status = 'pending', o.createdAt = timestamp(), o.updatedAt = timestamp()
+        SET o.topic = $topic, o.payload = $payload, o.status = 'pending', o.createdAt = timestamp(), o.updatedAt = timestamp()
     `, map[string]interface{}{
 		"id":      id,
 		"topic":   topic,
-		"payload": payload,
-		"headers": headers,
+		"payload": string(payload),
 	})
 	if err != nil {
 		return "", err
@@ -65,8 +63,11 @@ func (s *Neo4jStore) DequeueBatch(ctx context.Context, limit int) ([]Record, err
 	records := make([]Record, 0)
 	for result.Next() {
 		rec := Record{ID: result.Record().Values[0].(string), Topic: result.Record().Values[1].(string)}
-		if b, ok := result.Record().Values[2].([]byte); ok {
-			rec.Payload = b
+		switch v := result.Record().Values[2].(type) {
+		case []byte:
+			rec.Payload = v
+		case string:
+			rec.Payload = []byte(v)
 		}
 		records = append(records, rec)
 	}
