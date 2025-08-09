@@ -1,4 +1,4 @@
-Feature: Trigger HLS Processing
+Feature: Trigger DASH Processing
 
 Background:
     * call read('classpath:features/asset-manager/auth-helper.feature')
@@ -6,7 +6,7 @@ Background:
     * url assetManagerUrl
     * header Authorization = 'Bearer ' + authToken
 
-Scenario: Trigger HLS for uploaded video
+Scenario: Trigger DASH for uploaded video
     Given request
     """
     {
@@ -14,7 +14,7 @@ Scenario: Trigger HLS for uploaded video
       "variables": {
         "assetId": "#(assetId)",
         "videoId": "#(videoId)",
-        "format": "hls"
+        "format": "dash"
       }
     }
     """
@@ -23,3 +23,4 @@ Scenario: Trigger HLS for uploaded video
     And match response.errors == '#notpresent'
     And match response.data.requestTranscode == true
     And def result = response
+

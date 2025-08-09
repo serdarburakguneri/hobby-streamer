@@ -43,7 +43,7 @@ func TestAsset_IsReady(t *testing.T) {
 
 	videoID, _ := valueobjects.NewVideoID("test-video-id")
 	storageLocation, _ := valueobjects.NewS3ObjectValue("bucket", "key", "url")
-	statusVO, _ := valueobjects.NewStatus(constants.VideoStatusReady)
+	statusVO, _ := valueobjects.NewVideoStatus(constants.VideoStatusReady)
 	video := entity.NewVideo(*videoID, nil, nil, *storageLocation, nil, nil, nil, nil, nil, nil, nil, nil, nil, statusVO, nil, time.Now().UTC(), time.Now().UTC(), nil, true, false, false, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	assetID, _ := valueobjects.NewAssetID("test-id")
@@ -65,7 +65,7 @@ func TestAsset_GetMainVideo(t *testing.T) {
 	mainType, _ := valueobjects.NewVideoType(constants.VideoTypeMain)
 	videoID, _ := valueobjects.NewVideoID("test-video-id")
 	storageLocation, _ := valueobjects.NewS3ObjectValue("bucket", "key", "url")
-	statusVO, _ := valueobjects.NewStatus(constants.VideoStatusReady)
+	statusVO, _ := valueobjects.NewVideoStatus(constants.VideoStatusReady)
 	video := entity.NewVideo(*videoID, mainType, nil, *storageLocation, nil, nil, nil, nil, nil, nil, nil, nil, nil, statusVO, nil, time.Now().UTC(), time.Now().UTC(), nil, true, false, false, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	assetID, _ := valueobjects.NewAssetID("test-id")

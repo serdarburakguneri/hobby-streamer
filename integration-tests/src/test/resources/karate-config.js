@@ -4,23 +4,19 @@ function fn() {
     if (!env) {
         env = 'local';
     }
-    
-    var apiGatewayId = 'kaek5ut256';
+    var apiGatewayId = 'unknown';
     if (env == 'local') {
-        try {
-            var fs = Java.type('java.nio.file.Files');
-            var path = Java.type('java.nio.file.Paths');
-            var apiGatewayIdPath = path.get('../../local/.api-gateway-id');
-            if (fs.exists(apiGatewayIdPath)) {
-                apiGatewayId = fs.readString(apiGatewayIdPath).trim();
-                karate.log('API Gateway ID loaded from file:', apiGatewayId);
-            } else {
-                karate.log('API Gateway ID file not found, using default:', apiGatewayId);
-            }
-        } catch (e) {
-            karate.log('Error reading API Gateway ID file, using default:', apiGatewayId);
+        var fs = Java.type('java.nio.file.Files');
+        var path = Java.type('java.nio.file.Paths');
+        var apiGatewayIdPath = path.get('../local/.api-gateway-id');
+        if (fs.exists(apiGatewayIdPath)) {
+            apiGatewayId = fs.readString(apiGatewayIdPath).trim();
+            karate.log('API Gateway ID loaded from ../local/api-gateway-id:', apiGatewayId);
+        } else {
+            karate.log('API Gateway ID file ../local/api-gateway-id not found.');
         }
     }
+    
     
     var config = {
         env: env,

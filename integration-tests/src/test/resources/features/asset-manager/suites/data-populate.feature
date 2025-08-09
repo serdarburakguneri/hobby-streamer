@@ -33,9 +33,18 @@ Scenario: Populate database with buckets and assets using loops
         var assetId = createAssetResult.response.data.createAsset.id;
         
         // Upload video
-        var uploadVideoResult = karate.call('classpath:features/asset-manager/video/upload-video.feature', { assetId: assetId });
-        var videoId = uploadVideoResult.videoId;
-        var input = uploadVideoResult.input;
+        var addVideoResult = karate.call('classpath:features/asset-manager/video/upload-video.feature', { assetId: assetId });
+        var videoId = addVideoResult.videoId;
+
+        // Trigger HLS & DASH transcodes like CMS
+        karate.call('classpath:features/asset-manager/video/trigger-hls.feature', { assetId: assetId, videoId: videoId, input: addVideoResult.input });
+        karate.call('classpath:features/asset-manager/video/trigger-dash.feature', { assetId: assetId, videoId: videoId, input: addVideoResult.input });
+
+        // Upload image (poster)
+        karate.call('classpath:features/asset-manager/image/upload-image.feature', { assetId: assetId });
+
+        // Add asset to bucket
+        karate.call('classpath:features/asset-manager/bucket/add-asset-to-bucket.feature', { bucketId: bucketId, assetId: assetId, ownerId: 'test-user' });
       }
     }
     """
@@ -44,4 +53,4 @@ Scenario: Populate database with buckets and assets using loops
     * print 'Data population completed successfully!'
     * print 'Created', bucketCount, 'buckets with', assetsPerBucket, 'assets each'
     * print 'Total assets created:', bucketCount * assetsPerBucket
-    * print 'HLS processing triggered for all uploaded videos' 
+    * print 'Uploaded videos and images, and added each asset to its bucket'

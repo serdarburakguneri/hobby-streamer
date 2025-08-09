@@ -10,18 +10,16 @@ Scenario: Update asset
     Given request
     """
     {
-        "query": "mutation PatchAsset($id: ID!, $patches: [JSONPatch!]!) { patchAsset(id: $id, patches: $patches) { id slug title description type status ownerId updatedAt } }",
+        "query": "mutation UpdateAssetDescription($id: ID!, $description: String!) { updateAssetDescription(id: $id, description: $description) { id slug title description type status ownerId updatedAt } }",
         "variables": {
             "id": "#(assetId)",
-            "patches": [               
-                {"op": "replace", "path": "/description", "value": "#(newDescription)"}
-            ]
+            "description": "#(newDescription)"
         }
     }
     """
     When method POST
     Then status 200
     And match response.errors == '#notpresent'
-    And match response.data.patchAsset != null   
-    And match response.data.patchAsset.description == '#(newDescription)'
+    And match response.data.updateAssetDescription != null   
+    And match response.data.updateAssetDescription.description == '#(newDescription)'
     And def result = response 

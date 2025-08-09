@@ -50,20 +50,22 @@ function fn() {
 
     
     var genres = [
-        'action',     
-        'drama',      
-        'comedy',     
-        'horror',     
-        'sci_fi',     
-        'romance',     
-        'thriller',   
-        'fantasy',    
-        'documentary', 
-        'music',       
-        'news',        
-        'sports',     
-        'kids',       
-        'educational'  
+        'action',
+        'adventure',
+        'animation',
+        'comedy',
+        'crime',
+        'documentary',
+        'drama',
+        'family',
+        'fantasy',
+        'horror',
+        'mystery',
+        'romance',
+        'science-fiction',
+        'thriller',
+        'war',
+        'western'
     ];
 
     var getRandomMovieTitle = function() {

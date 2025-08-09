@@ -11,20 +11,12 @@ type Status struct {
 }
 
 func NewStatus(value string) (*Status, error) {
+
 	if value == "" {
 		return nil, ErrInvalidStatus
 	}
 
-	validStatuses := map[string]bool{
-		constants.AssetStatusDraft:     true,
-		"processing":                   true,
-		constants.VideoStatusReady:     true,
-		constants.AssetStatusPublished: true,
-		"archived":                     true,
-		"deleted":                      true,
-	}
-
-	if !validStatuses[value] {
+	if !constants.IsValidAssetStatus(value) {
 		return nil, ErrInvalidStatus
 	}
 
