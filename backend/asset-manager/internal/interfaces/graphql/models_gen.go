@@ -135,6 +135,25 @@ type Image struct {
 type Mutation struct {
 }
 
+type PipelineStep struct {
+	Status        string     `json:"status"`
+	StartedAt     time.Time  `json:"startedAt"`
+	CompletedAt   *time.Time `json:"completedAt,omitempty"`
+	ErrorMessage  *string    `json:"errorMessage,omitempty"`
+	JobID         *string    `json:"jobId,omitempty"`
+	CorrelationID *string    `json:"correlationId,omitempty"`
+}
+
+type ProcessingStatus struct {
+	AssetID   string        `json:"assetId"`
+	VideoID   string        `json:"videoId"`
+	Analyze   *PipelineStep `json:"analyze,omitempty"`
+	Hls       *PipelineStep `json:"hls,omitempty"`
+	Dash      *PipelineStep `json:"dash,omitempty"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+	CreatedAt time.Time     `json:"createdAt"`
+}
+
 type PublishRule struct {
 	PublishAt   *time.Time `json:"publishAt,omitempty"`
 	UnpublishAt *time.Time `json:"unpublishAt,omitempty"`

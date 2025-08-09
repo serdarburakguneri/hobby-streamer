@@ -3,6 +3,7 @@ scalar Time
 type Query {
   assets(limit: Int, offset: Int): [Asset!]!
   asset(id: ID): Asset
+  processingStatus(assetId: ID!, videoId: ID!): ProcessingStatus
   buckets(limit: Int, nextKey: String): BucketPage!
   bucket(id: ID): Bucket
   bucketByKey(key: String!): Bucket
@@ -20,6 +21,7 @@ type Mutation {
   clearAssetPublishRule(id: ID!): Asset!
   addVideo(input: AddVideoInput!): Video!
   deleteVideo(assetId: ID!, videoId: ID!): Asset!
+  requestTranscode(assetId: ID!, videoId: ID!, format: VideoFormat!): Boolean!
   
   createBucket(input: BucketInput!): Bucket!
   updateBucket(id: ID!, input: BucketInput!): Bucket!
@@ -28,6 +30,7 @@ type Mutation {
   addAssetToBucket(input: AddAssetToBucketInput!): Boolean!
   removeAssetFromBucket(input: RemoveAssetFromBucketInput!): Boolean!
   addImage(input: AddImageInput!): Asset!
+  deleteImage(assetId: ID!, imageId: ID!): Asset!
 }
 
 type Asset {
@@ -51,6 +54,25 @@ type Asset {
   publishRule: PublishRule
   metadata: String
   status: String!
+}
+
+type PipelineStep {
+  status: String!
+  startedAt: Time!
+  completedAt: Time
+  errorMessage: String
+  jobId: String
+  correlationId: String
+}
+
+type ProcessingStatus {
+  assetId: ID!
+  videoId: ID!
+  analyze: PipelineStep
+  hls: PipelineStep
+  dash: PipelineStep
+  updatedAt: Time!
+  createdAt: Time!
 }
 
 type AssetPage {

@@ -103,7 +103,7 @@ func (d *DASHTranscoder) ExtractMetadata(ctx context.Context, filePath string, j
 		metadata.VideoCodec = codecs
 		metadata.Codec = codecs
 	}
-	
+
 	baseDir := filepath.Dir(filePath)
 	files, _ := ioutil.ReadDir(baseDir)
 	var firstSeg string

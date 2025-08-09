@@ -7,6 +7,7 @@ import (
 
 	assetCommands "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/commands"
 	assetAppQueries "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/asset/queries"
+	transcode "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/transcode"
 	assetvo "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/domain/asset/valueobjects"
 )
 
@@ -112,6 +113,21 @@ func (r *mutationResolver) AddImage(ctx context.Context, input AddImageInput) (*
 	return domainAssetToGraphQL(a), nil
 }
 
+func (r *mutationResolver) DeleteImage(ctx context.Context, assetId string, imageId string) (*Asset, error) {
+	idVO, err := assetvo.NewAssetID(assetId)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.assetCommandService.RemoveImage(ctx, assetCommands.RemoveImageCommand{AssetID: *idVO, ImageID: imageId}); err != nil {
+		return nil, err
+	}
+	a, err := r.assetQueryService.GetAsset(ctx, assetAppQueries.GetAssetQuery{ID: assetId})
+	if err != nil {
+		return nil, err
+	}
+	return domainAssetToGraphQL(a), nil
+}
+
 func (r *mutationResolver) UpdateAssetTitle(ctx context.Context, id string, title string) (*Asset, error) {
 	idVO, err := assetvo.NewAssetID(id)
 	if err != nil {
@@ -205,6 +221,14 @@ func (r *mutationResolver) ClearAssetPublishRule(ctx context.Context, id string)
 	return domainAssetToGraphQL(a), nil
 }
 
+func (r *mutationResolver) RequestTranscode(ctx context.Context, assetId string, videoId string, format VideoFormat) (bool, error) {
+	svc := transcode.NewService(r.assetCommandService, r.assetQueryService, r.publisher, r.pipelineService)
+	if err := svc.RequestTranscode(ctx, assetId, videoId, string(format)); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *queryResolver) Assets(ctx context.Context, limit *int, offset *int) ([]*Asset, error) {
 	q := assetAppQueries.ListAssetsQuery{Limit: limit, Offset: offset}
 	items, err := r.assetQueryService.ListAssets(ctx, q)
@@ -239,4 +263,38 @@ func (r *queryResolver) SearchAssets(ctx context.Context, query string, limit *i
 		out[i] = domainAssetToGraphQL(a)
 	}
 	return out, nil
+}
+
+func (r *queryResolver) ProcessingStatus(ctx context.Context, assetId string, videoId string) (*ProcessingStatus, error) {
+	if r.pipelineService == nil {
+		return nil, nil
+	}
+	p, err := r.pipelineService.Get(ctx, assetId, videoId)
+	if err != nil || p == nil {
+		return nil, err
+	}
+	toStep := func(key string) *PipelineStep {
+		s, ok := p.Steps[key]
+		if !ok {
+			return nil
+		}
+		step := &PipelineStep{
+			Status:        s.Status,
+			StartedAt:     s.StartedAt,
+			CompletedAt:   s.CompletedAt,
+			ErrorMessage:  &s.ErrorMessage,
+			JobID:         &s.JobID,
+			CorrelationID: &s.CorrelationID,
+		}
+		return step
+	}
+	return &ProcessingStatus{
+		AssetID:   assetId,
+		VideoID:   videoId,
+		Analyze:   toStep("analyze"),
+		Hls:       toStep("hls"),
+		Dash:      toStep("dash"),
+		UpdatedAt: p.UpdatedAt,
+		CreatedAt: p.CreatedAt,
+	}, nil
 }

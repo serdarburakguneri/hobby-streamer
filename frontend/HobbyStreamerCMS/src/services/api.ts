@@ -662,6 +662,12 @@ const ADD_VIDEO = gql`
   ${VIDEO_THUMBNAIL_FIELDS}
 `;
 
+const REQUEST_TRANSCODE = gql`
+  mutation RequestTranscode($assetId: ID!, $videoId: ID!, $format: VideoFormat!) {
+    requestTranscode(assetId: $assetId, videoId: $videoId, format: $format)
+  }
+`;
+
 const CREATE_BUCKET = gql`
   mutation CreateBucket($input: BucketInput!) {
     createBucket(input: $input) {
@@ -715,6 +721,20 @@ const REMOVE_ASSET_FROM_BUCKET = gql`
 const ADD_IMAGE = gql`
   mutation AddImage($input: AddImageInput!) {
     addImage(input: $input) {
+      ...AssetFullFields
+    }
+  }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
+const DELETE_IMAGE = gql`
+  mutation DeleteImage($assetId: ID!, $imageId: ID!) {
+    deleteImage(assetId: $assetId, imageId: $imageId) {
       ...AssetFullFields
     }
   }
@@ -1203,42 +1223,28 @@ export const useAssetService = () => {
       return response.data.addImage;
     },
 
-    triggerHLSTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {
-      try {
-        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/hls-job-requested`, {
-          assetId,
-          videoId,
-          input
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        return response.data;
-      } catch (error) {
-        console.error('Error triggering HLS transcode:', error);
-        throw new Error('Failed to trigger HLS transcode');
-      }
+    deleteImageFromAsset: async (assetId: string, imageId: string): Promise<Asset> => {
+      const response = await client.mutate({
+        mutation: DELETE_IMAGE,
+        variables: { assetId, imageId },
+      });
+      return convertAssetMetadata(response.data.deleteImage);
     },
 
-    triggerDASHTranscode: async (assetId: string, videoId: string, input: string): Promise<{ message: string }> => {
-      try {
-        const response = await axios.post(`${API_CONFIG.API_GATEWAY_BASE_URL}/dash-job-requested`, {
-          assetId,
-          videoId,
-          input
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        return response.data;
-      } catch (error) {
-        console.error('Error triggering DASH transcode:', error);
-        throw new Error('Failed to trigger DASH transcode');
-      }
+    triggerHLSTranscode: async (assetId: string, videoId: string, _input: string): Promise<{ message: string }> => {
+      await client.mutate({
+        mutation: REQUEST_TRANSCODE,
+        variables: { assetId, videoId, format: 'hls' },
+      });
+      return { message: 'HLS transcode requested' };
+    },
+
+    triggerDASHTranscode: async (assetId: string, videoId: string, _input: string): Promise<{ message: string }> => {
+      await client.mutate({
+        mutation: REQUEST_TRANSCODE,
+        variables: { assetId, videoId, format: 'dash' },
+      });
+      return { message: 'DASH transcode requested' };
     },
   };
 };

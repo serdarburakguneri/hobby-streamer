@@ -55,6 +55,11 @@ func (r *mutationResolver) DeleteVideo(ctx context.Context, assetID string, vide
 	panic("not implemented")
 }
 
+// RequestTranscode is the resolver for the requestTranscode field.
+func (r *mutationResolver) RequestTranscode(ctx context.Context, assetID string, videoID string, format graphql1.VideoFormat) (bool, error) {
+	panic("not implemented")
+}
+
 // CreateBucket is the resolver for the createBucket field.
 func (r *mutationResolver) CreateBucket(ctx context.Context, input graphql1.BucketInput) (*graphql1.Bucket, error) {
 	panic("not implemented")
@@ -85,6 +90,11 @@ func (r *mutationResolver) AddImage(ctx context.Context, input graphql1.AddImage
 	panic("not implemented")
 }
 
+// DeleteImage is the resolver for the deleteImage field.
+func (r *mutationResolver) DeleteImage(ctx context.Context, assetID string, imageID string) (*graphql1.Asset, error) {
+	panic("not implemented")
+}
+
 // Assets is the resolver for the assets field.
 func (r *queryResolver) Assets(ctx context.Context, limit *int, offset *int) ([]*graphql1.Asset, error) {
 	panic("not implemented")
@@ -92,6 +102,11 @@ func (r *queryResolver) Assets(ctx context.Context, limit *int, offset *int) ([]
 
 // Asset is the resolver for the asset field.
 func (r *queryResolver) Asset(ctx context.Context, id *string) (*graphql1.Asset, error) {
+	panic("not implemented")
+}
+
+// ProcessingStatus is the resolver for the processingStatus field.
+func (r *queryResolver) ProcessingStatus(ctx context.Context, assetID string, videoID string) (*graphql1.ProcessingStatus, error) {
 	panic("not implemented")
 }
 
@@ -137,3 +152,13 @@ func (r *Resolver) Query() graphql1.QueryResolver { return &queryResolver{r} }
 type bucketResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	type Resolver struct{}
+*/

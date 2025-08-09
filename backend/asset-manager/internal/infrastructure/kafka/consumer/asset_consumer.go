@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cdn "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/cdn"
+	apppipeline "github.com/serdarburakguneri/hobby-streamer/backend/asset-manager/internal/application/pipeline"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/events"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
 )
@@ -15,18 +16,20 @@ type AssetEventConsumer struct {
 	handlers   *EventHandlers
 	logger     *logger.Logger
 	cdnService cdn.Service
+	pipeline   *apppipeline.Service
 }
 
 func NewAssetEventConsumer(appService *AssetAppServiceAdapter, publisher interface {
 	Publish(context.Context, string, *events.Event) error
-}, cdnService cdn.Service) *AssetEventConsumer {
+}, cdnService cdn.Service, pipelineSvc *apppipeline.Service) *AssetEventConsumer {
 	l := logger.WithService("asset-event-consumer")
 	return &AssetEventConsumer{
 		appService: appService,
 		producer:   nil,
 		logger:     l,
 		cdnService: cdnService,
-		handlers:   NewEventHandlers(appService, publisher, cdnService, l),
+		pipeline:   pipelineSvc,
+		handlers:   NewEventHandlers(appService, publisher, cdnService, pipelineSvc, l),
 	}
 }
 
