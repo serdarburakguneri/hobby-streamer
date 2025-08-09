@@ -68,8 +68,6 @@ func NewAsset(slug valueobjects.Slug, title *valueobjects.Title, assetType *valu
 
 func ReconstructAsset(
 	id valueobjects.AssetID,
-	// version is read from storage; if absent defaults to 0
-	// added as a separate param at the end for backward compat in converters
 	slug valueobjects.Slug,
 	title *valueobjects.Title,
 	description *valueobjects.Description,
