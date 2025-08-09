@@ -8,72 +8,29 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/auth"
-	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/config"
 	"github.com/serdarburakguneri/hobby-streamer/backend/pkg/logger"
-	resilience "github.com/serdarburakguneri/hobby-streamer/backend/pkg/resilience"
-	assetapp "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application/asset"
-	bucketapp "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/application/bucket"
-	"github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/infrastructure/graphql"
+	sbootstrap "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/bootstrap"
+	streamevents "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/infrastructure/events"
 	httphandler "github.com/serdarburakguneri/hobby-streamer/backend/streaming-api/internal/infrastructure/http"
 )
 
 func main() {
-	configManager, err := config.NewManager("streaming-api")
+	configManager, secretsManager, cfg, dynamicCfg, err := sbootstrap.InitConfig("streaming-api")
 	if err != nil {
 		logger.Get().WithError(err).Error("Failed to initialize config")
 		os.Exit(1)
 	}
 	defer configManager.Close()
-
-	secretsManager := config.NewSecretsManager()
-	secretsManager.LoadFromEnvironment()
-
-	cfg := configManager.GetConfig()
-
-	if cfg.Log.Async.Enabled {
-		logger.InitAsync(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format, cfg.Log.Async.BufferSize)
-	} else {
-		logger.Init(logger.GetLogLevel(cfg.Log.Level), cfg.Log.Format)
-	}
+	sbootstrap.InitLogger(cfg)
 	log := logger.WithService(cfg.Service)
 	log.Info("Starting streaming-api service", "environment", cfg.Environment)
 
-	dynamicCfg := configManager.GetDynamicConfig()
-	assetManagerURL := dynamicCfg.GetStringFromComponent("asset_manager", "url")
-	keycloakURL := cfg.Keycloak.URL
-	realm := cfg.Keycloak.Realm
-	clientID := cfg.Keycloak.ClientID
-	clientSecret := secretsManager.Get("keycloak_client_secret")
-
-	circuitBreaker := resilience.NewCircuitBreaker(resilience.CircuitBreakerConfig{
-		Name:      "asset-manager",
-		Threshold: int64(cfg.CircuitBreaker.Threshold),
-		Timeout:   cfg.CircuitBreaker.Timeout,
-		OnStateChange: func(name string, from, to resilience.CircuitState) {
-			log.Info("Circuit breaker state changed", "name", name, "from", from, "to", to)
-		},
-	})
-
-	serviceClient := auth.NewServiceClient(keycloakURL, realm, clientID, clientSecret)
-	graphQLClient := graphql.NewClient(serviceClient, assetManagerURL)
-
-	assetRepository := graphql.NewAssetRepository(graphQLClient, circuitBreaker)
-	bucketRepository := graphql.NewBucketRepository(graphQLClient, circuitBreaker)
-
-	assetService := assetapp.NewService(assetRepository, bucketRepository)
-	bucketService := bucketapp.NewService(bucketRepository)
+	assetService, bucketService := sbootstrap.InitServices(cfg, dynamicCfg, secretsManager)
 
 	handler := httphandler.NewHandler(assetService, bucketService, cfg)
 	router := handler.SetupRoutes()
-
-	server := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
-		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
-	}
+	wrapped := sbootstrap.InitRouter(router, cfg)
+	server := sbootstrap.InitServer(wrapped, cfg)
 
 	go func() {
 		log.Info("Starting HTTP server", "port", cfg.Server.Port)
@@ -82,6 +39,22 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
+	var stopInvalidator func()
+	if cfg.Features.EnableCaching {
+		cacheSvc, closeCache := sbootstrap.InitCacheService(cfg, dynamicCfg)
+		if cacheSvc != nil {
+			kafkaBootstrap := dynamicCfg.GetStringFromComponent("kafka", "bootstrap_servers")
+			invalidator := streamevents.NewCacheInvalidator(cacheSvc)
+			stopInvalidator = sbootstrap.InitCacheInvalidator(invalidator, kafkaBootstrap)
+		}
+		defer func() {
+			if stopInvalidator != nil {
+				stopInvalidator()
+			}
+			_ = closeCache()
+		}()
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

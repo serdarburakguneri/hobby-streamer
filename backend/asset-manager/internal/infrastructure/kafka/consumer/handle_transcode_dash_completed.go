@@ -22,7 +22,7 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 		}
 		statusFailed := valueobjects.VideoStatusFailed
 		formatVO, _ := valueobjects.NewVideoFormat(string(valueobjects.VideoFormatDASH))
-		_, _, _ = h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
+		h.appService.UpsertVideo(ctx, commands.UpsertVideoCommand{
 			AssetID:       *assetIDVO,
 			Label:         path.Base(payload.Key),
 			Format:        formatVO,
@@ -30,8 +30,12 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 			InitialStatus: &statusFailed,
 		})
 		if h.pipeline != nil {
-			_ = h.pipeline.MarkFailed(ctx, payload.AssetID, payload.VideoID, "dash", payload.Error)
+			h.pipeline.MarkFailed(ctx, payload.AssetID, payload.VideoID, "dash", payload.Error)
 		}
+
+		ev2 := events.NewVideoStatusUpdatedEvent(payload.AssetID, payload.VideoID, statusFailed.Value())
+		ev2.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(ev.CorrelationID).SetCausationID(ev.ID)
+		h.publisher.Publish(ctx, events.AssetEventsTopic, ev2)
 		return nil
 	}
 	assetIDVO, err := valueobjects.NewAssetID(payload.AssetID)
@@ -73,8 +77,15 @@ func (h *EventHandlers) HandleTranscodeDashJobCompleted(ctx context.Context, ev 
 		Segments:           payload.Segments,
 		InitialStatus:      &statusReady,
 	})
-	if err == nil && h.pipeline != nil {
+	if err != nil {
+		return err
+	}
+	if h.pipeline != nil {
 		_ = h.pipeline.MarkCompleted(ctx, payload.AssetID, payload.VideoID, "dash")
 	}
-	return err
+
+	ev2 := events.NewVideoStatusUpdatedEvent(payload.AssetID, payload.VideoID, valueobjects.VideoStatusReady.Value())
+	ev2.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(ev.CorrelationID).SetCausationID(ev.ID)
+	h.publisher.Publish(ctx, events.AssetEventsTopic, ev2)
+	return nil
 }

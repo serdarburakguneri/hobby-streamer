@@ -13,7 +13,7 @@ type CacheService interface {
 	GetAsset(ctx context.Context, slug string) (*assetentity.Asset, error)
 	GetAssets(ctx context.Context) ([]*assetentity.Asset, error)
 	SetBucket(ctx context.Context, bucket *bucketentity.Bucket) error
-	SetBuckets(ctx context.Context, buckets []*bucketentity.Bucket) error
+	SetBuckets(ctx context.Context, buckets []*bucketentity.Bucket, limit int, nextKey *string) error
 	SetAsset(ctx context.Context, asset *assetentity.Asset) error
 	SetAssets(ctx context.Context, assets []*assetentity.Asset) error
 	InvalidateBucketCache(ctx context.Context, key string) error

@@ -30,8 +30,12 @@ func (h *EventHandlers) HandleTranscodeHlsJobCompleted(ctx context.Context, ev *
 			InitialStatus: &statusFailed,
 		})
 		if h.pipeline != nil {
-			_ = h.pipeline.MarkFailed(ctx, payload.AssetID, payload.VideoID, "hls", payload.Error)
+			h.pipeline.MarkFailed(ctx, payload.AssetID, payload.VideoID, "hls", payload.Error)
 		}
+
+		ev2 := events.NewVideoStatusUpdatedEvent(payload.AssetID, payload.VideoID, statusFailed.Value())
+		ev2.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(ev.CorrelationID).SetCausationID(ev.ID)
+		h.publisher.Publish(ctx, events.AssetEventsTopic, ev2)
 		return nil
 	}
 	assetIDVO, err := valueobjects.NewAssetID(payload.AssetID)
@@ -73,8 +77,15 @@ func (h *EventHandlers) HandleTranscodeHlsJobCompleted(ctx context.Context, ev *
 		Segments:           payload.Segments,
 		InitialStatus:      &statusReady,
 	})
-	if err == nil && h.pipeline != nil {
-		_ = h.pipeline.MarkCompleted(ctx, payload.AssetID, payload.VideoID, "hls")
+	if err != nil {
+		return err
 	}
-	return err
+	if h.pipeline != nil {
+		h.pipeline.MarkCompleted(ctx, payload.AssetID, payload.VideoID, "hls")
+	}
+
+	ev2 := events.NewVideoStatusUpdatedEvent(payload.AssetID, payload.VideoID, valueobjects.VideoStatusReady.Value())
+	ev2.SetSource("asset-manager").SetEventVersion("1").SetCorrelationID(ev.CorrelationID).SetCausationID(ev.ID)
+	h.publisher.Publish(ctx, events.AssetEventsTopic, ev2)
+	return nil
 }
