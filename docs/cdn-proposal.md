@@ -1,4 +1,4 @@
-# CDN Proposal: Single Bucket Storage with Cross-Region Replication
+# CDN: Single Bucket with Cross-Region Replication
 
 ## Architecture Overview
 
@@ -70,8 +70,8 @@ Types: source (raw video), hls (HLS files), dash (DASH files), images (posters, 
 ## Cross-Region Replication
 Setup: `./setup-s3-buckets.sh` enables versioning and replication from content-east (us-east-1) to content-west (us-west-2). Storage class: STANDARD, delete marker replication: enabled.
 
-## CDN with Automatic Failover
-Nginx (port 8083) acts as CDN with failover. Primary: http://localhost:8083/cdn/{assetId}/{type}/{quality}/{filename}. If primary fails, routes to secondary. Header: X-CDN-Failover: true on failover.
+## CDN with Failover
+Nginx (8083) serves content with automatic failover. Primary: `http://localhost:8083/cdn/{assetId}/{type}/{quality}/{filename}`. On failover, sets header `X-CDN-Failover: true`.
 
 ## StreamInfo Integration
 Video: streamInfo.cdnPrefix, streamInfo.url. Image: streamInfo.cdnPrefix, streamInfo.url.
@@ -79,8 +79,8 @@ Video: streamInfo.cdnPrefix, streamInfo.url. Image: streamInfo.cdnPrefix, stream
 ## Configuration
 Asset manager: cdn.prefix. Lambdas: video upload uses content-east/{assetId}/source/{filename}, image upload uses content-east/{assetId}/images/{type}/{filename}, transcoder outputs to content-east/{assetId}/{videoId}/{format}/{filename}.
 
-## Frontend Integration
-Video player and image display use streamInfo.url if available, fallback to direct S3 URL.
+## Frontend
+Use `streamInfo.url` when present; fallback to S3 URL.
 
 
 ## Testing Failover

@@ -18,6 +18,3 @@ allowed, err := redisLimiter.Allow(ctx, "client-ip", 100, time.Minute)
 
 ## Config
 addr: Redis address, password: Redis password, db: Redis DB number
-
-## Production
-Use Redis cluster for HA, set memory limits, monitor performance, enable auth/TLS. 
