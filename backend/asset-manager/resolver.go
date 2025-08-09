@@ -90,6 +90,11 @@ func (r *mutationResolver) AddImage(ctx context.Context, input graphql1.AddImage
 	panic("not implemented")
 }
 
+// DeleteImage is the resolver for the deleteImage field.
+func (r *mutationResolver) DeleteImage(ctx context.Context, assetID string, imageID string) (*graphql1.Asset, error) {
+	panic("not implemented")
+}
+
 // Assets is the resolver for the assets field.
 func (r *queryResolver) Assets(ctx context.Context, limit *int, offset *int) ([]*graphql1.Asset, error) {
 	panic("not implemented")

@@ -30,6 +30,7 @@ type Mutation {
   addAssetToBucket(input: AddAssetToBucketInput!): Boolean!
   removeAssetFromBucket(input: RemoveAssetFromBucketInput!): Boolean!
   addImage(input: AddImageInput!): Asset!
+  deleteImage(assetId: ID!, imageId: ID!): Asset!
 }
 
 type Asset {

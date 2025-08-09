@@ -2,7 +2,7 @@
 
 > A personal playfround for exploring video streaming ideas, asset management best practices and distributed systems.
 
-Hobby Streamer is my testing ground for video processing pipelines, asset management systems, domain-driven design patterns, and event-driven microservices. It's where I try out new ideas, test different architectural approaches, and experiment with various technologies. The platform handles video uploads, HLS and DASH transcoding, and streaming delivery while incorporating authentication (Keycloak), logging, monitoring, and developer tooling as I explore best practices.
+Hobby Streamer is my testing ground for video processing pipelines, asset management systems, domain-driven design patterns, and event-driven microservices. It's where I try out new ideas, test different architectural approaches, and experiment with various technologies. 
 
 ## What's Here
 
@@ -20,6 +20,16 @@ Docs: [CDN Proposal](docs/cdn-proposal.md), [Kafka Architecture](docs/kafka-arch
 
 Go, GraphQL, Neo4j, Keycloak, FFmpeg, Redis, Kafka, Docker Compose, LocalStack, Fluentd, Elasticsearch, Kibana, Nginx, React Native, AWS Lambda.
 
+## Development
+
+```
+make backend-install-tools
+make backend-lint 
+make backend-test
+make backend-generate 
+make backend-build
+```
+
 ## Quick Start
 
 Requirements: Docker, Go 1.21+, FFmpeg, Python+pipx, Node.js 22+, awscli-local.
@@ -29,15 +39,6 @@ Requirements: Docker, Go 1.21+, FFmpeg, Python+pipx, Node.js 22+, awscli-local.
 ```
 
 Starts the services, UIs, dependencies, and logging pipeline.
-
-## Development
-
-```
-make backend-install-tools
-make backend-lint 
-make backend-test
-make backend-generate backend-build
-```
 
 ## Testing
 

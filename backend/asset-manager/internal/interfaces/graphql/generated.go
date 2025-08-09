@@ -128,6 +128,7 @@ type ComplexityRoot struct {
 		CreateBucket           func(childComplexity int, input BucketInput) int
 		DeleteAsset            func(childComplexity int, id string) int
 		DeleteBucket           func(childComplexity int, id string) int
+		DeleteImage            func(childComplexity int, assetID string, imageID string) int
 		DeleteVideo            func(childComplexity int, assetID string, videoID string) int
 		RemoveAssetFromBucket  func(childComplexity int, input RemoveAssetFromBucketInput) int
 		RequestTranscode       func(childComplexity int, assetID string, videoID string, format VideoFormat) int
@@ -249,6 +250,7 @@ type MutationResolver interface {
 	AddAssetToBucket(ctx context.Context, input AddAssetToBucketInput) (bool, error)
 	RemoveAssetFromBucket(ctx context.Context, input RemoveAssetFromBucketInput) (bool, error)
 	AddImage(ctx context.Context, input AddImageInput) (*Asset, error)
+	DeleteImage(ctx context.Context, assetID string, imageID string) (*Asset, error)
 }
 type QueryResolver interface {
 	Assets(ctx context.Context, limit *int, offset *int) ([]*Asset, error)
@@ -747,6 +749,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteBucket(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteImage":
+		if e.complexity.Mutation.DeleteImage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteImage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteImage(childComplexity, args["assetId"].(string), args["imageId"].(string)), true
 
 	case "Mutation.deleteVideo":
 		if e.complexity.Mutation.DeleteVideo == nil {
@@ -1701,6 +1715,57 @@ func (ec *executionContext) field_Mutation_deleteBucket_argsID(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
 	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteImage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteImage_argsAssetID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg0
+	arg1, err := ec.field_Mutation_deleteImage_argsImageID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["imageId"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteImage_argsAssetID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["assetId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("assetId"))
+	if tmp, ok := rawArgs["assetId"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteImage_argsImageID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["imageId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("imageId"))
+	if tmp, ok := rawArgs["imageId"]; ok {
 		return ec.unmarshalNID2string(ctx, tmp)
 	}
 
@@ -6481,6 +6546,103 @@ func (ec *executionContext) fieldContext_Mutation_addImage(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addImage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteImage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteImage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteImage(rctx, fc.Args["assetId"].(string), fc.Args["imageId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Asset)
+	fc.Result = res
+	return ec.marshalNAsset2ᚖgithubᚗcomᚋserdarburakguneriᚋhobbyᚑstreamerᚋbackendᚋassetᚑmanagerᚋinternalᚋinterfacesᚋgraphqlᚐAsset(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteImage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Asset_id(ctx, field)
+			case "slug":
+				return ec.fieldContext_Asset_slug(ctx, field)
+			case "title":
+				return ec.fieldContext_Asset_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Asset_description(ctx, field)
+			case "type":
+				return ec.fieldContext_Asset_type(ctx, field)
+			case "genre":
+				return ec.fieldContext_Asset_genre(ctx, field)
+			case "genres":
+				return ec.fieldContext_Asset_genres(ctx, field)
+			case "tags":
+				return ec.fieldContext_Asset_tags(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Asset_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Asset_updatedAt(ctx, field)
+			case "ownerId":
+				return ec.fieldContext_Asset_ownerId(ctx, field)
+			case "parentId":
+				return ec.fieldContext_Asset_parentId(ctx, field)
+			case "parent":
+				return ec.fieldContext_Asset_parent(ctx, field)
+			case "children":
+				return ec.fieldContext_Asset_children(ctx, field)
+			case "images":
+				return ec.fieldContext_Asset_images(ctx, field)
+			case "videos":
+				return ec.fieldContext_Asset_videos(ctx, field)
+			case "credits":
+				return ec.fieldContext_Asset_credits(ctx, field)
+			case "publishRule":
+				return ec.fieldContext_Asset_publishRule(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Asset_metadata(ctx, field)
+			case "status":
+				return ec.fieldContext_Asset_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Asset", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteImage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -12852,6 +13014,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addImage":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addImage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteImage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteImage(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

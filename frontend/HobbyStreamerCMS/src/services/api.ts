@@ -732,6 +732,20 @@ const ADD_IMAGE = gql`
   ${VIDEO_FIELDS}
 `;
 
+const DELETE_IMAGE = gql`
+  mutation DeleteImage($assetId: ID!, $imageId: ID!) {
+    deleteImage(assetId: $assetId, imageId: $imageId) {
+      ...AssetFullFields
+    }
+  }
+  ${ASSET_FULL_FIELDS}
+  ${ASSET_BASE_FIELDS}
+  ${ASSET_PARENT_FIELDS}
+  ${ASSET_PUBLISH_RULE_FIELDS}
+  ${IMAGE_FIELDS}
+  ${VIDEO_FIELDS}
+`;
+
 // Helper function to parse metadata JSON string to object
 const parseMetadata = (metadataString?: string): Record<string, any> | undefined => {
   if (!metadataString) return undefined;
@@ -1207,6 +1221,14 @@ export const useAssetService = () => {
       
       console.log('GraphQL response:', response.data);
       return response.data.addImage;
+    },
+
+    deleteImageFromAsset: async (assetId: string, imageId: string): Promise<Asset> => {
+      const response = await client.mutate({
+        mutation: DELETE_IMAGE,
+        variables: { assetId, imageId },
+      });
+      return convertAssetMetadata(response.data.deleteImage);
     },
 
     triggerHLSTranscode: async (assetId: string, videoId: string, _input: string): Promise<{ message: string }> => {

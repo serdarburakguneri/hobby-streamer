@@ -113,6 +113,21 @@ func (r *mutationResolver) AddImage(ctx context.Context, input AddImageInput) (*
 	return domainAssetToGraphQL(a), nil
 }
 
+func (r *mutationResolver) DeleteImage(ctx context.Context, assetId string, imageId string) (*Asset, error) {
+	idVO, err := assetvo.NewAssetID(assetId)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.assetCommandService.RemoveImage(ctx, assetCommands.RemoveImageCommand{AssetID: *idVO, ImageID: imageId}); err != nil {
+		return nil, err
+	}
+	a, err := r.assetQueryService.GetAsset(ctx, assetAppQueries.GetAssetQuery{ID: assetId})
+	if err != nil {
+		return nil, err
+	}
+	return domainAssetToGraphQL(a), nil
+}
+
 func (r *mutationResolver) UpdateAssetTitle(ctx context.Context, id string, title string) (*Asset, error) {
 	idVO, err := assetvo.NewAssetID(id)
 	if err != nil {
