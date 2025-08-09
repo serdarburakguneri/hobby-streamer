@@ -25,10 +25,6 @@ func (a *AssetAppServiceAdapter) GetAsset(ctx context.Context, query queries.Get
 	return a.queryService.GetAsset(ctx, query)
 }
 
-func (a *AssetAppServiceAdapter) AddVideo(ctx context.Context, cmd commands.AddVideoCommand) error {
-	return a.commandService.AddVideo(ctx, cmd)
-}
-
 func (a *AssetAppServiceAdapter) UpdateVideoStatus(ctx context.Context, cmd commands.UpdateVideoStatusCommand) error {
 	return a.commandService.UpdateVideoStatus(ctx, cmd)
 }

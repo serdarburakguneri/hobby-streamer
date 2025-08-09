@@ -11,6 +11,7 @@ import (
 
 type Asset struct {
 	id          valueobjects.AssetID
+	version     int
 	slug        valueobjects.Slug
 	title       *valueobjects.Title
 	description *valueobjects.Description
@@ -50,6 +51,7 @@ func NewAsset(slug valueobjects.Slug, title *valueobjects.Title, assetType *valu
 
 	return &Asset{
 		id:        *assetID,
+		version:   0,
 		slug:      slug,
 		title:     title,
 		assetType: assetType,
@@ -66,6 +68,8 @@ func NewAsset(slug valueobjects.Slug, title *valueobjects.Title, assetType *valu
 
 func ReconstructAsset(
 	id valueobjects.AssetID,
+	// version is read from storage; if absent defaults to 0
+	// added as a separate param at the end for backward compat in converters
 	slug valueobjects.Slug,
 	title *valueobjects.Title,
 	description *valueobjects.Description,
@@ -85,6 +89,7 @@ func ReconstructAsset(
 ) *Asset {
 	return &Asset{
 		id:          id,
+		version:     0,
 		slug:        slug,
 		title:       title,
 		description: description,
@@ -107,6 +112,9 @@ func ReconstructAsset(
 func (a *Asset) ID() valueobjects.AssetID {
 	return a.id
 }
+
+func (a *Asset) Version() int     { return a.version }
+func (a *Asset) SetVersion(v int) { a.version = v }
 
 func (a *Asset) Slug() valueobjects.Slug {
 	return a.slug
@@ -224,49 +232,6 @@ func (a *Asset) IsReadyForPublishing() bool {
 	return hasReadyVideos
 }
 
-func (a *Asset) AddVideo(
-	label string,
-	format *valueobjects.VideoFormat,
-	storageLocation valueobjects.S3Object,
-	width, height int,
-	duration float64,
-	bitrate int,
-	codec string,
-	size int64,
-	contentType string,
-	videoCodec, audioCodec string,
-	frameRate string,
-	audioChannels, audioSampleRate int,
-	streamInfo *valueobjects.StreamInfo,
-) (*Video, error) {
-	video, err := NewVideo(
-		label,
-		format,
-		storageLocation,
-		width,
-		height,
-		duration,
-		bitrate,
-		codec,
-		size,
-		contentType,
-		videoCodec,
-		audioCodec,
-		frameRate,
-		audioChannels,
-		audioSampleRate,
-		streamInfo,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	videoID := video.ID().Value()
-	a.videos[videoID] = video
-	a.touch()
-	return video, nil
-}
-
 func (a *Asset) findVideoByLabelAndFormat(label string, format valueobjects.VideoFormat) (string, *Video) {
 	for id, v := range a.videos {
 		if v.Label().Value() == label && v.Format().Equals(format) {
@@ -274,6 +239,15 @@ func (a *Asset) findVideoByLabelAndFormat(label string, format valueobjects.Vide
 		}
 	}
 	return "", nil
+}
+
+func (a *Asset) hasMainForFormat(format valueobjects.VideoFormat) bool {
+	for _, v := range a.videos {
+		if v.Type().IsMain() && v.Format().Equals(format) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *Asset) UpsertVideo(
@@ -313,7 +287,12 @@ func (a *Asset) UpsertVideo(
 		a.touch()
 		return existing, nil
 	}
-	video, err := a.AddVideo(
+
+	if a.hasMainForFormat(*format) {
+		return nil, errors.New("a MAIN video for this format already exists")
+	}
+
+	video, err := NewVideo(
 		label,
 		format,
 		storageLocation,
@@ -334,6 +313,7 @@ func (a *Asset) UpsertVideo(
 	if err != nil {
 		return nil, err
 	}
+	a.videos[video.ID().Value()] = video
 	if initialStatus != nil {
 		video.UpdateStatus(*initialStatus)
 	}

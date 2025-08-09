@@ -43,19 +43,20 @@ func (c *AssetConverter) AssetToParams(a *entity.Asset) map[string]interface{} {
 	}
 
 	params := map[string]interface{}{
-		"id":          a.ID().Value(),
-		"slug":        a.Slug().Value(),
-		"title":       title,
-		"description": description,
-		"type":        assetType,
-		"genre":       genre,
-		"genres":      c.genresToStringSlice(a.Genres()),
-		"tags":        c.tagsToStringSlice(a.Tags()),
-		"ownerId":     ownerID,
-		"parentId":    parentID,
-		"createdAt":   a.CreatedAt().Value().Format(time.RFC3339),
-		"updatedAt":   a.UpdatedAt().Value().Format(time.RFC3339),
-		"publishRule": nil,
+		"id":              a.ID().Value(),
+		"expectedVersion": a.Version(),
+		"slug":            a.Slug().Value(),
+		"title":           title,
+		"description":     description,
+		"type":            assetType,
+		"genre":           genre,
+		"genres":          c.genresToStringSlice(a.Genres()),
+		"tags":            c.tagsToStringSlice(a.Tags()),
+		"ownerId":         ownerID,
+		"parentId":        parentID,
+		"createdAt":       a.CreatedAt().Value().Format(time.RFC3339),
+		"updatedAt":       a.UpdatedAt().Value().Format(time.RFC3339),
+		"publishRule":     nil,
 	}
 
 	if a.PublishRule() != nil {
@@ -175,6 +176,11 @@ func (c *AssetConverter) RecordToAsset(record *neo4j.Record) (*entity.Asset, err
 	props := node.Props
 
 	id, _ := props["id"].(string)
+
+	var version int
+	if v, ok := props["version"].(int64); ok {
+		version = int(v)
+	}
 	slug, _ := props["slug"].(string)
 	title, _ := props["title"].(string)
 	description, _ := props["description"].(string)
@@ -405,6 +411,8 @@ func (c *AssetConverter) RecordToAsset(record *neo4j.Record) (*entity.Asset, err
 		publishRule,
 		metadata,
 	)
+
+	a.SetVersion(version)
 
 	return a, nil
 }

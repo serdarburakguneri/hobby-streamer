@@ -53,31 +53,6 @@ func (s *CommandService) DeleteAsset(ctx context.Context, cmd commands.DeleteAss
 	return s.saver.Delete(ctx, cmd.ID)
 }
 
-func (s *CommandService) AddVideo(ctx context.Context, cmd commands.AddVideoCommand) error {
-	initial := valueobjects.VideoStatusReady
-	_, _, err := s.UpsertVideo(ctx, commands.UpsertVideoCommand{
-		AssetID:         cmd.AssetID,
-		Label:           cmd.Label,
-		Format:          cmd.Format,
-		StorageLocation: cmd.StorageLocation,
-		StreamInfo:      cmd.StreamInfo,
-		Codec:           cmd.Codec,
-		VideoCodec:      cmd.VideoCodec,
-		AudioCodec:      cmd.AudioCodec,
-		FrameRate:       cmd.FrameRate,
-		AudioChannels:   cmd.AudioChannels,
-		AudioSampleRate: cmd.AudioSampleRate,
-		Duration:        cmd.Duration,
-		Bitrate:         cmd.Bitrate,
-		Width:           cmd.Width,
-		Height:          cmd.Height,
-		Size:            cmd.Size,
-		ContentType:     cmd.ContentType,
-		InitialStatus:   &initial,
-	})
-	return err
-}
-
 func (s *CommandService) UpsertVideo(ctx context.Context, cmd commands.UpsertVideoCommand) (*entity.Asset, *entity.Video, error) {
 	asset, err := s.finder.FindByID(ctx, cmd.AssetID)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 
 type Bucket struct {
 	id          valueobjects.BucketID
+	version     int
 	key         valueobjects.BucketKey
 	name        valueobjects.BucketName
 	description *valueobjects.BucketDescription
@@ -42,6 +43,7 @@ func NewBucket(name, key string) (*Bucket, error) {
 	now := time.Now().UTC()
 	return &Bucket{
 		id:          *bucketID,
+		version:     0,
 		key:         *bucketKey,
 		name:        *bucketName,
 		description: nil,
@@ -110,6 +112,7 @@ func NewBucketWithProperties(name, key string, description *string, bucketType *
 	now := time.Now().UTC()
 	return &Bucket{
 		id:          *bucketID,
+		version:     0,
 		key:         *bucketKey,
 		name:        *bucketName,
 		description: bucketDescription,
@@ -138,6 +141,7 @@ func ReconstructBucket(
 ) *Bucket {
 	return &Bucket{
 		id:          id,
+		version:     0,
 		key:         key,
 		name:        name,
 		description: description,
@@ -154,6 +158,9 @@ func ReconstructBucket(
 func (b *Bucket) ID() valueobjects.BucketID {
 	return b.id
 }
+
+func (b *Bucket) Version() int     { return b.version }
+func (b *Bucket) SetVersion(v int) { b.version = v }
 
 func (b *Bucket) Name() valueobjects.BucketName {
 	return b.name

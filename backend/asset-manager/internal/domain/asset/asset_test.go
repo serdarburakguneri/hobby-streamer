@@ -205,7 +205,7 @@ func TestRichDomainModel(t *testing.T) {
 
 		s3Object, _ := valueobjects.NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
 		videoFormat := valueobjects.VideoFormat(constants.VideoStreamingFormatRaw)
-		video, err := asset.AddVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil)
+		video, err := asset.UpsertVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 
 		err = asset.UpdateVideoStatus(video.ID().Value(), valueobjects.VideoStatus(constants.VideoStatusReady))
@@ -232,7 +232,7 @@ func TestRichDomainModel(t *testing.T) {
 		streamURL := "https://example.com/stream"
 		streamInfo, _ := valueobjects.NewStreamInfo(&downloadURL, &cdnPrefix, &streamURL)
 
-		video, err := asset.AddVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, streamInfo)
+		video, err := asset.UpsertVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, streamInfo, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, video.StreamInfo())
 		assert.Equal(t, downloadURL, *video.StreamInfo().DownloadURL())
@@ -275,7 +275,7 @@ func TestDomainServices(t *testing.T) {
 
 		s3Object, _ := valueobjects.NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
 		videoFormat := valueobjects.VideoFormat(constants.VideoStreamingFormatRaw)
-		video, err := asset.AddVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil)
+		video, err := asset.UpsertVideo("main", &videoFormat, *s3Object, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 
 		err = asset.UpdateVideoStatus(video.ID().Value(), valueobjects.VideoStatus(constants.VideoStatusReady))
@@ -312,12 +312,12 @@ func TestDomainServices(t *testing.T) {
 		// Add videos
 		s3Object1, _ := valueobjects.NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
 		videoFormat1 := valueobjects.VideoFormat(constants.VideoStreamingFormatRaw)
-		_, err = asset.AddVideo("main", &videoFormat1, *s3Object1, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil)
+		_, err = asset.UpsertVideo("main", &videoFormat1, *s3Object1, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 
 		s3Object2, _ := valueobjects.NewS3Object("test-bucket", "videos/trailer.m3u8", "https://test-bucket.s3.amazonaws.com/videos/trailer.m3u8")
 		videoFormat2 := valueobjects.VideoFormat(constants.VideoStreamingFormatHLS)
-		_, err = asset.AddVideo("trailer", &videoFormat2, *s3Object2, 1280, 720, 60.0, 2000000, "h264", 512000000, "application/x-mpegURL", "h264", "aac", "30fps", 2, 48000, nil)
+		_, err = asset.UpsertVideo("trailer", &videoFormat2, *s3Object2, 1280, 720, 60.0, 2000000, "h264", 512000000, "application/x-mpegURL", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 
 		metrics := asset.CalculateMetrics()
@@ -337,13 +337,13 @@ func TestDomainServices(t *testing.T) {
 
 		s3Object1, _ := valueobjects.NewS3Object("test-bucket", "videos/main.mp4", "https://test-bucket.s3.amazonaws.com/videos/main.mp4")
 		videoFormat1 := valueobjects.VideoFormat(constants.VideoStreamingFormatRaw)
-		video1, err := asset.AddVideo("main", &videoFormat1, *s3Object1, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil)
+		video1, err := asset.UpsertVideo("main", &videoFormat1, *s3Object1, 1920, 1080, 120.5, 5000000, "h264", 1024000000, "video/mp4", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 		video1.UpdateSize(1024 * 1024 * 100)
 
 		s3Object2, _ := valueobjects.NewS3Object("test-bucket", "videos/trailer.m3u8", "https://test-bucket.s3.amazonaws.com/videos/trailer.m3u8")
 		videoFormat2 := valueobjects.VideoFormat(constants.VideoStreamingFormatHLS)
-		video2, err := asset.AddVideo("trailer", &videoFormat2, *s3Object2, 1280, 720, 60.0, 2000000, "h264", 512000000, "application/x-mpegURL", "h264", "aac", "30fps", 2, 48000, nil)
+		video2, err := asset.UpsertVideo("trailer", &videoFormat2, *s3Object2, 1280, 720, 60.0, 2000000, "h264", 512000000, "application/x-mpegURL", "h264", "aac", "30fps", 2, 48000, nil, nil)
 		assert.NoError(t, err)
 		video2.UpdateSize(1024 * 1024 * 50)
 
