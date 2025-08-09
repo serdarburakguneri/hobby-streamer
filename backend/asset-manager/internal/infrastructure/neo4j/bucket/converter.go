@@ -164,5 +164,9 @@ func RecordToBucket(record *neo4j.Record) (*entity.Bucket, error) {
 		nil,
 	)
 
+	if v, ok := bucketProps["version"].(int64); ok {
+		bucket.SetVersion(int(v))
+	}
+
 	return bucket, nil
 }

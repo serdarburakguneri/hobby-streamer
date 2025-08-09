@@ -4,6 +4,7 @@ const (
 	createQuery = `
 		CREATE (b:Bucket {
 			id: $id,
+            version: 0,
 			name: $name,
 			description: $description,
 			key: $key,
@@ -30,8 +31,9 @@ const (
 	`
 
 	updateQuery = `
-		MATCH (b:Bucket {id: $id})
-		SET b.name = $name,
+        MATCH (b:Bucket {id: $id})
+        SET b.version = CASE WHEN $expectedVersion IS NULL THEN coalesce(b.version, 0) + 1 ELSE CASE WHEN b.version = $expectedVersion THEN b.version + 1 ELSE b.version END END,
+            b.name = $name,
 			b.description = $description,
 			b.ownerID = $ownerID,
 			b.status = $status,

@@ -12,7 +12,6 @@ import (
 )
 
 type AssetAppService interface {
-	AddVideo(ctx context.Context, cmd commands.AddVideoCommand) error
 	UpdateVideoMetadata(ctx context.Context, cmd commands.UpdateVideoMetadataCommand) error
 	UpsertVideo(ctx context.Context, cmd commands.UpsertVideoCommand) (*domainentity.Asset, *domainentity.Video, error)
 }

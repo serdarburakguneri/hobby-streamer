@@ -2,8 +2,9 @@ package asset
 
 func buildAssetSaveQuery() string {
 	return `
-	MERGE (a:Asset {id: $id})
+    MERGE (a:Asset {id: $id})
 	ON CREATE SET
+        a.version = 0,
 		a.slug = $slug,
 		a.title = $title,
 		a.description = $description,
@@ -20,8 +21,9 @@ func buildAssetSaveQuery() string {
 		a.credits = $credits,
 		a.publishRule = $publishRule,
 		a.metadata = $metadata
-	ON MATCH SET
-		a.slug = $slug,
+    ON MATCH SET
+        a.version = CASE WHEN $expectedVersion IS NULL THEN coalesce(a.version, 0) + 1 ELSE CASE WHEN a.version = $expectedVersion THEN a.version + 1 ELSE a.version END END,
+        a.slug = $slug,
 		a.title = $title,
 		a.description = $description,
 		a.type = $type,
@@ -42,7 +44,7 @@ func buildAssetSaveQuery() string {
 func buildAssetFindByIDQuery() string {
 	return `
 	MATCH (a:Asset {id: $id})
-	RETURN a
+    RETURN a
 	`
 }
 

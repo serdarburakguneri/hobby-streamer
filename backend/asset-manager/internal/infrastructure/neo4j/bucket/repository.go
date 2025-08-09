@@ -161,14 +161,15 @@ func (r *Repository) Update(ctx context.Context, bucket *entity.Bucket) error {
 	}
 
 	params := map[string]interface{}{
-		"id":          bucket.ID().Value(),
-		"name":        bucket.Name().Value(),
-		"description": description,
-		"ownerID":     ownerID,
-		"status":      status,
-		"type":        bucketType,
-		"metadata":    metadataJSON,
-		"updatedAt":   bucket.UpdatedAt().Value().Format(time.RFC3339),
+		"id":              bucket.ID().Value(),
+		"expectedVersion": bucket.Version(),
+		"name":            bucket.Name().Value(),
+		"description":     description,
+		"ownerID":         ownerID,
+		"status":          status,
+		"type":            bucketType,
+		"metadata":        metadataJSON,
+		"updatedAt":       bucket.UpdatedAt().Value().Format(time.RFC3339),
 	}
 
 	log.Info(fmt.Sprintf("Updating bucket with params: %+v", params))

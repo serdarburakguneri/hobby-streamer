@@ -46,7 +46,7 @@ func (r *mutationResolver) AddVideo(ctx context.Context, input AddVideoInput) (*
 	if err != nil {
 		return nil, err
 	}
-	cmd := assetCommands.AddVideoCommand{
+	upsert := assetCommands.UpsertVideoCommand{
 		AssetID:         *idVO,
 		Label:           input.Label,
 		Format:          formatVO,
@@ -54,7 +54,7 @@ func (r *mutationResolver) AddVideo(ctx context.Context, input AddVideoInput) (*
 		Size:            int64(input.Size),
 		ContentType:     input.ContentType,
 	}
-	if err := r.assetCommandService.AddVideo(ctx, cmd); err != nil {
+	if _, _, err := r.assetCommandService.UpsertVideo(ctx, upsert); err != nil {
 		return nil, err
 	}
 	assetEntity, err := r.assetQueryService.GetAsset(ctx, assetAppQueries.GetAssetQuery{ID: input.AssetID})
